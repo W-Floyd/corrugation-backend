@@ -196,14 +196,18 @@ func server(cmd *cobra.Command, args []string) {
 
 	r.GET("/info", info)
 
+	r.GET("/qrcode/:id", qrGenerate)
+
 	r.POST("/artifact/upload", uploadArtifact)
 	r.GET("/artifact/:id", downloadArtifact)
 	r.DELETE("/artifact/:id", deleteArtifact)
+	r.GET("/artifact/:id/qrcode", qrGenerate)
 	r.GET("/artifact/list", listArtifacts)
 
 	r.POST("/location", createLocation)
 	r.GET("/location/:id", getLocation)
 	r.DELETE("/location/:id", deleteLocation)
+	r.GET("/location/:id/qrcode", qrGenerate)
 	r.GET("/location/list", listLocations)
 	// r.PUT("/location/:id", updateLocation)
 

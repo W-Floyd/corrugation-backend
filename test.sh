@@ -27,7 +27,7 @@ __curl "/api/location/${__location_id}" -X GET | jq
 
 __curl '/api/location/list' -X GET | jq 
 
-__curl '/api/' -X GET 
+__curl "/api/location/${__location_id}/qrcode" -X GET -o ignore/qr.png
 
 # __curl "/api/location/${__location_id}" -X DELETE
 

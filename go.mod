@@ -7,6 +7,7 @@ require (
 	github.com/gabriel-vasile/mimetype v1.4.0
 	github.com/labstack/echo v3.3.10+incompatible
 	github.com/peterbourgon/diskv/v3 v3.0.1
+	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/spf13/cobra v1.3.0
 	github.com/spf13/viper v1.10.1
 )
