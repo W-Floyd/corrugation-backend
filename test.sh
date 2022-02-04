@@ -11,15 +11,26 @@ __curl() {
     curl "localhost:8083${__path}" "${@}" -H "Authorization: Bearer ${__jwt}"
 
     echo
-    echo
 }
 
 # __curl '/api/info'
 
-__curl '/api/upload/box-image' -F 'file=@./screen.png' -F 'box-name=Network Cables'
+__filename="$(__curl '/api/artifact/upload' -F 'file=@./test.png')"
 
-__curl '/api/list/box-image' -X GET -F 'box-name=Network Cables'
+__curl '/api/artifact/list' -X GET | jq 
 
-__curl '/api/download/box-image' -X GET -F 'box-name=Network Cables'
+# __curl "/api/artifact/get/${__filename}" -X GET -o ignore/download.png
+
+__location_id="$(__curl '/api/location' -X POST -F 'name=Test Location')"
+
+__curl "/api/location/${__location_id}" -X GET | jq
+
+__curl '/api/location/list' -X GET | jq 
+
+__curl '/api/' -X GET 
+
+# __curl "/api/location/${__location_id}" -X DELETE
+
+# echo
 
 exit
