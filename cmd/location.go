@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/labstack/echo"
+	"github.com/labstack/echo/v4"
 )
 
 func parseID(c echo.Context) (int, error) {
@@ -79,4 +79,30 @@ func listLocations(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, idList)
+}
+
+func updateLocation(c echo.Context) error {
+
+	id, err := parseID(c)
+	if err != nil {
+		return err
+	}
+
+	if _, ok := store.Locations[id]; ok {
+
+		l := new(Location)
+
+		if err := c.Bind(l); err != nil {
+			return err
+		}
+
+		store.Locations[id] = *l
+
+		updateStore()
+		return c.NoContent(http.StatusOK)
+
+	}
+
+	return c.String(http.StatusNoContent, "Location "+strconv.Itoa(id)+" does not exist")
+
 }

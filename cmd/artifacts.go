@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/gabriel-vasile/mimetype"
-	"github.com/labstack/echo"
+	"github.com/labstack/echo/v4"
 )
 
 func listArtifacts(c echo.Context) error {

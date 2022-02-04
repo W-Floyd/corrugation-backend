@@ -30,9 +30,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/dgrijalva/jwt-go"
-	"github.com/labstack/echo"
-	"github.com/labstack/echo/middleware"
+	"github.com/golang-jwt/jwt/v4"
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 	"github.com/peterbourgon/diskv/v3"
 	"github.com/spf13/cobra"
 
@@ -209,7 +209,7 @@ func server(cmd *cobra.Command, args []string) {
 	r.DELETE("/location/:id", deleteLocation)
 	r.GET("/location/:id/qrcode", qrGenerate)
 	r.GET("/location/list", listLocations)
-	// r.PUT("/location/:id", updateLocation)
+	r.PUT("/location/:id", updateLocation)
 
 	if d.Has("store.json") {
 		data, err := d.Read("store.json")
