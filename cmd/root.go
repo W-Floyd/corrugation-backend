@@ -176,11 +176,11 @@ func server(cmd *cobra.Command, args []string) {
 
 	r.GET("/info", info)
 
-	r.POST("/upload/box-image", uploadBoxImage)
+	r.POST("/upload/location-artifact", uploadLocationArtifact)
 
-	r.GET("/download/box-image", downloadBoxImage)
+	r.GET("/download/location-artifact", downloadLocationArtifact)
 
-	r.GET("/list/box-image", listBoxImages)
+	r.GET("/list/location-artifact", listLocationArtifacts)
 
 	e.Logger.Fatal(e.Start(":" + strconv.Itoa(viper.GetInt("port"))))
 
@@ -247,30 +247,30 @@ func checkForm(requires []string, c echo.Context) error {
 	return nil
 }
 
-func listBoxImages(c echo.Context) error {
+func listLocationArtifacts(c echo.Context) error {
 	checkForm([]string{
-		"box-name",
+		"location-name",
 	}, c)
 
 	ch := make(chan struct{})
 
-	images := d.KeysPrefix("box/"+c.FormValue("box-name")+"/images/", ch)
+	artifacts := d.KeysPrefix("location/"+c.FormValue("location-name")+"/artifacts/", ch)
 
-	imageSlice := chanToSlice(images).([]string)
+	artifactSlice := chanToSlice(artifacts).([]string)
 
 	close(ch)
 
-	return c.JSON(http.StatusOK, imageSlice)
+	return c.JSON(http.StatusOK, artifactSlice)
 }
 
-func downloadBoxImage(c echo.Context) error {
+func downloadLocationArtifact(c echo.Context) error {
 
 	checkForm([]string{
-		"box-name",
+		"location-name",
 		"file-name",
 	}, c)
 
-	return download(c, "box/"+c.FormValue("box-name")+"/images/"+c.FormValue("file-name"))
+	return download(c, "location/"+c.FormValue("location-name")+"/artifacts/"+c.FormValue("file-name"))
 
 }
 
@@ -278,14 +278,14 @@ func download(c echo.Context, path string) error {
 	return c.File(path)
 }
 
-func uploadBoxImage(c echo.Context) error {
+func uploadLocationArtifact(c echo.Context) error {
 
 	checkForm([]string{
-		"box-name",
+		"location-name",
 	}, c)
 
 	// Read form fields
-	path := "/box/" + c.FormValue("box-name") + "/images/"
+	path := "/location/" + c.FormValue("location-name") + "/artifacts/"
 
 	return upload(c, path)
 }
