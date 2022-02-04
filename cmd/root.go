@@ -22,19 +22,15 @@ THE SOFTWARE.
 package cmd
 
 import (
-	"crypto/md5"
-	"encoding/hex"
+	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"reflect"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/dgrijalva/jwt-go"
-	"github.com/gabriel-vasile/mimetype"
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
 	"github.com/peterbourgon/diskv/v3"
@@ -46,7 +42,29 @@ import (
 var (
 	cfgFile string
 	d       *diskv.Diskv
+	store   Store
 )
+
+type Item struct {
+	Name        string
+	Description string
+	Artifacts   []string
+}
+
+type Location struct {
+	Name           string
+	Description    string
+	Artifacts      []string
+	Items          map[int]Item // The map key is an integer variable that we increment for every new item
+	ParentLocation string       // If this is a real location, then we can link to it, if not we will just return it as is
+}
+
+type Store struct {
+	Locations      map[int]Location // The map key is an integer variable that we increment for every new location
+	LastLocationID int
+	LastItemID     int
+	LastArtifactID int
+}
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -174,45 +192,42 @@ func server(cmd *cobra.Command, args []string) {
 
 	// Restricted group
 
+	r.GET("/", dumpStore) // If you want the whole JSON file, you can have it...
+
 	r.GET("/info", info)
 
-	r.POST("/upload/location-artifact", uploadLocationArtifact)
+	r.POST("/artifact/upload", uploadArtifact)
+	r.GET("/artifact/:id", downloadArtifact)
+	r.DELETE("/artifact/:id", deleteArtifact)
+	r.GET("/artifact/list", listArtifacts)
 
-	r.GET("/download/location-artifact", downloadLocationArtifact)
+	r.POST("/location", createLocation)
+	r.GET("/location/:id", getLocation)
+	r.DELETE("/location/:id", deleteLocation)
+	r.GET("/location/list", listLocations)
+	// r.PUT("/location/:id", updateLocation)
 
-	r.GET("/list/location-artifact", listLocationArtifacts)
+	if d.Has("store.json") {
+		data, err := d.Read("store.json")
+		if err != nil {
+			e.Logger.Fatal(err)
+		}
+		json.Unmarshal(data, &store)
+	} else {
+		store.Locations = map[int]Location{}
+	}
 
 	e.Logger.Fatal(e.Start(":" + strconv.Itoa(viper.GetInt("port"))))
 
 }
 
-func login(c echo.Context) error {
-	username := c.FormValue("username")
-	password := c.FormValue("password")
+func updateStore() {
+	a, _ := json.MarshalIndent(store, "", "  ")
+	d.Write("store.json", a)
+}
 
-	// Throws unauthorized error
-	if username != viper.GetString("username") || password != viper.GetString("password") {
-		return echo.ErrUnauthorized
-	}
-
-	// Create token
-	token := jwt.New(jwt.SigningMethodHS256)
-
-	// Set claims
-	claims := token.Claims.(jwt.MapClaims)
-	claims["name"] = viper.GetString("username")
-	claims["admin"] = true
-	claims["exp"] = time.Now().Add(time.Hour * 72).Unix()
-
-	// Generate encoded token and send it as response.
-	t, err := token.SignedString([]byte(viper.GetString("jwt-secret")))
-	if err != nil {
-		return err
-	}
-
-	return c.JSON(http.StatusOK, map[string]string{
-		"token": t,
-	})
+func dumpStore(c echo.Context) error {
+	return c.JSONPretty(http.StatusOK, store, "  ")
 }
 
 func info(c echo.Context) error {
@@ -239,91 +254,26 @@ func chanToSlice(ch interface{}) interface{} {
 }
 
 func checkForm(requires []string, c echo.Context) error {
+
 	for _, check := range requires {
-		if c.FormValue(check) == "" {
+		if hasForm(check, c) {
 			return c.String(http.StatusBadRequest, check+" not provided")
 		}
 	}
 	return nil
 }
 
-func listLocationArtifacts(c echo.Context) error {
-	checkForm([]string{
-		"location-name",
-	}, c)
+func checkFormFiles(requires []string, c echo.Context) error {
 
-	ch := make(chan struct{})
-
-	artifacts := d.KeysPrefix("location/"+c.FormValue("location-name")+"/artifacts/", ch)
-
-	artifactSlice := chanToSlice(artifacts).([]string)
-
-	close(ch)
-
-	return c.JSON(http.StatusOK, artifactSlice)
+	for _, check := range requires {
+		_, err := c.FormFile(check)
+		if err != nil {
+			return c.String(http.StatusBadRequest, check+" not provided")
+		}
+	}
+	return nil
 }
 
-func downloadLocationArtifact(c echo.Context) error {
-
-	checkForm([]string{
-		"location-name",
-		"file-name",
-	}, c)
-
-	return download(c, "location/"+c.FormValue("location-name")+"/artifacts/"+c.FormValue("file-name"))
-
-}
-
-func download(c echo.Context, path string) error {
-	return c.File(path)
-}
-
-func uploadLocationArtifact(c echo.Context) error {
-
-	checkForm([]string{
-		"location-name",
-	}, c)
-
-	// Read form fields
-	path := "/location/" + c.FormValue("location-name") + "/artifacts/"
-
-	return upload(c, path)
-}
-
-func upload(c echo.Context, directory string) error {
-	//-----------
-	// Read file
-	//-----------
-
-	checkForm([]string{
-		"file",
-	}, c)
-	// Source
-	file, err := c.FormFile("file")
-	if err != nil {
-		return err
-	}
-	src, err := file.Open()
-	if err != nil {
-		return err
-	}
-	defer src.Close()
-
-	fullFile, err := ioutil.ReadAll(src)
-
-	mType := mimetype.Detect(fullFile)
-	if err != nil {
-		return err
-	}
-
-	hash := md5.Sum(fullFile)
-
-	location := directory + hex.EncodeToString(hash[:]) + mType.Extension()
-
-	err = d.Write(location, fullFile)
-	if err != nil {
-		return err
-	}
-
-	return c.HTML(http.StatusOK, fmt.Sprintf("File %s uploaded successfully to location %s", file.Filename, location))
+func hasForm(formKey string, c echo.Context) bool {
+	return c.FormValue(formKey) != ""
 }
