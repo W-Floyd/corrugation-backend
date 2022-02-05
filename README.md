@@ -11,23 +11,13 @@ For example, I don't want to have to say how many pencils, and which brand - onl
 
 ## Key concepts
 
-### Location
+### Entity
 
-The core unit - most commonly a cardboard box (hence "corrugation").
-Boxes may be nested (that is, a box may declare a parent box or location).
-They may also be located somewhere that is not a box (for example, I might say a large box is under my bed, but "under my bed" is not itself a box)
-
-Locations that are referenced automatically exist, and when no longer referenced no longer exist.
-
-### Item
-
-This is an optional inventory feature that may be a part of a location.
-Items are not universal, meaning a "pencil" in one box has no bearing on a "pencil" in another box.
-Items are present only for ease of records keeping, movement of items between boxes, and most importantly item searching.
-Quantity is an optional attribute.
+The core unit, may describe a location or item.
+It may have a name, description, a number of artifacts, and a location.
 
 ### Artifact
 
-Artifacts may be uploaded and referenced by any location or item.
+Artifacts may be uploaded and referenced by any entity.
 This is intended to allow linking images for any given location or item, to allow easier visualization of contents or location.
 It may also allow linking documents such as user manual scans to items.
