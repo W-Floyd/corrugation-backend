@@ -45,27 +45,6 @@ var (
 	store   Store
 )
 
-type Item struct {
-	Name        string
-	Description string
-	Artifacts   []string
-}
-
-type Location struct {
-	Name           string
-	Description    string
-	Artifacts      []string
-	Items          map[int]Item // The map key is an integer variable that we increment for every new item
-	ParentLocation string       // If this is a real location, then we can link to it, if not we will just return it as is
-}
-
-type Store struct {
-	Locations      map[int]Location // The map key is an integer variable that we increment for every new location
-	LastLocationID int
-	LastItemID     int
-	LastArtifactID int
-}
-
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "corrugation-backend",
@@ -204,12 +183,12 @@ func server(cmd *cobra.Command, args []string) {
 	r.GET("/artifact/:id/qrcode", qrGenerate)
 	r.GET("/artifact/list", listArtifacts)
 
-	r.POST("/location", createLocation)
-	r.GET("/location/:id", getLocation)
-	r.DELETE("/location/:id", deleteLocation)
-	r.GET("/location/:id/qrcode", qrGenerate)
-	r.GET("/location/list", listLocations)
-	r.PUT("/location/:id", updateLocation)
+	r.POST("/entity", createEntity)
+	r.GET("/entity/:id", getEntity)
+	r.DELETE("/entity/:id", deleteEntity)
+	r.GET("/entity/:id/qrcode", qrGenerate)
+	r.GET("/entity/list", listEntities)
+	r.PUT("/entity/:id", updateEntity)
 
 	if d.Has("store.json") {
 		data, err := d.Read("store.json")
@@ -218,20 +197,11 @@ func server(cmd *cobra.Command, args []string) {
 		}
 		json.Unmarshal(data, &store)
 	} else {
-		store.Locations = map[int]Location{}
+		store.Entities = map[EntityID]Entity{}
 	}
 
 	e.Logger.Fatal(e.Start(":" + strconv.Itoa(viper.GetInt("port"))))
 
-}
-
-func updateStore() {
-	a, _ := json.MarshalIndent(store, "", "  ")
-	d.Write("store.json", a)
-}
-
-func dumpStore(c echo.Context) error {
-	return c.JSONPretty(http.StatusOK, store, "  ")
 }
 
 func info(c echo.Context) error {

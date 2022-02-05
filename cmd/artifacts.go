@@ -109,7 +109,7 @@ func uploadArtifact(c echo.Context) error {
 
 	store.LastArtifactID += 1
 
-	fileName := strconv.Itoa(store.LastArtifactID) + mType.Extension()
+	fileName := strconv.Itoa(int(store.LastArtifactID)) + mType.Extension()
 	location := path + fileName
 
 	err = d.Write(location, fullFile)
@@ -117,5 +117,5 @@ func uploadArtifact(c echo.Context) error {
 		return err
 	}
 
-	return c.String(http.StatusOK, strconv.Itoa(store.LastArtifactID))
+	return c.String(http.StatusOK, strconv.Itoa(int(store.LastArtifactID)))
 }
