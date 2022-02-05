@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/imdario/mergo"
 	"github.com/labstack/echo/v4"
 )
 
@@ -14,7 +15,7 @@ func parseID(c echo.Context) (int, error) {
 	idInt, err := strconv.Atoi(id)
 
 	if err != nil {
-		return 0, c.String(http.StatusBadRequest, "Entity ID "+id+" could not be parsed as an integer")
+		return 0, c.JSON(http.StatusBadRequest, "Entity ID "+id+" could not be parsed as an integer")
 	}
 
 	return idInt, nil
@@ -34,39 +35,29 @@ func createEntity(c echo.Context) error {
 
 	store.Entities[store.LastEntityID] = loc
 
+	if err := updateModification(c, store.LastEntityID); err != nil {
+		return err
+	}
+
 	updateStore()
-	return c.String(http.StatusOK, strconv.Itoa(int(store.LastEntityID)))
+	return c.JSON(http.StatusOK, strconv.Itoa(int(store.LastEntityID)))
 }
 
 func getEntity(c echo.Context) error {
 
-	id, err := parseID(c)
-	if err != nil {
-		return err
-	}
-
-	if val, ok := store.Entities[EntityID(id)]; ok {
-		return c.JSONPretty(http.StatusOK, val, "  ")
-	}
-
-	return c.String(http.StatusNotFound, "Entity "+strconv.Itoa(id)+" does not exist")
+	return checkEntity(c, func(c echo.Context, id EntityID) error {
+		return c.JSONPretty(http.StatusOK, store.Entities[EntityID(id)], "  ")
+	})
 
 }
 
 func deleteEntity(c echo.Context) error {
 
-	id, err := parseID(c)
-	if err != nil {
-		return err
-	}
-
-	if _, ok := store.Entities[EntityID(id)]; ok {
+	return checkEntity(c, func(c echo.Context, id EntityID) error {
 		delete(store.Entities, EntityID(id))
 		updateStore()
 		return c.NoContent(http.StatusOK)
-	}
-
-	return c.String(http.StatusNoContent, "Entity "+strconv.Itoa(id)+" does not exist")
+	})
 
 }
 
@@ -81,7 +72,7 @@ func listEntities(c echo.Context) error {
 	return c.JSON(http.StatusOK, idList)
 }
 
-func updateEntity(c echo.Context) error {
+func checkEntity(c echo.Context, f func(c echo.Context, id EntityID) error) error {
 
 	id, err := parseID(c)
 	if err != nil {
@@ -92,23 +83,88 @@ func updateEntity(c echo.Context) error {
 
 	if _, ok := store.Entities[eID]; ok {
 
+		return f(c, eID)
+
+	}
+
+	return c.JSON(http.StatusNoContent, "Entity "+strconv.Itoa(id)+" does not exist")
+
+}
+
+func replaceEntity(c echo.Context) error {
+	return checkEntity(c, func(c echo.Context, id EntityID) error {
 		l := Entity{}
 
 		if err := c.Bind(&l); err != nil {
 			return err
 		}
 
-		store.Entities[eID] = l
+		store.Entities[id] = l
 
-		if err := updateModificationDate(eID); err != nil {
+		if err := updateModification(c, id); err != nil {
 			return err
 		}
 
 		updateStore()
-		return c.JSON(http.StatusOK, l)
+		return c.JSON(http.StatusOK, store.Entities[id])
+	})
+}
 
+func patchEntity(c echo.Context) error {
+	return checkEntity(c, func(c echo.Context, id EntityID) error {
+		l := Entity{}
+		n := store.Entities[id]
+
+		if err := c.Bind(&l); err != nil {
+			return err
+		}
+
+		if err := mergo.Merge(&n, l, mergo.WithOverride); err != nil {
+			return c.JSON(http.StatusInternalServerError, err)
+		}
+
+		store.Entities[id] = n
+
+		if err := updateModification(c, id); err != nil {
+			return err
+		}
+
+		updateStore()
+		return c.JSON(http.StatusOK, store.Entities[id])
+	})
+}
+
+func findContains(id EntityID) (out []EntityID) {
+	for key, val := range store.Entities {
+		if val.Location == id {
+			out = append(out, key)
+		}
 	}
+	return
+}
 
-	return c.String(http.StatusNoContent, "Entity "+strconv.Itoa(id)+" does not exist")
+func recurseContains(id EntityID) (out []EntityID) {
+	for _, val := range findContains(id) {
+		out = append(out, recurseContains(val)...)
+	}
+	out = append(out, id)
+	return
+}
+
+func getContains(c echo.Context) error {
+
+	return checkEntity(c, func(c echo.Context, id EntityID) error {
+		contains := []EntityID{}
+
+		if c.FormValue("recursive") == "true" {
+			for _, val := range findContains(id) {
+				contains = append(contains, recurseContains(val)...)
+			}
+		} else {
+			contains = findContains(id)
+		}
+
+		return c.JSON(http.StatusOK, contains)
+	})
 
 }

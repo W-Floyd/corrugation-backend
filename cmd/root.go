@@ -30,7 +30,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/golang-jwt/jwt/v4"
+	"github.com/golang-jwt/jwt"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/peterbourgon/diskv/v3"
@@ -166,14 +166,17 @@ func server(cmd *cobra.Command, args []string) {
 	if viper.GetBool("authentication") {
 		// Login route
 		e.POST("/login", login)
+		r.GET("/info", info)
 		r.Use(middleware.JWT([]byte(viper.GetString("jwt-secret"))))
 	}
 
 	// Restricted group
 
 	r.GET("/", dumpStore) // If you want the whole JSON file, you can have it...
-
-	r.GET("/info", info)
+	r.Any("/reset", func(c echo.Context) error {
+		resetStore()
+		return c.NoContent(http.StatusOK)
+	})
 
 	r.GET("/qrcode/:id", qrGenerate)
 
@@ -185,10 +188,12 @@ func server(cmd *cobra.Command, args []string) {
 
 	r.POST("/entity", createEntity)
 	r.GET("/entity/:id", getEntity)
+	r.PUT("/entity/:id", replaceEntity)
+	r.PATCH("/entity/:id", patchEntity)
 	r.DELETE("/entity/:id", deleteEntity)
+	r.GET("/entity/:id/contains", getContains)
 	r.GET("/entity/:id/qrcode", qrGenerate)
 	r.GET("/entity/list", listEntities)
-	r.PUT("/entity/:id", updateEntity)
 
 	if d.Has("store.json") {
 		data, err := d.Read("store.json")
@@ -197,7 +202,7 @@ func server(cmd *cobra.Command, args []string) {
 		}
 		json.Unmarshal(data, &store)
 	} else {
-		store.Entities = map[EntityID]Entity{}
+		resetStore()
 	}
 
 	e.Logger.Fatal(e.Start(":" + strconv.Itoa(viper.GetInt("port"))))
@@ -208,7 +213,7 @@ func info(c echo.Context) error {
 	user := c.Get("user").(*jwt.Token)
 	claims := user.Claims.(jwt.MapClaims)
 	name := claims["name"].(string)
-	return c.String(http.StatusOK, "Welcome "+name+"!")
+	return c.JSON(http.StatusOK, "Welcome "+name+"!")
 }
 
 // chanToSlice reads all data from ch (which must be a chan), returning a
@@ -231,7 +236,7 @@ func checkForm(requires []string, c echo.Context) error {
 
 	for _, check := range requires {
 		if hasForm(check, c) {
-			return c.String(http.StatusBadRequest, check+" not provided")
+			return c.JSON(http.StatusBadRequest, check+" not provided")
 		}
 	}
 	return nil
@@ -242,7 +247,7 @@ func checkFormFiles(requires []string, c echo.Context) error {
 	for _, check := range requires {
 		_, err := c.FormFile(check)
 		if err != nil {
-			return c.String(http.StatusBadRequest, check+" not provided")
+			return c.JSON(http.StatusBadRequest, check+" not provided")
 		}
 	}
 	return nil

@@ -4,6 +4,7 @@ go 1.17
 
 require (
 	github.com/gabriel-vasile/mimetype v1.4.0
+	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/golang-jwt/jwt/v4 v4.2.0
 	github.com/labstack/echo/v4 v4.6.3
 	github.com/peterbourgon/diskv/v3 v3.0.1
@@ -14,9 +15,9 @@ require (
 
 require (
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
-	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
 	github.com/google/btree v1.0.1 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
+	github.com/imdario/mergo v0.3.12 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/labstack/gommon v0.3.1 // indirect
 	github.com/magiconair/properties v1.8.5 // indirect

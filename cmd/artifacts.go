@@ -38,11 +38,11 @@ func findArtifact(c echo.Context, id string) (string, error) {
 	close(ch)
 
 	if len(artifactSlice) < 1 {
-		return "", c.String(http.StatusNotFound, "Artifact "+id+" not found")
+		return "", c.JSON(http.StatusNotFound, "Artifact "+id+" not found")
 	}
 
 	if len(artifactSlice) > 1 {
-		return "", c.String(http.StatusNotFound, "More than one artifact found for "+id)
+		return "", c.JSON(http.StatusNotFound, "More than one artifact found for "+id)
 	}
 
 	return d.BasePath + "/" + artifactSlice[0], nil
@@ -74,7 +74,7 @@ func deleteArtifact(c echo.Context) error {
 		return c.NoContent(http.StatusOK)
 	}
 
-	return c.String(http.StatusNoContent, "Artifact "+id+" does not exist")
+	return c.JSON(http.StatusNoContent, "Artifact "+id+" does not exist")
 }
 
 func uploadArtifact(c echo.Context) error {
@@ -117,5 +117,5 @@ func uploadArtifact(c echo.Context) error {
 		return err
 	}
 
-	return c.String(http.StatusOK, strconv.Itoa(int(store.LastArtifactID)))
+	return c.JSON(http.StatusOK, strconv.Itoa(int(store.LastArtifactID)))
 }
