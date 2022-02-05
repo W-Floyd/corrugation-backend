@@ -168,3 +168,7 @@ func getContains(c echo.Context) error {
 	})
 
 }
+
+func getEntities(c echo.Context) error {
+	return c.JSON(http.StatusOK, store.Entities)
+}

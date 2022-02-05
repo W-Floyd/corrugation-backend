@@ -161,6 +161,8 @@ func server(cmd *cobra.Command, args []string) {
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 
+	e.Static("/", "assets")
+
 	r := e.Group("/api")
 
 	if viper.GetBool("authentication") {
@@ -186,6 +188,7 @@ func server(cmd *cobra.Command, args []string) {
 	r.GET("/artifact/:id/qrcode", qrGenerate)
 	r.GET("/artifact/list", listArtifacts)
 
+	r.GET("/entity", getEntities)
 	r.POST("/entity", createEntity)
 	r.GET("/entity/:id", getEntity)
 	r.PUT("/entity/:id", replaceEntity)
