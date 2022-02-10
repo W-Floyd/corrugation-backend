@@ -79,7 +79,7 @@ seq 1 "${__n}" | while read -r __val; do
     __curl "/api/entity/${__val}" -X PATCH -H 'Content-Type: application/json' -d '{"description":"A test entry, this is entry ID '${__val}'"}'
 done | __eat
 
-seq "$((__n / 2))" "${__n}" | while read -r __val; do
+seq "$((1 + __n / 2))" "${__n}" | while read -r __val; do
     __curl "/api/entity/${__val}" -X PATCH -H 'Content-Type: application/json' -d '{"artifacts":[1]}'
 done | __eat
 

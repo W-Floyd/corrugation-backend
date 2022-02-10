@@ -31,6 +31,10 @@ __quantify() {
     __curl "/api/entity/${1}" -X PATCH -H 'Content-Type: application/json' -d '{"metadata": {"quantity":'"${2}"'}}'
 }
 
+__describe(){
+    __curl "/api/entity/${1}" -X PATCH -H 'Content-Type: application/json' -d '{"description": "'"${2}"'"}'
+}
+
 __eat() {
     cat >/dev/null
 }
@@ -75,5 +79,23 @@ __quantify "${__v}" 5
 __v="$(__make_locate "Power Supplies" "${__dresser_bottom}")"
 
 __v="$(__make_locate "Computer Parts & Hard Drives" "${__dresser_bottom}")"
+
+__car="$(__make_entity "Car")"
+__describe "${__car}" '2005 Nissan Altima'
+
+__car_cabin="$(__make_locate "Cabin" "${__car}")"
+__make_locate "Prescription Sunglasses" "${__car_cabin}"
+__make_locate "12V USB Charger" "${__car_cabin}"
+__make_locate "USB C Cable" "${__car_cabin}"
+
+__car_boot="$(__make_locate "Boot" "${__car}")"
+__make_locate "Gas can" "${__car_boot}"
+__v="$(__make_locate "Spare tire" "${__car_boot}")"
+__make_locate "1/2\" Breaker Bar" "${__v}"
+__make_locate "1/4\" hex to 3/8\" square drive adapter" "${__v}"
+__make_locate "1/4\" hex to 1/2\" square drive adapter" "${__v}"
+
+__make_locate "Small hex key set, metric" "${__car_boot}"
+__make_locate "Small hex key set, inch" "${__car_boot}"
 
 exit
