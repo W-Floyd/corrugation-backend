@@ -61,19 +61,30 @@ seq 0 "$((__n - 1))" | while read -r __val; do
     __locate_entity "${__val}" "${__n}" | __eat
 done
 
-echo 'Listing entities located in last entity'
-__curl "/api/entity/${__entity_id}/contains" -X GET
+# echo 'Listing entities located in last entity'
+# __curl "/api/entity/${__entity_id}/contains" -X GET
 
-echo 'Making all entities nested in last entity'
-seq 0 "$((__n - 1))" | while read -r __val; do
-    __locate_entity "${__val}" "$((__val+1))" | __eat
-done
+# echo 'Making all entities nested in last entity'
+# seq 0 "$((__n - 1))" | while read -r __val; do
+#     __locate_entity "${__val}" "$((__val + 1))" | __eat
+# done
 
-echo 'Listing entities located directly in last entity'
-__curl "/api/entity/${__entity_id}/contains" -X GET
+# echo 'Listing entities located directly in last entity'
+# __curl "/api/entity/${__entity_id}/contains" -X GET
 
-echo 'Listing entities located recursively in last entity'
-__curl "/api/entity/${__entity_id}/contains" -X GET -F 'recursive=true'
+# echo 'Listing entities located recursively in last entity'
+# __curl "/api/entity/${__entity_id}/contains" -X GET -F 'recursive=true'
+
+seq 1 "${__n}" | while read -r __val; do
+    __curl "/api/entity/${__val}" -X PATCH -H 'Content-Type: application/json' -d '{"description":"A test entry, this is entry ID '${__val}'"}'
+done | __eat
+
+seq "$((__n / 2))" "${__n}" | while read -r __val; do
+    __curl "/api/entity/${__val}" -X PATCH -H 'Content-Type: application/json' -d '{"artifacts":[1]}'
+done | __eat
+
+__curl "/api/entity/find/children/0/full" -X GET
+__curl "/api/entity/find/locations/full" -X GET
 
 # __curl "/api/entity/${__entity_id}" -X DELETE
 
