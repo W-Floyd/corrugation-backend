@@ -16,9 +16,6 @@
 
     <div x-data x-show="!$store.isLoading.on">
 
-        <!-- <button type="button" @click="$store.entities.toggleViewAllLocation()">View
-            All</button> -->
-
         <div class="container mx-auto">
             <nav class="w-full rounded-md">
                 <ol class="flex list-reset">
@@ -27,18 +24,21 @@
 
                             <li>
                                 <a @click="$store.entities.setCurrentEntity(n)"
-                                    class="text-blue-600 no-underline dark:text-sky-400 dark:hover:dark:text-sky-300 hover:text-blue-700 hover:underline"
+                                    class="text-blue-600 no-underline cursor-pointer dark:text-sky-400 dark:hover:text-sky-300 hover:text-blue-700 hover:underline"
                                     x-text="$store.entities.readname(n)"></a>
                             </li>
 
+                            <li>
+                                <span class="mx-2 text-gray-500">/</span>
+                            </li>
 
-                            <template x-if="index != $store.entities.locationtree.length-1">
-                                <li>
-                                    <span class="mx-2 text-gray-500">/</span>
-                                </li>
-                            </template>
                         </div>
                     </template>
+                    <li>
+                        <span
+                            class="font-bold text-blue-600 cursor-pointer dark:text-sky-400 dark:hover:text-sky-300 hover:text-blue-700"
+                            @click="$store.newEntityDialog.opened = true">+</span>
+                    </li>
                 </ol>
             </nav>
 
@@ -47,53 +47,124 @@
 
                 <template x-for="entity in $store.entities.entities">
 
-                    <div @click="$store.entities.hasChildren(entity.ID) && $store.entities.setCurrentEntity(entity.ID)"
-                        class="container relative max-w-xl transition duration-100 bg-white shadow-md grow md:justify-between md:flex min-w-sm dark:bg-gray-800 rounded-xl ring-blue-500/50 hover:ring-1 hover:shadow-lg">
+                    <figure
+                        class="container relative max-w-xl transition duration-100 bg-white shadow-md grow md:justify-between md:flex min-w-sm dark:bg-gray-800 rounded-xl ring-gray-500/25 hover:ring-1 hover:shadow-lg">
 
                         <!-- Text stuff -->
                         <div class="p-8">
 
                             <!-- Name -->
-                            <div x-text="entity.Metadata.Quantity != 0 && entity.Name + ' (' + entity.Metadata.Quantity +')' ||  entity.Name "
+                            <div x-text="entity.metadata.quantity != 0 && entity.name + ' (' + entity.metadata.quantity +')' ||  entity.name "
                                 class="mb-2 text-xl font-bold"></div>
 
                             <!-- Children, if present. -->
-                            <template x-if="$store.entities.hasChildren(entity.ID)">
-                                <div>
-
-                                    <p>Contains:</p>
-
-                                    <div class="p-2 rounded ring-slate-100 ring-1">
-                                        <ul class="list-disc list-inside">
-                                            <template x-for="child in $store.entities.listChildLocations(entity.ID)">
-                                                <li class="whitespace-nowrap" x-text="child.Name"></li>
-                                            </template>
-                                        </ul>
-                                    </div>
-
+                            <div x-show="$store.entities.hasChildren(entity.id)"
+                                @click="$store.entities.setCurrentEntity(entity.id)">
+                                <div
+                                    class="p-2 mb-2 bg-white rounded cursor-pointer ring-slate-100 ring-1 hover:ring-blue-500/75 hover:shadow-md">
+                                    <p class="font-semibold">Contains:</p>
+                                    <ul class="list-disc list-inside">
+                                        <template x-for="child in $store.entities.listChildLocations(entity.id)">
+                                            <li class="whitespace-nowrap" x-text="child.name"></li>
+                                        </template>
+                                    </ul>
                                 </div>
-                            </template>
+
+                            </div>
+                            <!-- Children, if not present. -->
+                            <div x-show="!$store.entities.hasChildren(entity.id)"
+                                @click="$store.entities.setCurrentEntity(entity.id); $store.newEntityDialog.opened = true">
+                                <div>
+                                    <button
+                                        class="inline-flex items-center px-2 py-2 font-bold bg-gray-100 rounded hover:bg-gray-200">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 20 20"
+                                            fill="currentColor">
+                                            <path fill-rule="evenodd"
+                                                d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z"
+                                                clip-rule="evenodd" />
+                                        </svg>
+
+                                    </button>
+                                </div>
+
+                            </div>
 
                             <!-- Description, if present -->
-                            <template x-if="entity.Description != ''">
-                                <p x-text="entity.Description"></p>
+                            <template x-if="entity.description != ''">
+                                <p x-text="entity.description"></p>
                             </template>
                         </div>
 
                         <!-- Use the first artifact as an image, if available -->
-                        <template x-if="entity.Artifacts != null">
+                        <template x-if="entity.artifacts != null">
                             <div class="md:shrink-0">
                                 <img class="object-cover w-full h-48 md:h-full md:w-48"
-                                    :src="['/api/artifact/',entity.Artifacts[0]].join('')">
+                                    :src="['/api/artifact/',entity.artifacts[0]].join('')">
                             </div>
                         </template>
 
-                    </div>
+                    </figure>
 
                 </template>
 
             </div>
         </div>
+
+        <!-- New Entity Dialog -->
+        <div x-show="$store.newEntityDialog.opened" style="display: none"
+            x-on:keydown.escape.prevent.stop="$store.newEntityDialog.opened = false" role="dialog" aria-modal="true"
+            x-id="['modal-title']" :aria-labelledby="$id('modal-title')" class="fixed inset-0 overflow-y-auto">
+
+            <!-- Overlay -->
+            <div x-show="$store.newEntityDialog.opened" x-transition.opacity
+                class="fixed inset-0 bg-black bg-opacity-50">
+            </div>
+
+            <!-- Panel -->
+            <div x-show="$store.newEntityDialog.opened" x-transition x-on:click="$store.newEntityDialog.opened = false"
+                class="relative flex items-center justify-center min-h-screen p-4 shadow-xl">
+
+                <div x-on:click.stop x-trap.noscroll.inert="$store.newEntityDialog.opened"
+                    class="relative w-full max-w-2xl p-8 overflow-y-auto bg-white border border-black rounded-lg">
+
+                    <!-- Title -->
+                    <h1 class="text-3xl font-medium" :id="$id('modal-title')">Create New Entity</h1>
+
+
+                    <div class="grid grid-cols-4 space-y-2">
+
+                        <label for="name">Entity Name</label>
+                        <input name="name" id="name" type="text" x-model="$store.newEntityDialog.entity.name"
+                            class="col-span-3 rounded ring-1">
+
+                        <label for="description">Entity Description</label>
+                        <textarea name="description" id="name" type="text"
+                            x-model="$store.newEntityDialog.entity.description"
+                            class="col-span-3 rounded ring-1"></textarea>
+
+                        <label for="quantity">Quantity</label>
+                        <input name="quantity" id="quantity" type="number" min="0" step="1"
+                            x-model="$store.newEntityDialog.entity.metadata.quantity" class="col-span-3 rounded ring-1">
+                    </div>
+
+                    <!-- Buttons -->
+                    <div class="flex mt-8 space-x-2">
+                        <button type="button"
+                            x-on:click="$store.api.new(); $store.newEntityDialog.opened = false; $store.entities.load(); $store.entities.loadLocationTree()"
+                            class="px-4 py-2 bg-white border border-black">
+                            Submit
+                        </button>
+                        <button type="button" x-on:click="$store.newEntityDialog.opened = false"
+                            class="px-4 py-2 bg-white border border-black">
+                            Cancel
+                        </button>
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+
     </div>
 
 </body>

@@ -14,26 +14,26 @@ type EntityID int
 type ArtifactID int
 
 type Metadata struct {
-	Quantity       int
-	Owners         []string
-	Tags           []string
-	LastModified   string
-	LastModifiedBy string
+	Quantity       int      `json:"quantity"`
+	Owners         []string `json:"owners"`
+	Tags           []string `json:"tags"`
+	LastModified   string   `json:"lastmodified"`
+	LastModifiedBy string   `json:"lastmodifiedby"`
 }
 
 type Entity struct {
-	ID          EntityID
-	Name        string
-	Description string
-	Artifacts   []ArtifactID
-	Location    EntityID
-	Metadata    Metadata
+	ID          EntityID     `json:"id"`
+	Name        string       `json:"name"`
+	Description string       `json:"description"`
+	Artifacts   []ArtifactID `json:"artifacts"`
+	Location    EntityID     `json:"location"`
+	Metadata    Metadata     `json:"metadata"`
 }
 
 type Store struct {
-	Entities       map[EntityID]Entity
-	LastEntityID   EntityID
-	LastArtifactID ArtifactID
+	Entities       map[EntityID]Entity `json:"entities"`
+	LastEntityID   EntityID            `json:"lastentityid"`
+	LastArtifactID ArtifactID          `json:"lastartifactID"`
 }
 
 func updateStore() {

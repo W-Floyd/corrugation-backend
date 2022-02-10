@@ -26,6 +26,11 @@ func createEntity(c echo.Context) error {
 	store.LastEntityID += 1
 
 	loc := Entity{}
+
+	if err := c.Bind(&loc); err != nil {
+		return err
+	}
+
 	if hasForm("name", c) {
 		loc.Name = c.FormValue("name")
 	}
