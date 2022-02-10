@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"net/http"
+	"sort"
 	"strconv"
 
 	"github.com/imdario/mergo"
@@ -32,6 +33,8 @@ func createEntity(c echo.Context) error {
 	if hasForm("description", c) {
 		loc.Description = c.FormValue("description")
 	}
+
+	loc.ID = store.LastEntityID
 
 	store.Entities[store.LastEntityID] = loc
 
@@ -169,6 +172,97 @@ func getContains(c echo.Context) error {
 
 }
 
+func getContainsFull(c echo.Context) error {
+
+	id, err := parseID(c)
+	if err != nil {
+		return err
+	}
+
+	eID := EntityID(id)
+
+	contains := findContains(eID)
+
+	l := []Entity{}
+	for _, val := range contains {
+		l = append(l, store.Entities[val])
+	}
+
+	return c.JSON(http.StatusOK, sortEntities(l))
+
+}
+
+func getContainsFullRecursive(c echo.Context) error {
+
+	id, err := parseID(c)
+	if err != nil {
+		return err
+	}
+
+	eID := EntityID(id)
+
+	contains := []EntityID{}
+
+	for _, val := range findContains(eID) {
+		contains = append(contains, recurseContains(val)...)
+	}
+
+	l := []Entity{}
+	for _, val := range contains {
+		l = append(l, store.Entities[val])
+	}
+
+	return c.JSON(http.StatusOK, sortEntities(l))
+
+}
+
 func getEntities(c echo.Context) error {
 	return c.JSON(http.StatusOK, store.Entities)
+}
+
+func findEntitiesWithChildren(c echo.Context) error {
+
+	m := map[EntityID][]EntityID{}
+
+	for key, val := range store.Entities {
+		m[val.Location] = append(m[val.Location], key)
+	}
+
+	l := []EntityID{}
+
+	for key := range m {
+		l = append(l, key)
+	}
+
+	return c.JSON(http.StatusOK, l)
+}
+
+func findEntitiesWithChildrenFull(c echo.Context) error {
+
+	m := map[EntityID][]EntityID{}
+
+	for key, val := range store.Entities {
+		m[val.Location] = append(m[val.Location], key)
+	}
+
+	l := []Entity{}
+
+	for key := range m {
+		if val, ok := store.Entities[key]; ok {
+			l = append(l, val)
+		}
+	}
+
+	return c.JSON(http.StatusOK, sortEntities(l))
+}
+
+func sortEntities(s []Entity) (out []Entity) {
+	out = s
+	sort.SliceStable(out, func(p, q int) bool {
+		if out[p].Name == out[q].Name {
+			return out[p].Description < out[q].Description
+		}
+		return out[p].Name < out[q].Name
+	})
+	return
 }

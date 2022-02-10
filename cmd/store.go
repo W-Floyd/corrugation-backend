@@ -14,6 +14,7 @@ type EntityID int
 type ArtifactID int
 
 type Metadata struct {
+	Quantity       int
 	Owners         []string
 	Tags           []string
 	LastModified   string
@@ -21,6 +22,7 @@ type Metadata struct {
 }
 
 type Entity struct {
+	ID          EntityID
 	Name        string
 	Description string
 	Artifacts   []ArtifactID
@@ -49,6 +51,7 @@ func updateModification(c echo.Context, eID EntityID) error {
 		e := store.Entities[eID]
 		e.Metadata.LastModified = time.Now().UTC().Format("2006-01-02 15:04:05.000000") + " UTC"
 		e.Metadata.LastModifiedBy = viper.GetString("username")
+		e.ID = eID
 		store.Entities[eID] = e
 		return nil
 	}
