@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Simple Corrugation Frontend</title>
+    <script src="scripts.js"></script>
+    <script src="//unpkg.com/alpinejs" defer></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body class="text-black dark:text-white bg-gray-50 dark:bg-gray-900">
+
+
+    <h1 x-data x-show="$store.isLoading.on">Loading...</h1>
+
+    <div x-data x-show="!$store.isLoading.on">
+
+        <!-- <button type="button" @click="$store.entities.toggleViewAllLocation()">View
+            All</button> -->
+
+        <div class="container mx-auto">
+            <nav class="w-full rounded-md">
+                <ol class="flex list-reset">
+                    <template x-for="(n, index) in $store.entities.locationtree">
+                        <div class="flex list-reset">
+
+                            <li>
+                                <a @click="$store.entities.setCurrentEntity(n)"
+                                    class="text-blue-600 no-underline dark:text-sky-400 dark:hover:dark:text-sky-300 hover:text-blue-700 hover:underline"
+                                    x-text="$store.entities.readname(n)"></a>
+                            </li>
+
+
+                            <template x-if="index != $store.entities.locationtree.length-1">
+                                <li>
+                                    <span class="mx-2 text-gray-500">/</span>
+                                </li>
+                            </template>
+                        </div>
+                    </template>
+                </ol>
+            </nav>
+
+
+            <div class="flex flex-wrap justify-center gap-4">
+
+                <template x-for="entity in $store.entities.entities">
+
+                    <div @click="$store.entities.hasChildren(entity.ID) && $store.entities.setCurrentEntity(entity.ID)"
+                        class="container relative max-w-xl transition duration-100 bg-white shadow-md grow md:justify-between md:flex min-w-sm dark:bg-gray-800 rounded-xl ring-blue-500/50 hover:ring-1 hover:shadow-lg">
+
+                        <!-- Text stuff -->
+                        <div class="p-8">
+
+                            <!-- Name -->
+                            <div x-text="entity.Metadata.Quantity != 0 && entity.Name + ' (' + entity.Metadata.Quantity +')' ||  entity.Name "
+                                class="mb-2 text-xl font-bold"></div>
+
+                            <!-- Children, if present. -->
+                            <template x-if="$store.entities.hasChildren(entity.ID)">
+                                <div>
+
+                                    <p>Contains:</p>
+
+                                    <div class="p-2 rounded ring-slate-100 ring-1">
+                                        <ul class="list-disc list-inside">
+                                            <template x-for="child in $store.entities.listChildLocations(entity.ID)">
+                                                <li class="whitespace-nowrap" x-text="child.Name"></li>
+                                            </template>
+                                        </ul>
+                                    </div>
+
+                                </div>
+                            </template>
+
+                            <!-- Description, if present -->
+                            <template x-if="entity.Description != ''">
+                                <p x-text="entity.Description"></p>
+                            </template>
+                        </div>
+
+                        <!-- Use the first artifact as an image, if available -->
+                        <template x-if="entity.Artifacts != null">
+                            <div class="md:shrink-0">
+                                <img class="object-cover w-full h-48 md:h-full md:w-48"
+                                    :src="['/api/artifact/',entity.Artifacts[0]].join('')">
+                            </div>
+                        </template>
+
+                    </div>
+
+                </template>
+
+            </div>
+        </div>
+    </div>
+
+</body>
+
+</html>
