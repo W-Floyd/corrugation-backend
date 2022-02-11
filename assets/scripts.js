@@ -47,7 +47,7 @@ document.addEventListener('alpine:init', () => {
             let url = "/api/entity";
 
             // open a connection
-            xhr.open("POST", url, true);
+            xhr.open("POST", url, false);
 
             // Set the request header i.e. which type of content you are sending
             xhr.setRequestHeader("Content-Type", "application/json");
@@ -64,6 +64,26 @@ document.addEventListener('alpine:init', () => {
 
             // Sending data with the request
             xhr.send(data);
+        },
+
+        delete(id) {
+            // Creating a XHR object
+            let xhr = new XMLHttpRequest();
+            let url = "/api/entity/" + id;
+
+            // open a connection
+            xhr.open("DELETE", url, false);
+
+            // Create a state change callback
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === 4 && xhr.status == 200) {
+                    return xhr.status
+                }
+            };
+
+            xhr.send();
+            Alpine.store('entities').load();
+            Alpine.store('entities').loadLocationTree();
         }
 
     })
@@ -84,21 +104,10 @@ document.addEventListener('alpine:init', () => {
             this.loadLocationTree()
         },
 
-        toggleViewAllLocation() {
-            this.viewAllLocation = !this.viewAllLocation
-            this.load()
-        },
-
-        viewAllLocation: false,
-
         entities: {},
 
         load() {
             let url = '/api/entity/find/children/' + this.currentEntity + '/full';
-
-            if (this.viewAllLocation) {
-                url = url + '/recursive'
-            };
 
             readAll(url)
                 .then(response => response.json())

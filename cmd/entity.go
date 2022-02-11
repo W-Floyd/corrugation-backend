@@ -62,6 +62,13 @@ func getEntity(c echo.Context) error {
 func deleteEntity(c echo.Context) error {
 
 	return checkEntity(c, func(c echo.Context, id EntityID) error {
+		for key := range store.Entities {
+			if store.Entities[key].Location == id {
+				l := store.Entities[key]
+				l.Location = store.Entities[id].Location
+				store.Entities[key] = l
+			}
+		}
 		delete(store.Entities, EntityID(id))
 		updateStore()
 		return c.NoContent(http.StatusOK)
