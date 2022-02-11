@@ -29,7 +29,7 @@ __curl '/api/reset'
 
 # __curl '/api/info'
 
-# __filename="$(__curl '/api/artifact/upload' -F 'file=@./test.png')"
+# __filename="$(__curl '/api/artifact/upload' -F 'file=@./ignore/test.png')"
 
 # __curl '/api/artifact/list' -X GET | jq
 

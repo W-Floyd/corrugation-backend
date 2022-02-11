@@ -1,26 +1,13 @@
 document.addEventListener('alpine:init', () => {
-    Alpine.store('isLoading', {
-        on: true,
-
-        toggle() {
-            this.on = !this.on
-        },
-
-        makeFalse() {
-            this.on = false
-        },
-
-        makeTrue() {
-            this.on = true
-        }
-
-    })
+    Alpine.store('isLoading', false)
 
     Alpine.store('newEntityDialog', {
         opened: false,
         entity: {},
 
-        init(){
+        targetLocation: null,
+
+        init() {
             this.reset()
         },
 
@@ -39,13 +26,14 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
-        open(){
+        open(x) {
+            this.targetLocation = x
             this.reset()
             this.opened = true
         },
 
         make() {
-            this.entity.location = Alpine.store('entities').currentEntity
+            this.entity.location = this.targetLocation
             this.entity.metadata.quantity = parseInt(this.entity.metadata.quantity)
             return this.entity
         }
@@ -53,7 +41,7 @@ document.addEventListener('alpine:init', () => {
     })
 
     Alpine.store('api', {
-        new(data) {
+        newEntity(data) {
             // Creating a XHR object
             let xhr = new XMLHttpRequest();
             let url = "/api/entity";
@@ -77,6 +65,7 @@ document.addEventListener('alpine:init', () => {
             // Sending data with the request
             xhr.send(data);
         }
+
     })
 
     Alpine.store('entities', {
@@ -84,10 +73,8 @@ document.addEventListener('alpine:init', () => {
             this.currentEntity = 0
             this.load()
             this.loadLocationTree()
-            Alpine.store('isLoading').makeFalse()
+            Alpine.store('isLoading').this = false
         },
-
-
 
         currentEntity: 0,
 
