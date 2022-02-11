@@ -3,14 +3,14 @@
 
 <head>
     <title>Corrugation</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="scripts.js"></script>
     <script src="//unpkg.com/alpinejs" defer></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="styles.css">
 </head>
 
-<body x-data class="text-black dark:text-white bg-gray-50 dark:bg-gray-900 ease-in duration-200 transition">
-
+<body x-data class="text-black transition duration-200 ease-in dark:text-white bg-gray-50 dark:bg-gray-900">
 
     <h1 x-show="$store.isLoading">Loading...</h1>
 
@@ -64,30 +64,17 @@
 
                             <!-- Children, if present. -->
                             <div x-show=" $store.entities.hasChildren(entity.id)">
-                                <p class="font-semibold mb-2">Contains:</p>
+                                <p class="mb-2 font-semibold">Contains:</p>
                                 <div class="flex flex-wrap gap-2 ">
 
                                     <template x-for="child in $store.entities.listChildLocations(entity.id)">
-                                        <div class="bg-gray-50 hover:bg-gray-100 hover:shadow-sm p-2 rounded cursor-pointer ring-gray-200 dark:ring-slate-500 ring-1 hover:ring-blue-500/75 active:shadow-md hover:shadow-sm"
+                                        <div class="p-2 rounded cursor-pointer bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 hover:bg-gray-100 hover:shadow-sm ring-gray-200 dark:ring-slate-500 ring-1 hover:ring-blue-500/75 active:shadow-md"
                                             x-text="child.name" @click="$store.entities.setCurrentEntity(child.id)">
                                         </div>
                                     </template>
                                 </div>
 
                             </div>
-
-
-
-                            <!-- <button
-                                        class="inline-flex items-center px-2 py-2 font-bold bg-gray-100 dark:bg-gray-600 dark:hover:bg-gray-500 rounded hover:bg-gray-200">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 20 20">
-                                            <path fill-rule="evenodd"
-                                                d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z"
-                                                clip-rule="evenodd" />
-                                        </svg>
-
-                                    </button> -->
-
 
                             <!-- Description, if present -->
                             <template x-if="entity.description != ''">
@@ -98,8 +85,9 @@
                         <!-- Buttons -->
 
                         <button @click="$store.api.delete(entity.id)"
-                            class="m-4 float-left float-bottom p-0 w-10 h-10 bg-red-500 rounded-full hover:bg-red-600 active:shadow-lg mouse shadow focus:outline-1">
-                            <svg viewBox="0 0 20 20" enable-background="new 0 0 20 20" class="w-6 h-6 inline-block fill-white dark:fill-black">
+                            class="float-left w-10 h-10 p-0 m-4 bg-red-500 rounded-full shadow float-bottom hover:bg-red-600 active:shadow-lg mouse focus:outline-1">
+                            <svg viewBox="0 0 20 20" enable-background="new 0 0 20 20"
+                                class="inline-block w-6 h-6 fill-white">
                                 <path fill-rule="evenodd"
                                     d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
                                     clip-rule="evenodd" />
@@ -107,9 +95,10 @@
                         </button>
 
                         <button @click="$store.newEntityDialog.open(entity.id)"
-                            class="m-4 float-right float-bottom p-0 w-10 h-10 bg-blue-500 rounded-full hover:bg-blue-600 active:shadow-lg mouse shadow focus:outline-1">
-                            <svg viewBox="0 0 20 20" enable-background="new 0 0 20 20" class="w-6 h-6 inline-block fill-white dark:fill-black">
-                                <path fill="#FFFFFF" d="M16,10c0,0.553-0.048,1-0.601,1H11v4.399C11,15.951,10.553,16,10,16c-0.553,0-1-0.049-1-0.601V11H4.601
+                            class="float-right w-10 h-10 p-0 m-4 bg-blue-500 rounded-full shadow float-bottom hover:bg-blue-600 active:shadow-lg mouse focus:outline-1">
+                            <svg viewBox="0 0 20 20" enable-background="new 0 0 20 20"
+                                class="inline-block w-6 h-6 fill-white">
+                                <path d="M16,10c0,0.553-0.048,1-0.601,1H11v4.399C11,15.951,10.553,16,10,16c-0.553,0-1-0.049-1-0.601V11H4.601
                                                                            C4.049,11,4,10.553,4,10c0-0.553,0.049-1,0.601-1H9V4.601C9,4.048,9.447,4,10,4c0.553,0,1,0.048,1,0.601V9h4.399
                                                                            C15.952,9,16,9.447,16,10z" />
                             </svg>
@@ -118,7 +107,7 @@
                         <!-- Use the first artifact as an image, if available -->
                         <template x-if="entity.artifacts != null">
                             <div class="">
-                                <img class="rounded-xl object-cover w-full h-48"
+                                <img class="object-cover w-full h-48 rounded-xl"
                                     :src="['/api/artifact/',entity.artifacts[0]].join('')">
                             </div>
                         </template>
@@ -146,38 +135,38 @@
                 @keyup.enter="$store.api.newEntity(); $store.newEntityDialog.opened = false; $store.entities.load(); $store.entities.loadLocationTree()">
 
                 <div x-on:click.stop x-trap.noscroll.inert="$store.newEntityDialog.opened"
-                    class="relative w-full max-w-2xl p-8 overflow-y-auto bg-white dark:bg-gray-800 border border-black rounded-lg">
+                    class="relative w-full max-w-2xl p-8 overflow-y-auto bg-white border border-black rounded-lg dark:bg-gray-800">
 
                     <!-- Title -->
-                    <h1 class="text-3xl font-medium pb-4" :id="$id('modal-title')">Create New Entity</h1>
+                    <h1 class="pb-4 text-3xl font-medium" :id="$id('modal-title')">Create New Entity</h1>
 
 
                     <div class="grid grid-cols-4 space-y-2">
 
                         <label for="name">Name</label>
                         <input name="name" autofocus id="name" type="text" x-model="$store.newEntityDialog.entity.name"
-                            class="col-span-3 rounded bg-white dark:bg-gray-900 ring-1">
+                            class="col-span-3 bg-white rounded dark:bg-gray-900 ring-1">
 
                         <label for="description">Description</label>
                         <textarea name="description" id="name" type="text"
                             x-model="$store.newEntityDialog.entity.description"
-                            class="col-span-3 rounded bg-white dark:bg-gray-900 ring-1"></textarea>
+                            class="col-span-3 bg-white rounded dark:bg-gray-900 ring-1"></textarea>
 
                         <label for="quantity">Quantity</label>
                         <input name="quantity" id="quantity" type="number" min="0" step="1"
                             x-model="$store.newEntityDialog.entity.metadata.quantity"
-                            class="col-span-3 bg-white dark:bg-gray-900 rounded ring-1">
+                            class="col-span-3 bg-white rounded dark:bg-gray-900 ring-1">
                     </div>
 
                     <!-- Buttons -->
                     <div class="flex mt-8 space-x-2">
                         <button type="button"
                             x-on:click="$store.api.newEntity(); $store.newEntityDialog.opened = false; $store.entities.load(); $store.entities.loadLocationTree()"
-                            class="px-4 py-2 bg-white dark:bg-gray-900 dark:hover:bg-gray-700 rounded-xl border border-black">
+                            class="px-4 py-2 bg-white border border-black dark:bg-gray-900 dark:hover:bg-gray-700 rounded-xl">
                             Submit
                         </button>
                         <button type="button" x-on:click="$store.newEntityDialog.opened = false"
-                            class="px-4 py-2 bg-white dark:bg-gray-900 dark:hover:bg-gray-700 rounded-xl border border-black">
+                            class="px-4 py-2 bg-white border border-black dark:bg-gray-900 dark:hover:bg-gray-700 rounded-xl">
                             Cancel
                         </button>
                     </div>

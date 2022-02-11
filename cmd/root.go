@@ -76,6 +76,12 @@ func init() {
 	rootCmd.Flags().String("jwt", "", "JWT secret")
 	viper.BindPFlag("jwt-secret", rootCmd.Flags().Lookup("jwt"))
 
+	rootCmd.Flags().StringP("assets", "a", "assets", "Assets location")
+	viper.BindPFlag("assets", rootCmd.Flags().Lookup("assets"))
+
+	rootCmd.Flags().StringP("data", "d", "data", "Data location")
+	viper.BindPFlag("data", rootCmd.Flags().Lookup("data"))
+
 	rootCmd.Flags().StringP("username", "u", "", "Login username")
 	viper.BindPFlag("username", rootCmd.Flags().Lookup("username"))
 
@@ -105,6 +111,8 @@ func initConfig() {
 		viper.SetConfigType("yaml")
 		viper.SetConfigName(".corrugation-backend")
 	}
+
+	viper.SetEnvPrefix("CORRUGATION")
 
 	viper.AutomaticEnv() // read in environment variables that match
 
@@ -149,7 +157,7 @@ func server(cmd *cobra.Command, args []string) {
 
 	// Initialize a new diskv store, rooted at "data", with a 16MB cache.
 	d = diskv.New(diskv.Options{
-		BasePath:          "data",
+		BasePath:          viper.GetString("data"),
 		AdvancedTransform: AdvancedTransformExample,
 		InverseTransform:  InverseTransformExample,
 		CacheSizeMax:      16 * 1024 * 1024,
@@ -161,7 +169,7 @@ func server(cmd *cobra.Command, args []string) {
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 
-	e.Static("/", "assets")
+	e.Static("/", viper.GetString("assets"))
 
 	r := e.Group("/api")
 
