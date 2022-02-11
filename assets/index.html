@@ -37,7 +37,7 @@
                     <li>
                         <span
                             class="font-bold text-blue-600 cursor-pointer dark:text-sky-400 dark:hover:text-sky-300 hover:text-blue-700"
-                            @click="$store.newEntityDialog.opened = true">+</span>
+                            @click="$store.newEntityDialog.open()">+</span>
                     </li>
                 </ol>
             </nav>
@@ -61,7 +61,7 @@
                             <div x-show="$store.entities.hasChildren(entity.id)"
                                 @click="$store.entities.setCurrentEntity(entity.id)">
                                 <div
-                                    class="p-2 mb-2 bg-white rounded cursor-pointer ring-slate-100 ring-1 hover:ring-blue-500/75 hover:shadow-md">
+                                    class="p-2 mb-2 rounded cursor-pointer ring-slate-100 dark:ring-slate-500 ring-1 hover:ring-blue-500/75 hover:shadow-md">
                                     <p class="font-semibold">Contains:</p>
                                     <ul class="list-disc list-inside">
                                         <template x-for="child in $store.entities.listChildLocations(entity.id)">
@@ -73,12 +73,11 @@
                             </div>
                             <!-- Children, if not present. -->
                             <div x-show="!$store.entities.hasChildren(entity.id)"
-                                @click="$store.entities.setCurrentEntity(entity.id); $store.newEntityDialog.opened = true">
+                                @click="$store.entities.setCurrentEntity(entity.id); $store.newEntityDialog.open()">
                                 <div>
                                     <button
-                                        class="inline-flex items-center px-2 py-2 font-bold bg-gray-100 rounded hover:bg-gray-200">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 20 20"
-                                            fill="currentColor">
+                                        class="inline-flex items-center px-2 py-2 font-bold bg-gray-100 dark:bg-gray-600 dark:hover:bg-gray-500 rounded hover:bg-gray-200">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 20 20">
                                             <path fill-rule="evenodd"
                                                 d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z"
                                                 clip-rule="evenodd" />
@@ -117,7 +116,7 @@
 
             <!-- Overlay -->
             <div x-show="$store.newEntityDialog.opened" x-transition.opacity
-                class="fixed inset-0 bg-black bg-opacity-50">
+                class="fixed inset-0 bg-black bg-opacity-50 dark:bg-gray-900 dark:bg-opacity-50">
             </div>
 
             <!-- Panel -->
@@ -125,37 +124,38 @@
                 class="relative flex items-center justify-center min-h-screen p-4 shadow-xl">
 
                 <div x-on:click.stop x-trap.noscroll.inert="$store.newEntityDialog.opened"
-                    class="relative w-full max-w-2xl p-8 overflow-y-auto bg-white border border-black rounded-lg">
+                    class="relative w-full max-w-2xl p-8 overflow-y-auto bg-white dark:bg-gray-800 border border-black rounded-lg">
 
                     <!-- Title -->
-                    <h1 class="text-3xl font-medium" :id="$id('modal-title')">Create New Entity</h1>
+                    <h1 class="text-3xl font-medium pb-4" :id="$id('modal-title')">Create New Entity</h1>
 
 
                     <div class="grid grid-cols-4 space-y-2">
 
                         <label for="name">Entity Name</label>
                         <input name="name" id="name" type="text" x-model="$store.newEntityDialog.entity.name"
-                            class="col-span-3 rounded ring-1">
+                            class="col-span-3 rounded bg-white dark:bg-gray-900 ring-1">
 
                         <label for="description">Entity Description</label>
                         <textarea name="description" id="name" type="text"
                             x-model="$store.newEntityDialog.entity.description"
-                            class="col-span-3 rounded ring-1"></textarea>
+                            class="col-span-3 rounded bg-white dark:bg-gray-900 ring-1"></textarea>
 
                         <label for="quantity">Quantity</label>
                         <input name="quantity" id="quantity" type="number" min="0" step="1"
-                            x-model="$store.newEntityDialog.entity.metadata.quantity" class="col-span-3 rounded ring-1">
+                            x-model="$store.newEntityDialog.entity.metadata.quantity"
+                            class="col-span-3 bg-white dark:bg-gray-900 rounded ring-1">
                     </div>
 
                     <!-- Buttons -->
                     <div class="flex mt-8 space-x-2">
                         <button type="button"
                             x-on:click="$store.api.new(); $store.newEntityDialog.opened = false; $store.entities.load(); $store.entities.loadLocationTree()"
-                            class="px-4 py-2 bg-white border border-black">
+                            class="px-4 py-2 bg-white dark:bg-gray-900 dark:hover:bg-gray-700 rounded-xl border border-black">
                             Submit
                         </button>
                         <button type="button" x-on:click="$store.newEntityDialog.opened = false"
-                            class="px-4 py-2 bg-white border border-black">
+                            class="px-4 py-2 bg-white dark:bg-gray-900 dark:hover:bg-gray-700 rounded-xl border border-black">
                             Cancel
                         </button>
                     </div>

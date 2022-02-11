@@ -20,6 +20,10 @@ document.addEventListener('alpine:init', () => {
         opened: false,
         entity: {},
 
+        init(){
+            this.reset()
+        },
+
         reset() {
             this.opened = false
             this.entity = {
@@ -33,6 +37,11 @@ document.addEventListener('alpine:init', () => {
                     tags: null,
                 },
             }
+        },
+
+        open(){
+            this.reset()
+            this.opened = true
         },
 
         make() {
