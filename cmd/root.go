@@ -190,7 +190,7 @@ func server(cmd *cobra.Command, args []string) {
 
 	r.GET("/qrcode/:id", qrGenerate)
 
-	r.POST("/artifact/upload", uploadArtifact)
+	r.POST("/artifact", uploadArtifact)
 	r.GET("/artifact/:id", downloadArtifact)
 	r.DELETE("/artifact/:id", deleteArtifact)
 	r.GET("/artifact/:id/qrcode", qrGenerate)

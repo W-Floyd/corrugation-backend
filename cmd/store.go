@@ -13,6 +13,12 @@ import (
 type EntityID int
 type ArtifactID int
 
+type Artifact struct {
+	ID    ArtifactID `json:"artifactid"`
+	Path  string     `json:"path"`
+	Image bool       `json:"image"`
+}
+
 type Metadata struct {
 	Quantity       int      `json:"quantity"`
 	Owners         []string `json:"owners"`
@@ -31,9 +37,10 @@ type Entity struct {
 }
 
 type Store struct {
-	Entities       map[EntityID]Entity `json:"entities"`
-	LastEntityID   EntityID            `json:"lastentityid"`
-	LastArtifactID ArtifactID          `json:"lastartifactID"`
+	Entities       map[EntityID]Entity     `json:"entities"`
+	Artifacts      map[ArtifactID]Artifact `json:"artifacts"`
+	LastEntityID   EntityID                `json:"lastentityid"`
+	LastArtifactID ArtifactID              `json:"lastartifactid"`
 }
 
 func updateStore() {
@@ -63,6 +70,7 @@ func updateModification(c echo.Context, eID EntityID) error {
 func resetStore() error {
 	store = *new(Store)
 	store.Entities = map[EntityID]Entity{}
+	store.Artifacts = map[ArtifactID]Artifact{}
 	updateStore()
 	return nil
 }

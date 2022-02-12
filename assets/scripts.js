@@ -7,12 +7,15 @@ document.addEventListener('alpine:init', () => {
 
         targetLocation: null,
 
+        files: null,
+
         init() {
             this.reset()
         },
 
         reset() {
             this.opened = false
+            this.files = null
             this.entity = {
                 name: null,
                 description: null,
@@ -33,6 +36,9 @@ document.addEventListener('alpine:init', () => {
         },
 
         make() {
+            if (this.files != null) {
+                Alpine.store('api').uploadArtifacts()
+            }
             this.entity.location = this.targetLocation
             this.entity.metadata.quantity = parseInt(this.entity.metadata.quantity)
             return this.entity
@@ -84,6 +90,38 @@ document.addEventListener('alpine:init', () => {
             xhr.send();
             Alpine.store('entities').load();
             Alpine.store('entities').loadLocationTree();
+        },
+
+        uploadArtifacts() {
+
+            for (key in Alpine.store('newEntityDialog').files) {
+
+                // Create FormData instance
+                const fd = new FormData();
+                fd.append('file', Alpine.store('newEntityDialog').files[key]);
+
+                // Creating a XHR object
+                let xhr = new XMLHttpRequest();
+                let url = "/api/artifact";
+
+                // Create a state change callback
+                xhr.onreadystatechange = function () {
+                    if (xhr.readyState === 4 && xhr.status == 200) {
+                        let response = JSON.parse(xhr.responseText)
+                        if (Alpine.store('newEntityDialog').entity.artifacts == null) {
+                            Alpine.store('newEntityDialog').entity.artifacts = []
+                        }
+                        Alpine.store('newEntityDialog').entity.artifacts.push(parseInt(response))
+                    }
+                };
+
+                // open a connection
+                xhr.open("POST", url, false);
+
+                // Sending data with the request
+                xhr.send(fd);
+            }
+
         }
 
     })
@@ -93,6 +131,7 @@ document.addEventListener('alpine:init', () => {
             this.currentEntity = 0
             this.load()
             this.loadLocationTree()
+            this.loadFullState()
             Alpine.store('isLoading').this = false
         },
 
@@ -115,13 +154,49 @@ document.addEventListener('alpine:init', () => {
         },
 
         locationtree: [],
-        fullstate: {},
+        fullentities: {},
+        fullstate: null,
+
+        loadFullState() {
+
+            // Creating a XHR object
+            let xhr = new XMLHttpRequest();
+            let url = '/api/';
+
+            // Create a state change callback
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === 4 && xhr.status == 200) {
+                    let response = JSON.parse(xhr.responseText)
+                    Alpine.store('entities').fullstate = response
+                }
+            };
+
+            // open a connection
+            xhr.open("GET", url, false);
+
+            // Sending data with the request
+            xhr.send();
+
+        },
+
+        selectImage(x) { // Returns the ID of the artifact
+            if (Alpine.store('entities').fullstate.entities[x].artifacts != null && Alpine.store('entities').fullstate.entities[x].artifacts.length > 0) {
+                console.log(Alpine.store('entities').fullstate.entities[x].artifacts)
+                for (key in Alpine.store('entities').fullstate.entities[x].artifacts) {
+                    val = Alpine.store('entities').fullstate.entities[x].artifacts[key]
+                    if (Alpine.store('entities').fullstate.artifacts[val].image == true) {
+                        return val
+                    }
+                }
+            }
+            return null
+        },
 
         readname(x) {
             if (x == 0) {
                 return 'World'
             }
-            return this.fullstate[x].name
+            return this.fullentities[x].name
         },
 
         loadLocationTree() {
@@ -129,7 +204,7 @@ document.addEventListener('alpine:init', () => {
 
             readAll(url)
                 .then(response => response.json())
-                .then(response => { this.fullstate = response; })
+                .then(response => { this.fullentities = response; })
             this.locationtree = []
             this.recurseLocationTree(this.currentEntity)
             this.locationtree.reverse()
@@ -138,14 +213,14 @@ document.addEventListener('alpine:init', () => {
         recurseLocationTree(x) {
             this.locationtree.push(x)
             if (x != 0) {
-                elem = this.fullstate[x]
+                elem = this.fullentities[x]
                 this.recurseLocationTree(elem.location)
             }
         },
 
         hasChildren(x) {
-            for (key in this.fullstate) {
-                if (this.fullstate[key].location == x) {
+            for (key in this.fullentities) {
+                if (this.fullentities[key].location == x) {
                     return true
                 }
             }
@@ -154,9 +229,9 @@ document.addEventListener('alpine:init', () => {
 
         listChildLocations(x) {
             let childLocations = []
-            for (key in this.fullstate) {
-                if (this.fullstate[key].location == x) {
-                    childLocations.push(this.fullstate[key])
+            for (key in this.fullentities) {
+                if (this.fullentities[key].location == x) {
+                    childLocations.push(this.fullentities[key])
                 }
             }
             return childLocations

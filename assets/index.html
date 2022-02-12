@@ -53,7 +53,7 @@
                         class="container relative max-w-sm bg-white shadow-md grow min-w-sm dark:bg-gray-800 rounded-xl ring-1 ring-gray-500/25 hover:ring-gray-500/50 hover:shadow-lg">
 
                         <!-- Text stuff -->
-                        <div class="p-8">
+                        <div class="p-8 h-max">
 
                             <!-- Name -->
                             <div x-text="entity.metadata.quantity != 0 && entity.name + ' (' + entity.metadata.quantity +')' ||  entity.name "
@@ -105,12 +105,12 @@
                         </button>
 
                         <!-- Use the first artifact as an image, if available -->
-                        <template x-if="entity.artifacts != null">
-                            <div class="">
+                        <div x-data="{ artifactID: $store.entities.selectImage(entity.id) }">
+                            <template x-if="artifactID != null">
                                 <img class="object-cover w-full h-48 rounded-xl"
-                                    :src="['/api/artifact/',entity.artifacts[0]].join('')">
-                            </div>
-                        </template>
+                                    :src="['/api/artifact/',artifactID].join('')">
+                            </template>
+                        </div>
 
                     </figure>
 
@@ -156,12 +156,19 @@
                         <input name="quantity" id="quantity" type="number" min="0" step="1"
                             x-model="$store.newEntityDialog.entity.metadata.quantity"
                             class="col-span-3 bg-white rounded dark:bg-gray-900 ring-1">
+
+                        <label for="quantity">Image</label>
+                        <input name="file" type="file" id="file"
+                            x-on:change="$store.newEntityDialog.files = Object.values($event.target.files)"
+                            class="col-span-3 bg-white border border-black dark:bg-gray-900 dark:hover:bg-gray-700 rounded-xl"
+                            multiple>
+
                     </div>
 
                     <!-- Buttons -->
                     <div class="flex mt-8 space-x-2">
                         <button type="button"
-                            x-on:click="$store.api.newEntity(); $store.newEntityDialog.opened = false; $store.entities.load(); $store.entities.loadLocationTree()"
+                            x-on:click="$store.api.newEntity(); $store.newEntityDialog.opened = false; $store.entities.load(); $store.entities.loadLocationTree(); $store.entities.loadFullState()"
                             class="px-4 py-2 bg-white border border-black dark:bg-gray-900 dark:hover:bg-gray-700 rounded-xl">
                             Submit
                         </button>

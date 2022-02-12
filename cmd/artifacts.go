@@ -68,11 +68,15 @@ func downloadArtifact(c echo.Context) error {
 func deleteArtifact(c echo.Context) error {
 	id := c.Param("id")
 
-	// If we have the file exactly, delete it
-	if d.Has("artifacts/" + id) {
-		d.Erase("artifacts/" + id)
-		return c.NoContent(http.StatusOK)
+	iID, err := strconv.Atoi(id)
+
+	if err != nil {
+		return err
 	}
+
+	aID := ArtifactID(iID)
+
+	d.Erase(store.Artifacts[aID].Path)
 
 	return c.JSON(http.StatusNoContent, "Artifact "+id+" does not exist")
 }
@@ -115,6 +119,12 @@ func uploadArtifact(c echo.Context) error {
 	err = d.Write(location, fullFile)
 	if err != nil {
 		return err
+	}
+
+	store.Artifacts[store.LastArtifactID] = Artifact{
+		Path:  location,
+		ID:    store.LastArtifactID,
+		Image: strings.HasPrefix(mType.String(), "image/"),
 	}
 
 	return c.JSON(http.StatusOK, strconv.Itoa(int(store.LastArtifactID)))
