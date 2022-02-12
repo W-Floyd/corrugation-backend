@@ -1,13 +1,22 @@
 package cmd
 
 import (
+	"bytes"
+	"image"
+	_ "image/jpeg"
+	_ "image/png"
+	"math"
+
 	"io/ioutil"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
 
+	"github.com/chai2010/webp"
 	"github.com/gabriel-vasile/mimetype"
 	"github.com/labstack/echo/v4"
+	"github.com/nfnt/resize"
 )
 
 func listArtifacts(c echo.Context) error {
@@ -83,6 +92,8 @@ func deleteArtifact(c echo.Context) error {
 
 func uploadArtifact(c echo.Context) error {
 
+	store.LastArtifactID += 1
+
 	// Read form fields
 	path := "/artifacts/"
 
@@ -111,20 +122,55 @@ func uploadArtifact(c echo.Context) error {
 		return err
 	}
 
-	store.LastArtifactID += 1
-
 	fileName := strconv.Itoa(int(store.LastArtifactID)) + mType.Extension()
 	location := path + fileName
 
-	err = d.Write(location, fullFile)
-	if err != nil {
-		return err
+	isImage := strings.HasPrefix(mType.String(), "image/")
+
+	if isImage {
+
+		imgSize := 625 * 1000
+
+		img, _, err := image.Decode(bytes.NewBuffer(fullFile))
+		if err != nil {
+			log.Println(err)
+			return err
+		}
+
+		if img.Bounds().Dx()*img.Bounds().Dy() > imgSize {
+			ratio := float64(img.Bounds().Dx()) / float64(img.Bounds().Dy())
+			scaler := math.Sqrt(float64(imgSize) / (ratio * float64(img.Bounds().Dy()*img.Bounds().Dy())))
+			img = resize.Resize(uint(float64(img.Bounds().Dx())*scaler), uint(float64(img.Bounds().Dy())*scaler), img, resize.NearestNeighbor)
+		}
+
+		buf := new(bytes.Buffer)
+
+		webp.Encode(buf, img, &webp.Options{Quality: 50})
+
+		fullFile, err = ioutil.ReadAll(buf)
+		if err != nil {
+			log.Println(err)
+			return err
+		}
+
+		fileName = strconv.Itoa(int(store.LastArtifactID)) + ".webp"
+		location = path + fileName
+
 	}
 
 	store.Artifacts[store.LastArtifactID] = Artifact{
 		Path:  location,
 		ID:    store.LastArtifactID,
-		Image: strings.HasPrefix(mType.String(), "image/"),
+		Image: isImage,
+	}
+
+	if err != nil {
+		return err
+	}
+
+	err = d.Write(location, fullFile)
+	if err != nil {
+		return err
 	}
 
 	return c.JSON(http.StatusOK, strconv.Itoa(int(store.LastArtifactID)))

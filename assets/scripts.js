@@ -181,7 +181,6 @@ document.addEventListener('alpine:init', () => {
 
         selectImage(x) { // Returns the ID of the artifact
             if (Alpine.store('entities').fullstate.entities[x].artifacts != null && Alpine.store('entities').fullstate.entities[x].artifacts.length > 0) {
-                console.log(Alpine.store('entities').fullstate.entities[x].artifacts)
                 for (key in Alpine.store('entities').fullstate.entities[x].artifacts) {
                     val = Alpine.store('entities').fullstate.entities[x].artifacts[key]
                     if (Alpine.store('entities').fullstate.artifacts[val].image == true) {

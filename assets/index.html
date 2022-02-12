@@ -105,12 +105,10 @@
                         </button>
 
                         <!-- Use the first artifact as an image, if available -->
-                        <div x-data="{ artifactID: $store.entities.selectImage(entity.id) }">
-                            <template x-if="artifactID != null">
-                                <img class="object-cover w-full h-48 rounded-xl"
-                                    :src="['/api/artifact/',artifactID].join('')">
+                            <template x-if="$store.entities.selectImage(entity.id) != null">
+                                <img class="object-cover w-full h-48 rounded-xl hover:h-full active:h-full transition duration-200"
+                                    :src="['/api/artifact/',$store.entities.selectImage(entity.id)].join('')">
                             </template>
-                        </div>
 
                     </figure>
 
@@ -161,8 +159,7 @@
                         <input name="file" type="file" id="file"
                             x-on:change="$store.newEntityDialog.files = Object.values($event.target.files)"
                             class="col-span-3 bg-white border border-black dark:bg-gray-900 dark:hover:bg-gray-700 rounded-xl"
-                            multiple>
-
+                            accept="image/*" capture="camera" multiple>
                     </div>
 
                     <!-- Buttons -->
