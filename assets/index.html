@@ -105,10 +105,10 @@
                         </button>
 
                         <!-- Use the first artifact as an image, if available -->
-                            <template x-if="$store.entities.selectImage(entity.id) != null">
-                                <img class="object-cover w-full h-48 rounded-xl hover:h-full active:h-full transition duration-200"
-                                    :src="['/api/artifact/',$store.entities.selectImage(entity.id)].join('')">
-                            </template>
+                        <template x-if="$store.entities.selectImage(entity.id) != null">
+                            <img class="object-cover w-full h-48 rounded-xl active:h-full transition duration-200"
+                                :src="['/api/artifact/',$store.entities.selectImage(entity.id)].join('')">
+                        </template>
 
                     </figure>
 

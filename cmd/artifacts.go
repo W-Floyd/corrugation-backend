@@ -145,7 +145,7 @@ func uploadArtifact(c echo.Context) error {
 
 		buf := new(bytes.Buffer)
 
-		webp.Encode(buf, img, &webp.Options{Quality: 50})
+		webp.Encode(buf, img, &webp.Options{Quality: 70})
 
 		fullFile, err = ioutil.ReadAll(buf)
 		if err != nil {
