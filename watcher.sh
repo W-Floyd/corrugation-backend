@@ -2,7 +2,7 @@
 
 while true; do
     go build
-    ./corrugation-backend &
+    CORRUGATION_AUTHENTICATION=false ./corrugation-backend &
     PID=$!
     inotifywait -r -e modify --include '.*\.go' .
     kill $PID

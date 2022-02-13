@@ -32,6 +32,7 @@ document.addEventListener('alpine:init', () => {
         open(x) {
             this.targetLocation = x
             this.reset()
+            document.getElementById("name").focus();
             this.opened = true
         },
 
@@ -141,6 +142,7 @@ document.addEventListener('alpine:init', () => {
             this.currentEntity = x
             this.load()
             this.loadLocationTree()
+            this.loadFullState()
         },
 
         entities: {},
@@ -155,7 +157,7 @@ document.addEventListener('alpine:init', () => {
 
         locationtree: [],
         fullentities: {},
-        fullstate: null,
+        fullstate: {},
 
         loadFullState() {
 

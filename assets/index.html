@@ -5,6 +5,7 @@
     <title>Corrugation</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="scripts.js"></script>
+    <script defer src="https://unpkg.com/@alpinejs/focus@3.x.x/dist/cdn.min.js"></script>
     <script src="//unpkg.com/alpinejs" defer></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="styles.css">
@@ -119,8 +120,8 @@
 
         <!-- New Entity Dialog -->
         <div x-show="$store.newEntityDialog.opened" style="display: none"
-            x-on:keydown.escape.prevent.stop="$store.newEntityDialog.opened = false" role="dialog" aria-modal="true"
-            x-id="['modal-title']" :aria-labelledby="$id('modal-title')" class="fixed inset-0 overflow-y-auto">
+            x-on:keydown.escape.prevent.stop="$store.newEntityDialog.opened = false" role="dialog"
+            class="fixed inset-0 overflow-y-auto">
 
             <!-- Overlay -->
             <div x-show="$store.newEntityDialog.opened" x-transition.opacity
@@ -136,29 +137,29 @@
                     class="relative w-full max-w-2xl p-8 overflow-y-auto bg-white border border-black rounded-lg dark:bg-gray-800">
 
                     <!-- Title -->
-                    <h1 class="pb-4 text-3xl font-medium" :id="$id('modal-title')">Create New Entity</h1>
+                    <h1 class="pb-4 text-3xl font-medium">Create New Entity</h1>
 
 
                     <div class="grid grid-cols-4 space-y-2">
 
                         <label for="name">Name</label>
                         <input name="name" autofocus id="name" type="text" x-model="$store.newEntityDialog.entity.name"
-                            class="col-span-3 bg-white rounded dark:bg-gray-900 ring-1">
+                            class="col-span-3 bg-white rounded-sm dark:bg-gray-900 ring-1">
 
                         <label for="description">Description</label>
-                        <textarea name="description" id="name" type="text"
+                        <textarea name="description" id="description" type="text"
                             x-model="$store.newEntityDialog.entity.description"
-                            class="col-span-3 bg-white rounded dark:bg-gray-900 ring-1"></textarea>
+                            class="col-span-3 bg-white rounded-sm dark:bg-gray-900 ring-1"></textarea>
 
                         <label for="quantity">Quantity</label>
                         <input name="quantity" id="quantity" type="number" min="0" step="1"
                             x-model="$store.newEntityDialog.entity.metadata.quantity"
-                            class="col-span-3 bg-white rounded dark:bg-gray-900 ring-1">
+                            class="col-span-3 bg-white rounded-sm dark:bg-gray-900 ring-1">
 
                         <label for="quantity">Image</label>
                         <input name="file" type="file" id="file"
                             x-on:change="$store.newEntityDialog.files = Object.values($event.target.files)"
-                            class="col-span-3 bg-white border border-black dark:bg-gray-900 dark:hover:bg-gray-700 rounded-xl"
+                            class="col-span-3 bg-white ring-1 dark:bg-gray-900 dark:hover:bg-gray-700 rounded-sm"
                             accept="image/*" capture="camera" multiple>
                     </div>
 
@@ -166,11 +167,11 @@
                     <div class="flex mt-8 space-x-2">
                         <button type="button"
                             x-on:click="$store.api.newEntity(); $store.newEntityDialog.opened = false; $store.entities.load(); $store.entities.loadLocationTree(); $store.entities.loadFullState()"
-                            class="px-4 py-2 bg-white border border-black dark:bg-gray-900 dark:hover:bg-gray-700 rounded-xl">
+                            class="px-4 py-2 text-white float-right h-10 bg-blue-500 rounded-full shadow float-bottom hover:bg-blue-600 active:shadow-lg mouse focus:outline-1">
                             Submit
                         </button>
                         <button type="button" x-on:click="$store.newEntityDialog.opened = false"
-                            class="px-4 py-2 bg-white border border-black dark:bg-gray-900 dark:hover:bg-gray-700 rounded-xl">
+                            class="px-4 py-2 text-white float-right h-10 bg-red-500 rounded-full shadow float-bottom hover:bg-red-600 active:shadow-lg mouse focus:outline-1">
                             Cancel
                         </button>
                     </div>
