@@ -185,6 +185,7 @@ func server(cmd *cobra.Command, args []string) {
 	r.GET("/", dumpStore) // If you want the whole JSON file, you can have it...
 	r.Any("/reset", func(c echo.Context) error {
 		resetStore()
+		d.EraseAll()
 		return c.NoContent(http.StatusOK)
 	})
 
