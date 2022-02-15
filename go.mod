@@ -4,11 +4,11 @@ go 1.17
 
 require (
 	github.com/chai2010/webp v1.1.0
+	github.com/disintegration/imaging v1.6.2
 	github.com/gabriel-vasile/mimetype v1.4.0
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/imdario/mergo v0.3.12
 	github.com/labstack/echo/v4 v4.6.3
-	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
 	github.com/peterbourgon/diskv/v3 v3.0.1
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/spf13/cobra v1.3.0
@@ -33,7 +33,8 @@ require (
 	github.com/subosito/gotenv v1.2.0 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.1 // indirect
-	golang.org/x/crypto v0.0.0-20220210151621-f4118a5b28e2 // indirect
+	golang.org/x/crypto v0.0.0-20220214200702-86341886e292 // indirect
+	golang.org/x/image v0.0.0-20211028202545-6944b10bf410 // indirect
 	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd // indirect
 	golang.org/x/sys v0.0.0-20220209214540-3681064d5158 // indirect
 	golang.org/x/text v0.3.7 // indirect

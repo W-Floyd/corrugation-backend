@@ -105,11 +105,15 @@
                             </svg>
                         </button>
 
-                        <!-- Use the first artifact as an image, if available -->
-                        <template x-if="$store.entities.selectImage(entity.id) != null">
-                            <img class="object-cover w-full h-48 rounded-xl active:h-full transition duration-200"
-                                :src="['/api/artifact/',$store.entities.selectImage(entity.id)].join('')">
-                        </template>
+                        <div class="flex flex-row justify-center w-full">
+                            <!-- Use the first artifact as an image, if available -->
+                            <template x-if="$store.entities.selectImages(entity.id) != null">
+                                <template x-for="(n, index) in $store.entities.selectImages(entity.id)">
+                                    <img class="flex-1 object-cover w-full rounded-xl h-48"
+                                        :src="['/api/artifact/',n].join('')">
+                                </template>
+                            </template>
+                        </div>
 
                     </figure>
 
@@ -160,19 +164,27 @@
                         <input name="file" type="file" id="file"
                             x-on:change="$store.newEntityDialog.files = Object.values($event.target.files)"
                             class="col-span-3 bg-white ring-1 dark:bg-gray-900 dark:hover:bg-gray-700 rounded-sm"
-                            accept="image/*" capture="camera" multiple>
+                            accept="image/*" multiple>
+
+                        <input class="display:none" name="photo" type="file" id="photo" x-show="false"
+                            x-on:change="$store.newEntityDialog.files = Object.values($event.target.files)"
+                            accept="image/*" capture="camera">
                     </div>
 
                     <!-- Buttons -->
                     <div class="flex mt-8 space-x-2">
                         <button type="button"
                             x-on:click="$store.api.newEntity(); $store.newEntityDialog.opened = false; $store.entities.load(); $store.entities.loadLocationTree(); $store.entities.loadFullState()"
-                            class="px-4 py-2 text-white float-right h-10 bg-blue-500 rounded-full shadow float-bottom hover:bg-blue-600 active:shadow-lg mouse focus:outline-1">
+                            class="px-4 py-2 text-white h-10 bg-blue-500 rounded-full shadow float-bottom hover:bg-blue-600 active:shadow-lg mouse focus:outline-1">
                             Submit
                         </button>
                         <button type="button" x-on:click="$store.newEntityDialog.opened = false"
-                            class="px-4 py-2 text-white float-right h-10 bg-red-500 rounded-full shadow float-bottom hover:bg-red-600 active:shadow-lg mouse focus:outline-1">
+                            class="px-4 py-2 text-white h-10 bg-red-500 rounded-full shadow float-bottom hover:bg-red-600 active:shadow-lg mouse focus:outline-1">
                             Cancel
+                        </button>
+                        <button type="button" x-on:click="document.getElementById('photo').click();"
+                            class="px-4 py-2 text-white h-10 bg-blue-500 rounded-full shadow float-bottom hover:bg-blue-600 active:shadow-lg mouse focus:outline-1">
+                            Photo
                         </button>
                     </div>
 

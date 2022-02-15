@@ -2,9 +2,6 @@ package cmd
 
 import (
 	"bytes"
-	"image"
-	_ "image/jpeg"
-	_ "image/png"
 	"math"
 
 	"io/ioutil"
@@ -14,9 +11,9 @@ import (
 	"strings"
 
 	"github.com/chai2010/webp"
+	"github.com/disintegration/imaging"
 	"github.com/gabriel-vasile/mimetype"
 	"github.com/labstack/echo/v4"
-	"github.com/nfnt/resize"
 )
 
 func listArtifacts(c echo.Context) error {
@@ -131,7 +128,7 @@ func uploadArtifact(c echo.Context) error {
 
 		imgSize := 625 * 1000
 
-		img, _, err := image.Decode(bytes.NewBuffer(fullFile))
+		img, err := imaging.Decode(bytes.NewBuffer(fullFile), imaging.AutoOrientation(true))
 		if err != nil {
 			log.Println(err)
 			return err
@@ -140,7 +137,7 @@ func uploadArtifact(c echo.Context) error {
 		if img.Bounds().Dx()*img.Bounds().Dy() > imgSize {
 			ratio := float64(img.Bounds().Dx()) / float64(img.Bounds().Dy())
 			scaler := math.Sqrt(float64(imgSize) / (ratio * float64(img.Bounds().Dy()*img.Bounds().Dy())))
-			img = resize.Resize(uint(float64(img.Bounds().Dx())*scaler), uint(float64(img.Bounds().Dy())*scaler), img, resize.NearestNeighbor)
+			img = imaging.Resize(img, int(float64(img.Bounds().Dx())*scaler), int(float64(img.Bounds().Dy())*scaler), imaging.Lanczos)
 		}
 
 		buf := new(bytes.Buffer)
