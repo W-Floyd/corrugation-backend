@@ -1,0 +1,9 @@
+version: "3"
+services:
+    corrugation-backend:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        ports:
+            - "8083:8083"
+        restart: "no"

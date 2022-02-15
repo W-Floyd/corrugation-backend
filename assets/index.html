@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Corrugation</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="scripts.js"></script>
+    <script defer src="https://unpkg.com/@alpinejs/focus@3.x.x/dist/cdn.min.js"></script>
+    <script src="//unpkg.com/alpinejs" defer></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body x-data class="text-black transition duration-200 ease-in dark:text-white bg-gray-50 dark:bg-gray-900">
+
+    <h1 x-show="$store.isLoading">Loading...</h1>
+
+    <div x-show="!$store.isLoading">
+
+        <div class="container mx-auto">
+            <nav class="w-full rounded-md">
+                <ol class="flex list-reset">
+                    <template x-for="(n, index) in $store.entities.locationtree">
+                        <div class="flex list-reset">
+
+                            <li>
+                                <a @click="$store.entities.setCurrentEntity(n)"
+                                    class="text-blue-600 no-underline cursor-pointer dark:text-sky-400 dark:hover:text-sky-300 hover:text-blue-700 hover:underline"
+                                    x-text="$store.entities.readname(n)"></a>
+                            </li>
+
+                            <li>
+                                <span class="mx-2 text-gray-500">/</span>
+                            </li>
+
+                        </div>
+                    </template>
+                    <li>
+                        <span
+                            class="font-bold text-blue-600 cursor-pointer dark:text-sky-400 dark:hover:text-sky-300 hover:text-blue-700"
+                            @click="$store.newEntityDialog.open($store.entities.currentEntity)">+</span>
+                    </li>
+                </ol>
+            </nav>
+
+
+            <div class="flex flex-wrap justify-center gap-4">
+
+                <p x-show="$store.entities.entities.length == 0" class="text-2xl text-gray-500/50">Empty</p>
+
+                <template x-for="entity in $store.entities.entities">
+
+                    <figure
+                        class="container relative max-w-sm bg-white shadow-md grow min-w-sm dark:bg-gray-800 rounded-xl ring-1 ring-gray-500/25 hover:ring-gray-500/50 hover:shadow-lg">
+
+                        <!-- Text stuff -->
+                        <div class="p-8 h-max">
+
+                            <!-- Name -->
+                            <div x-text="entity.metadata.quantity != 0 && entity.name + ' (' + entity.metadata.quantity +')' ||  entity.name "
+                                class="mb-2 text-xl font-bold cursor-pointer"
+                                @click="$store.entities.setCurrentEntity(entity.id)""></div>
+
+
+
+                            <!-- Children, if present. -->
+                            <div x-show=" $store.entities.hasChildren(entity.id)">
+                                <p class="mb-2 font-semibold">Contains:</p>
+                                <div class="flex flex-wrap gap-2 ">
+
+                                    <template x-for="child in $store.entities.listChildLocations(entity.id)">
+                                        <div class="p-2 rounded cursor-pointer bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 hover:bg-gray-100 hover:shadow-sm ring-gray-200 dark:ring-slate-500 ring-1 hover:ring-blue-500/75 active:shadow-md"
+                                            x-text="child.name" @click="$store.entities.setCurrentEntity(child.id)">
+                                        </div>
+                                    </template>
+                                </div>
+
+                            </div>
+
+                            <!-- Description, if present -->
+                            <template x-if="entity.description != ''">
+                                <p x-text="entity.description"></p>
+                            </template>
+                        </div>
+
+                        <!-- Buttons -->
+
+                        <button @click="$store.api.delete(entity.id)"
+                            class="float-left w-10 h-10 p-0 m-4 bg-red-500 rounded-full shadow float-bottom hover:bg-red-600 active:shadow-lg mouse focus:outline-1">
+                            <svg viewBox="0 0 20 20" enable-background="new 0 0 20 20"
+                                class="inline-block w-6 h-6 fill-white">
+                                <path fill-rule="evenodd"
+                                    d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                        </button>
+
+                        <button @click="$store.newEntityDialog.open(entity.id)"
+                            class="float-right w-10 h-10 p-0 m-4 bg-blue-500 rounded-full shadow float-bottom hover:bg-blue-600 active:shadow-lg mouse focus:outline-1">
+                            <svg viewBox="0 0 20 20" enable-background="new 0 0 20 20"
+                                class="inline-block w-6 h-6 fill-white">
+                                <path d="M16,10c0,0.553-0.048,1-0.601,1H11v4.399C11,15.951,10.553,16,10,16c-0.553,0-1-0.049-1-0.601V11H4.601
+                                                                           C4.049,11,4,10.553,4,10c0-0.553,0.049-1,0.601-1H9V4.601C9,4.048,9.447,4,10,4c0.553,0,1,0.048,1,0.601V9h4.399
+                                                                           C15.952,9,16,9.447,16,10z" />
+                            </svg>
+                        </button>
+
+                        <div class="flex flex-row justify-center w-full">
+                            <!-- Use the first artifact as an image, if available -->
+                            <template x-if="$store.entities.selectImages(entity.id) != null">
+                                <template x-for="(n, index) in $store.entities.selectImages(entity.id)">
+                                    <img class="flex-1 object-cover w-full rounded-xl h-48"
+                                        :src="['/api/artifact/',n].join('')">
+                                </template>
+                            </template>
+                        </div>
+
+                    </figure>
+
+                </template>
+
+            </div>
+        </div>
+
+        <!-- New Entity Dialog -->
+        <div x-show="$store.newEntityDialog.opened" style="display: none"
+            x-on:keydown.escape.prevent.stop="$store.newEntityDialog.opened = false" role="dialog"
+            class="fixed inset-0 overflow-y-auto">
+
+            <!-- Overlay -->
+            <div x-show="$store.newEntityDialog.opened" x-transition.opacity
+                class="fixed inset-0 bg-black bg-opacity-50 dark:bg-gray-900 dark:bg-opacity-50">
+            </div>
+
+            <!-- Panel -->
+            <div x-show="$store.newEntityDialog.opened" x-transition x-on:click="$store.newEntityDialog.opened = false"
+                class="relative flex items-center justify-center min-h-screen p-4 shadow-xl"
+                @keyup.enter="$store.api.newEntity(); $store.newEntityDialog.opened = false; $store.entities.load(); $store.entities.loadLocationTree()">
+
+                <div x-on:click.stop x-trap.noscroll.inert="$store.newEntityDialog.opened"
+                    class="relative w-full max-w-2xl p-8 overflow-y-auto bg-white border border-black rounded-lg dark:bg-gray-800">
+
+                    <!-- Title -->
+                    <h1 class="pb-4 text-3xl font-medium">Create New Entity</h1>
+
+
+                    <div class="grid grid-cols-4 space-y-2">
+
+                        <label for="name">Name</label>
+                        <input name="name" autofocus id="name" type="text" x-model="$store.newEntityDialog.entity.name"
+                            class="col-span-3 bg-white rounded-sm dark:bg-gray-900 ring-1">
+
+                        <label for="description">Description</label>
+                        <textarea name="description" id="description" type="text"
+                            x-model="$store.newEntityDialog.entity.description"
+                            class="col-span-3 bg-white rounded-sm dark:bg-gray-900 ring-1"></textarea>
+
+                        <label for="quantity">Quantity</label>
+                        <input name="quantity" id="quantity" type="number" min="0" step="1"
+                            x-model="$store.newEntityDialog.entity.metadata.quantity"
+                            class="col-span-3 bg-white rounded-sm dark:bg-gray-900 ring-1">
+
+                        <label for="quantity">Image</label>
+                        <input name="file" type="file" id="file"
+                            x-on:change="$store.newEntityDialog.files = Object.values($event.target.files)"
+                            class="col-span-3 bg-white ring-1 dark:bg-gray-900 dark:hover:bg-gray-700 rounded-sm"
+                            accept="image/*" multiple>
+
+                        <input class="display:none" name="photo" type="file" id="photo" x-show="false"
+                            x-on:change="$store.newEntityDialog.files = Object.values($event.target.files)"
+                            accept="image/*" capture="camera">
+                    </div>
+
+                    <!-- Buttons -->
+                    <div class="flex mt-8 space-x-2">
+                        <button type="button"
+                            x-on:click="$store.api.newEntity(); $store.newEntityDialog.opened = false; $store.entities.load(); $store.entities.loadLocationTree(); $store.entities.loadFullState()"
+                            class="px-4 py-2 text-white h-10 bg-blue-500 rounded-full shadow float-bottom hover:bg-blue-600 active:shadow-lg mouse focus:outline-1">
+                            Submit
+                        </button>
+                        <button type="button" x-on:click="$store.newEntityDialog.opened = false"
+                            class="px-4 py-2 text-white h-10 bg-red-500 rounded-full shadow float-bottom hover:bg-red-600 active:shadow-lg mouse focus:outline-1">
+                            Cancel
+                        </button>
+                        <button type="button" x-on:click="document.getElementById('photo').click();"
+                            class="px-4 py-2 text-white h-10 bg-blue-500 rounded-full shadow float-bottom hover:bg-blue-600 active:shadow-lg mouse focus:outline-1">
+                            Photo
+                        </button>
+                    </div>
+
+
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+</body>
+
+</html>
