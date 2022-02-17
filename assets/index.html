@@ -95,6 +95,16 @@
                             </svg>
                         </button>
 
+                        <button @click="$store.moveEntityDialog.open(entity.id)"
+                            class="float-right w-10 h-10 p-0 m-4 bg-blue-500 rounded-full shadow float-bottom hover:bg-blue-600 active:shadow-lg mouse focus:outline-1">
+                            <svg viewBox="0 0 20 20" enable-background="new 0 0 20 20"
+                                class="inline-block w-6 h-6 fill-white">
+                                <path fill-rule="evenodd"
+                                    d="M9 3a1 1 0 012 0v5.5a.5.5 0 001 0V4a1 1 0 112 0v4.5a.5.5 0 001 0V6a1 1 0 112 0v5a7 7 0 11-14 0V9a1 1 0 012 0v2.5a.5.5 0 001 0V4a1 1 0 012 0v4.5a.5.5 0 001 0V3z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                        </button>
+
                         <button @click="$store.newEntityDialog.open(entity.id)"
                             class="float-right w-10 h-10 p-0 m-4 bg-blue-500 rounded-full shadow float-bottom hover:bg-blue-600 active:shadow-lg mouse focus:outline-1">
                             <svg viewBox="0 0 20 20" enable-background="new 0 0 20 20"
@@ -185,6 +195,61 @@
                         <button type="button" x-on:click="document.getElementById('photo').click();"
                             class="px-4 py-2 text-white h-10 bg-blue-500 rounded-full shadow float-bottom hover:bg-blue-600 active:shadow-lg mouse focus:outline-1">
                             Photo
+                        </button>
+                    </div>
+
+
+                </div>
+
+            </div>
+        </div>
+
+
+        <!-- Move Entity Dialog -->
+        <div x-show="$store.moveEntityDialog.opened" style="display: none"
+            x-on:keydown.escape.prevent.stop="$store.moveEntityDialog.opened = false" role="dialog"
+            class="fixed inset-0 overflow-y-auto">
+
+            <!-- Overlay -->
+            <div x-show="$store.moveEntityDialog.opened" x-transition.opacity
+                class="fixed inset-0 bg-black bg-opacity-50 dark:bg-gray-900 dark:bg-opacity-50">
+            </div>
+
+            <!-- Panel -->
+            <div x-show="$store.moveEntityDialog.opened" x-transition
+                x-on:click="$store.moveEntityDialog.opened = false"
+                class="relative flex items-center justify-center min-h-screen p-4 shadow-xl"
+                @keyup.enter="$store.api.newEntity(); $store.moveEntityDialog.opened = false; $store.entities.load(); $store.entities.loadLocationTree()">
+
+                <div x-on:click.stop x-trap.noscroll.inert="$store.moveEntityDialog.opened"
+                    class="relative w-full max-w-2xl p-8 overflow-y-auto bg-white border border-black rounded-lg dark:bg-gray-800">
+
+                    <!-- Title -->
+                    <h1 class="pb-4 text-3xl font-medium">Move Entity</h1>
+
+
+                    <div class="grid grid-cols-1 space-y-2">
+
+                        <select x-model="$store.moveEntityDialog.targetLocation">
+                            <option value="0">World</option>
+                            <template x-for="id in $store.moveEntityDialog.getNotContains()">
+                                <option x-text="$store.moveEntityDialog.formatOption(id)" :value="id">
+                                </option>
+                            </template>
+                        </select>
+
+                    </div>
+
+                    <!-- Buttons -->
+                    <div class="flex mt-8 space-x-2">
+                        <button type="button"
+                            x-on:click="$store.moveEntityDialog.move(); $store.moveEntityDialog.opened = false; $store.entities.load(); $store.entities.loadLocationTree(); $store.entities.loadFullState()"
+                            class="px-4 py-2 text-white h-10 bg-blue-500 rounded-full shadow float-bottom hover:bg-blue-600 active:shadow-lg mouse focus:outline-1">
+                            Submit
+                        </button>
+                        <button type="button" x-on:click="$store.moveEntityDialog.opened = false"
+                            class="px-4 py-2 text-white h-10 bg-red-500 rounded-full shadow float-bottom hover:bg-red-600 active:shadow-lg mouse focus:outline-1">
+                            Cancel
                         </button>
                     </div>
 

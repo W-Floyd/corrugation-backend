@@ -47,6 +47,70 @@ document.addEventListener('alpine:init', () => {
 
     })
 
+
+    Alpine.store('moveEntityDialog', {
+        opened: false,
+
+        sourceEntity: null,
+        targetLocation: null,
+
+        init() {
+            this.reset()
+        },
+
+        reset() {
+            this.opened = false
+            this.targetLocation = null
+        },
+
+        open(x) {
+            this.sourceEntity = x
+            this.reset()
+            this.targetLocation = Alpine.store('entities').fullstate.entities[x].location
+            this.opened = true
+        },
+
+        move() {
+            Alpine.store('api').moveEntity(this.sourceEntity, this.targetLocation)
+        },
+
+        getNotContains() {
+            ret = []
+            for (const key in Alpine.store('entities').fullstate.entities) {
+                target = key
+                shouldPush = true
+                while (target != 0) {
+                    if (target == this.sourceEntity) {
+                        shouldPush = false
+                    }
+                    target = Alpine.store('entities').fullstate.entities[target].location
+                }
+                if (shouldPush) {
+                    ret.push(key)
+                }
+            }
+            return ret
+        },
+
+        formatOption(x) {
+            tree = []
+            target = x
+            while (target != 0) {
+                if (Alpine.store('entities').fullstate.entities[target].name == null || Alpine.store('entities').fullstate.entities[target].name == '') {
+                    tree.push(target)
+                } else {
+                    tree.push(Alpine.store('entities').fullstate.entities[target].name)
+                }
+
+                target = Alpine.store('entities').fullstate.entities[target].location
+            }
+            tree.push('World')
+            tree.reverse()
+            return tree.join('/')
+        },
+
+    })
+
     Alpine.store('api', {
         newEntity(data) {
             // Creating a XHR object
@@ -68,6 +132,31 @@ document.addEventListener('alpine:init', () => {
 
             // Converting JSON data to string
             var data = JSON.stringify(Alpine.store('newEntityDialog').make());
+
+            // Sending data with the request
+            xhr.send(data);
+        },
+
+        moveEntity(x, y) {
+            // Creating a XHR object
+            let xhr = new XMLHttpRequest();
+            let url = "/api/entity/" + x.toString();
+
+            // open a connection
+            xhr.open("PATCH", url, false);
+
+            // Set the request header i.e. which type of content you are sending
+            xhr.setRequestHeader("Content-Type", "application/json");
+
+            // Create a state change callback
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === 4 && xhr.status == 200) {
+                    return xhr.status
+                }
+            };
+
+            // Converting JSON data to string
+            var data = JSON.stringify({ location: parseInt(y) });
 
             // Sending data with the request
             xhr.send(data);

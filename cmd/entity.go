@@ -5,7 +5,6 @@ import (
 	"sort"
 	"strconv"
 
-	"github.com/imdario/mergo"
 	"github.com/labstack/echo/v4"
 )
 
@@ -127,15 +126,10 @@ func replaceEntity(c echo.Context) error {
 
 func patchEntity(c echo.Context) error {
 	return checkEntity(c, func(c echo.Context, id EntityID) error {
-		l := Entity{}
 		n := store.Entities[id]
 
-		if err := c.Bind(&l); err != nil {
+		if err := c.Bind(&n); err != nil {
 			return err
-		}
-
-		if err := mergo.Merge(&n, l, mergo.WithOverride); err != nil {
-			return c.JSON(http.StatusInternalServerError, err)
 		}
 
 		store.Entities[id] = n
