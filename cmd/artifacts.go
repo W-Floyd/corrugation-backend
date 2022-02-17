@@ -33,27 +33,6 @@ func listArtifacts(c echo.Context) error {
 	return c.JSON(http.StatusOK, artifactSlice)
 }
 
-func findArtifact(c echo.Context, id string) (string, error) {
-
-	ch := make(chan struct{})
-
-	artifacts := d.KeysPrefix("artifacts/"+id, ch)
-
-	artifactSlice := chanToSlice(artifacts).([]string)
-
-	close(ch)
-
-	if len(artifactSlice) < 1 {
-		return "", c.JSON(http.StatusNotFound, "Artifact "+id+" not found")
-	}
-
-	if len(artifactSlice) > 1 {
-		return "", c.JSON(http.StatusNotFound, "More than one artifact found for "+id)
-	}
-
-	return d.BasePath + "/" + artifactSlice[0], nil
-}
-
 func downloadArtifact(c echo.Context) error {
 
 	id := c.Param("id")
@@ -62,11 +41,15 @@ func downloadArtifact(c echo.Context) error {
 	if d.Has("artifacts/" + id) {
 		return c.File(d.BasePath + "/artifacts/" + id)
 	} else { //If we don't have the file exactly, look for a file named that plus an extension
-		path, err := findArtifact(c, id)
-		if err != nil {
-			return err
+
+		key := "artifacts/" + id + ".webp"
+
+		if d.Has(key) {
+			return c.File(d.BasePath + "/" + key)
 		}
-		return c.File(path)
+
+		return c.JSON(http.StatusNotFound, "Artifact "+id+" not found")
+
 	}
 
 }
