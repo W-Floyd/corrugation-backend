@@ -173,12 +173,12 @@ document.addEventListener('alpine:init', () => {
             // Create a state change callback
             xhr.onreadystatechange = function () {
                 if (xhr.readyState === 4 && xhr.status == 200) {
+                    delete Alpine.store('entities').fullstate.entities[id]
                     return xhr.status
                 }
             };
 
             xhr.send();
-            Alpine.store('entities').reload();
         },
 
         uploadArtifacts() {

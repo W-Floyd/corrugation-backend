@@ -119,7 +119,7 @@
 
                         <div class="flex flex-row justify-center w-full">
                             <!-- Use the first artifact as an image, if available -->
-                            <template x-if="$store.entities.selectImages(entity.id) != null">
+                            <template x-if="$store.entities.fullstate.entities[entity.id] != null && $store.entities.selectImages(entity.id) != null">
                                 <template x-for="(n, index) in $store.entities.selectImages(entity.id)">
                                     <img class="flex-1 object-cover w-full rounded-xl h-48"
                                         :src="['/api/artifact/',n].join('')">
