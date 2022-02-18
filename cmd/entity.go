@@ -53,7 +53,7 @@ func createEntity(c echo.Context) error {
 func getEntity(c echo.Context) error {
 
 	return checkEntity(c, func(c echo.Context, id EntityID) error {
-		return c.JSONPretty(http.StatusOK, store.Entities[EntityID(id)], "  ")
+		return c.JSON(http.StatusOK, store.Entities[EntityID(id)])
 	})
 
 }

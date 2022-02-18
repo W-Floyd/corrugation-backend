@@ -178,8 +178,7 @@ document.addEventListener('alpine:init', () => {
             };
 
             xhr.send();
-            Alpine.store('entities').load();
-            Alpine.store('entities').loadLocationTree();
+            Alpine.store('entities').reload();
         },
 
         uploadArtifacts() {
@@ -218,10 +217,7 @@ document.addEventListener('alpine:init', () => {
 
     Alpine.store('entities', {
         init() {
-            this.currentEntity = 0
-            this.load()
-            this.loadLocationTree()
-            this.loadFullState()
+            this.setCurrentEntity(0)
             Alpine.store('isLoading').this = false
         },
 
@@ -229,23 +225,26 @@ document.addEventListener('alpine:init', () => {
 
         setCurrentEntity(x) {
             this.currentEntity = x
-            this.load()
-            this.loadLocationTree()
-            this.loadFullState()
+            this.reload()
         },
 
-        entities: {},
+        reload() {
+            this.loadFullState()
+            this.loadLocationTree()
+        },
 
-        load() {
-            let url = '/api/entity/find/children/' + this.currentEntity + '/full';
-
-            readAll(url)
-                .then(response => response.json())
-                .then(response => { this.entities = response; });
+        // Returns the children of the current entity
+        load(x) {
+            childEntities = []
+            for (const key in this.fullstate.entities) {
+                if (this.fullstate.entities[key].location == x) {
+                    childEntities.push(this.fullstate.entities[key])
+                }
+            }
+            return childEntities
         },
 
         locationtree: [],
-        fullentities: {},
         fullstate: {},
 
         loadFullState() {
@@ -288,15 +287,10 @@ document.addEventListener('alpine:init', () => {
             if (x == 0) {
                 return 'World'
             }
-            return this.fullentities[x].name
+            return this.fullstate.entities[x].name
         },
 
         loadLocationTree() {
-            let url = '/api/entity';
-
-            readAll(url)
-                .then(response => response.json())
-                .then(response => { this.fullentities = response; })
             this.locationtree = []
             this.recurseLocationTree(this.currentEntity)
             this.locationtree.reverse()
@@ -305,25 +299,26 @@ document.addEventListener('alpine:init', () => {
         recurseLocationTree(x) {
             this.locationtree.push(x)
             if (x != 0) {
-                elem = this.fullentities[x]
+                elem = this.fullstate.entities[x]
                 this.recurseLocationTree(elem.location)
             }
         },
 
         hasChildren(x) {
-            for (key in this.fullentities) {
-                if (this.fullentities[key].location == x) {
+            for (key in this.fullstate.entities) {
+                if (this.fullstate.entities[key].location == x) {
                     return true
                 }
             }
             return false
         },
 
+        // Returns a list of child IDs
         listChildLocations(x) {
-            let childLocations = []
-            for (key in this.fullentities) {
-                if (this.fullentities[key].location == x) {
-                    childLocations.push(this.fullentities[key])
+            childLocations = []
+            for (key in this.fullstate.entities) {
+                if (this.fullstate.entities[key].location == x) {
+                    childLocations.push(key)
                 }
             }
             return childLocations
@@ -332,11 +327,3 @@ document.addEventListener('alpine:init', () => {
     })
 
 })
-
-function dprint(x) {
-    console.log(x)
-}
-
-function readAll(x) {
-    return fetch(x)
-}

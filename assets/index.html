@@ -46,12 +46,13 @@
 
             <div class="flex flex-wrap justify-center gap-4">
 
-                <p x-show="$store.entities.entities.length == 0" class="text-2xl text-gray-500/50">Empty</p>
+                <p x-show="!$store.entities.hasChildren($store.entities.currentEntity)" class="text-2xl text-gray-500/50">
+                    Empty</p>
 
-                <template x-for="entity in $store.entities.entities">
+                <template x-for="entity in $store.entities.load($store.entities.currentEntity)">
 
                     <figure
-                        class="container relative max-w-sm bg-white shadow-md grow min-w-sm dark:bg-gray-800 rounded-xl ring-1 ring-gray-500/25 hover:ring-gray-500/50 hover:shadow-lg">
+                        class="container relative max-w-sm bg-white shadow-md h-full grow min-w-sm dark:bg-gray-800 rounded-xl ring-1 ring-gray-500/25 hover:ring-gray-500/50 hover:shadow-lg">
 
                         <!-- Text stuff -->
                         <div class="p-8 h-max">
@@ -59,28 +60,29 @@
                             <!-- Name -->
                             <div x-text="entity.metadata.quantity != 0 && entity.name + ' (' + entity.metadata.quantity +')' ||  entity.name "
                                 class="mb-2 text-xl font-bold cursor-pointer"
-                                @click="$store.entities.setCurrentEntity(entity.id)""></div>
+                                @click="$store.entities.setCurrentEntity(entity.id)"></div>
 
-
+                            <!-- Description, if present -->
+                            <template x-if=" entity.description !=''">
+                                <p x-text=" entity.description">
+                                </p>
+                            </template>
 
                             <!-- Children, if present. -->
                             <div x-show=" $store.entities.hasChildren(entity.id)">
                                 <p class="mb-2 font-semibold">Contains:</p>
                                 <div class="flex flex-wrap gap-2 ">
 
-                                    <template x-for="child in $store.entities.listChildLocations(entity.id)">
+                                    <template x-for="childID in $store.entities.listChildLocations(entity.id)">
                                         <div class="p-2 rounded cursor-pointer bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 hover:bg-gray-100 hover:shadow-sm ring-gray-200 dark:ring-slate-500 ring-1 hover:ring-blue-500/75 active:shadow-md"
-                                            x-text="child.name" @click="$store.entities.setCurrentEntity(child.id)">
+                                            x-text="$store.entities.fullstate.entities[childID].name"
+                                            @click="$store.entities.setCurrentEntity(childID)">
                                         </div>
                                     </template>
                                 </div>
 
                             </div>
 
-                            <!-- Description, if present -->
-                            <template x-if="entity.description != ''">
-                                <p x-text="entity.description"></p>
-                            </template>
                         </div>
 
                         <!-- Buttons -->
@@ -145,7 +147,7 @@
             <!-- Panel -->
             <div x-show="$store.newEntityDialog.opened" x-transition x-on:click="$store.newEntityDialog.opened = false"
                 class="relative flex items-center justify-center min-h-screen p-4 shadow-xl"
-                @keyup.enter="$store.api.newEntity(); $store.newEntityDialog.opened = false; $store.entities.load(); $store.entities.loadLocationTree()">
+                @keyup.enter="$store.api.newEntity(); $store.newEntityDialog.opened = false; $store.entities.reload($store.entities.currentEntity)">
 
                 <div x-on:click.stop x-trap.noscroll.inert="$store.newEntityDialog.opened"
                     class="relative w-full max-w-2xl p-8 overflow-y-auto bg-white border border-black rounded-lg dark:bg-gray-800">
@@ -184,7 +186,7 @@
                     <!-- Buttons -->
                     <div class="flex mt-8 space-x-2">
                         <button type="button"
-                            x-on:click="$store.api.newEntity(); $store.newEntityDialog.opened = false; $store.entities.load(); $store.entities.loadLocationTree(); $store.entities.loadFullState()"
+                            x-on:click="$store.api.newEntity(); $store.newEntityDialog.opened = false; $store.entities.reload($store.entities.currentEntity)"
                             class="px-4 py-2 text-white h-10 bg-blue-500 rounded-full shadow float-bottom hover:bg-blue-600 active:shadow-lg mouse focus:outline-1">
                             Submit
                         </button>
@@ -219,7 +221,7 @@
             <div x-show="$store.moveEntityDialog.opened" x-transition
                 x-on:click="$store.moveEntityDialog.opened = false"
                 class="relative flex items-center justify-center min-h-screen p-4 shadow-xl"
-                @keyup.enter="$store.api.newEntity(); $store.moveEntityDialog.opened = false; $store.entities.load(); $store.entities.loadLocationTree()">
+                @keyup.enter="$store.api.newEntity(); $store.moveEntityDialog.opened = false; $store.entities.reload($store.entities.currentEntity)">
 
                 <div x-on:click.stop x-trap.noscroll.inert="$store.moveEntityDialog.opened"
                     class="relative w-full max-w-2xl p-8 overflow-y-auto bg-white border border-black rounded-lg dark:bg-gray-800">
@@ -243,7 +245,7 @@
                     <!-- Buttons -->
                     <div class="flex mt-8 space-x-2">
                         <button type="button"
-                            x-on:click="$store.moveEntityDialog.move(); $store.moveEntityDialog.opened = false; $store.entities.load(); $store.entities.loadLocationTree(); $store.entities.loadFullState()"
+                            x-on:click="$store.moveEntityDialog.move(); $store.moveEntityDialog.opened = false; $store.entities.reload($store.entities.currentEntity)"
                             class="px-4 py-2 text-white h-10 bg-blue-500 rounded-full shadow float-bottom hover:bg-blue-600 active:shadow-lg mouse focus:outline-1">
                             Submit
                         </button>
