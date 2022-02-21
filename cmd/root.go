@@ -182,7 +182,8 @@ func server(cmd *cobra.Command, args []string) {
 
 	// Restricted group
 
-	r.GET("/", dumpStore) // If you want the whole JSON file, you can have it...
+	r.GET("/store", dumpStore) // If you want the whole JSON file, you can have it...
+	r.GET("/store/version", storeVersion)
 	r.Any("/reset", func(c echo.Context) error {
 		resetStore()
 		d.EraseAll()

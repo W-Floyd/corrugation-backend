@@ -42,7 +42,7 @@ func createEntity(c echo.Context) error {
 
 	store.Entities[store.LastEntityID] = loc
 
-	if err := updateModification(c, store.LastEntityID); err != nil {
+	if err := updateModification(store.LastEntityID); err != nil {
 		return err
 	}
 
@@ -115,7 +115,7 @@ func replaceEntity(c echo.Context) error {
 
 		store.Entities[id] = l
 
-		if err := updateModification(c, id); err != nil {
+		if err := updateModification(id); err != nil {
 			return err
 		}
 
@@ -134,7 +134,7 @@ func patchEntity(c echo.Context) error {
 
 		store.Entities[id] = n
 
-		if err := updateModification(c, id); err != nil {
+		if err := updateModification(id); err != nil {
 			return err
 		}
 

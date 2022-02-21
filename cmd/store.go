@@ -41,18 +41,20 @@ type Store struct {
 	Artifacts      map[ArtifactID]Artifact `json:"artifacts"`
 	LastEntityID   EntityID                `json:"lastentityid"`
 	LastArtifactID ArtifactID              `json:"lastartifactid"`
+	StoreVersion   int                     `json:"storeversion"`
 }
 
 func updateStore() {
+	store.StoreVersion += 1
 	a, _ := json.MarshalIndent(store, "", "  ")
 	d.Write("store.json", a)
 }
 
 func dumpStore(c echo.Context) error {
-	return c.JSONPretty(http.StatusOK, store, "  ")
+	return c.JSON(http.StatusOK, store)
 }
 
-func updateModification(c echo.Context, eID EntityID) error {
+func updateModification(eID EntityID) error {
 
 	if _, ok := store.Entities[eID]; ok {
 		e := store.Entities[eID]
@@ -73,4 +75,8 @@ func resetStore() error {
 	store.Artifacts = map[ArtifactID]Artifact{}
 	updateStore()
 	return nil
+}
+
+func storeVersion(c echo.Context) error {
+	return c.JSON(http.StatusOK, store.StoreVersion)
 }

@@ -217,6 +217,7 @@ document.addEventListener('alpine:init', () => {
 
     Alpine.store('entities', {
         init() {
+            this.storeversion = -1
             this.setCurrentEntity(0)
             Alpine.store('isLoading').this = false
         },
@@ -250,26 +251,51 @@ document.addEventListener('alpine:init', () => {
 
         locationtree: [],
         fullstate: {},
+        storeversion: {},
 
-        loadFullState() {
+        async checkStoreVersion() {
 
-            // Creating a XHR object
-            let xhr = new XMLHttpRequest();
-            let url = '/api/';
+            let url = '/api/store/version';
+            let options = {
+                method: 'GET'
+            }
 
-            // Create a state change callback
-            xhr.onreadystatechange = function () {
-                if (xhr.readyState === 4 && xhr.status == 200) {
-                    let response = JSON.parse(xhr.responseText)
-                    Alpine.store('entities').fullstate = response
-                }
-            };
+            result = await fetch(url, options)
+                .then(response => response.json());
 
-            // open a connection
-            xhr.open("GET", url, false);
+            if (this.storeversion != result) {
+                this.storeversion = result
+                return true
+            }
 
-            // Sending data with the request
-            xhr.send();
+            return false
+
+        },
+
+        async loadFullState() {
+
+            if (await this.checkStoreVersion()) {
+
+                this.needtoupdate = false
+
+                // Creating a XHR object
+                let xhr = new XMLHttpRequest();
+                let url = '/api/store';
+
+                // Create a state change callback
+                xhr.onreadystatechange = function () {
+                    if (xhr.readyState === 4 && xhr.status == 200) {
+                        let response = JSON.parse(xhr.responseText)
+                        Alpine.store('entities').fullstate = response
+                    }
+                };
+
+                // open a connection
+                xhr.open("GET", url, false);
+
+                // Sending data with the request
+                xhr.send();
+            }
 
         },
 
