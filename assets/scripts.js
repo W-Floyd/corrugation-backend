@@ -235,11 +235,15 @@ document.addEventListener('alpine:init', () => {
 
         // Returns the children of the current entity
         load(x) {
+            childIDs = []
             childEntities = []
-            for (const key in this.fullstate.entities) {
-                if (this.fullstate.entities[key].location == x) {
-                    childEntities.push(this.fullstate.entities[key])
+            for (const id in this.fullstate.entities) {
+                if (this.fullstate.entities[id].location == x) {
+                    childIDs.push(id)
                 }
+            }
+            for (const key in childIDs.sort((a, b) => sortEntityID(a, b))) {
+                childEntities.push(this.fullstate.entities[childIDs[key]])
             }
             return childEntities
         },
@@ -321,9 +325,37 @@ document.addEventListener('alpine:init', () => {
                     childLocations.push(key)
                 }
             }
-            return childLocations
+            return childLocations.sort((a, b) => sortEntityID(a, b))
         }
 
     })
 
 })
+
+function sortEntityID(a, b) {
+
+    let ea = Alpine.store('entities').fullstate.entities[a],
+        eb = Alpine.store('entities').fullstate.entities[b];
+
+    let fa = ea.name.toLowerCase(),
+        fb = eb.name.toLowerCase();
+
+    if (fa < fb) {
+        return -1;
+    }
+    if (fa > fb) {
+        return 1;
+    }
+
+    fa = ea.description.toLowerCase();
+    fb = eb.description.toLowerCase();
+
+    if (fa < fb) {
+        return -1;
+    }
+    if (fa > fb) {
+        return 1;
+    }
+
+    return 0;
+}

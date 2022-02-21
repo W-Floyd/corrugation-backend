@@ -46,7 +46,8 @@
 
             <div class="flex flex-wrap justify-center gap-4">
 
-                <p x-show="!$store.entities.hasChildren($store.entities.currentEntity)" class="text-2xl text-gray-500/50">
+                <p x-show="!$store.entities.hasChildren($store.entities.currentEntity)"
+                    class="text-2xl text-gray-500/50">
                     Empty</p>
 
                 <template x-for="entity in $store.entities.load($store.entities.currentEntity)">
@@ -117,11 +118,12 @@
                             </svg>
                         </button>
 
+                        <!-- Images -->
                         <div class="flex flex-row justify-center w-full">
-                            <!-- Use the first artifact as an image, if available -->
-                            <template x-if="$store.entities.fullstate.entities[entity.id] != null && $store.entities.selectImages(entity.id) != null">
+                            <template
+                                x-if="$store.entities.fullstate.entities[entity.id] != null && $store.entities.selectImages(entity.id) != null">
                                 <template x-for="(n, index) in $store.entities.selectImages(entity.id)">
-                                    <img class="flex-1 object-cover w-full rounded-xl h-48"
+                                    <img class="flex-1 object-cover w-full rounded-xl h-56"
                                         :src="['/api/artifact/',n].join('')">
                                 </template>
                             </template>
