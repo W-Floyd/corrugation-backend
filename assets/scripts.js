@@ -40,7 +40,7 @@ document.addEventListener('alpine:init', () => {
             if (this.files != null) {
                 Alpine.store('api').uploadArtifacts()
             }
-            this.entity.location = this.targetLocation
+            this.entity.location = parseInt(this.targetLocation)
             this.entity.metadata.quantity = parseInt(this.entity.metadata.quantity)
             return this.entity
         }
@@ -216,6 +216,10 @@ document.addEventListener('alpine:init', () => {
     })
 
     Alpine.store('entities', {
+
+        searchtext: '',
+        searching: false,
+
         init() {
             this.storeversion = -1
             this.setCurrentEntity(0)
@@ -226,6 +230,7 @@ document.addEventListener('alpine:init', () => {
 
         setCurrentEntity(x) {
             this.currentEntity = x
+            this.searchtext = ""
             this.reload()
         },
 
@@ -235,18 +240,36 @@ document.addEventListener('alpine:init', () => {
         },
 
         // Returns the children of the current entity
-        load(x) {
-            childIDs = []
-            childEntities = []
-            for (const id in this.fullstate.entities) {
-                if (this.fullstate.entities[id].location == x) {
-                    childIDs.push(id)
+        load(matchID, searchText) {
+            if (searchText != "") {
+                this.searching = true
+                arr = []
+
+                for (const id in this.fullstate.entities) {
+                    if (
+                        this.fullstate.entities[id].name.toLowerCase().includes(searchText.toLowerCase()) ||
+                        this.fullstate.entities[id].description.toLowerCase().includes(searchText.toLowerCase())
+                    ) {
+                        arr.push(this.fullstate.entities[id])
+                    }
                 }
+
+                return arr
+
+            } else {
+                this.searching = false
+                childIDs = []
+                childEntities = []
+                for (const id in this.fullstate.entities) {
+                    if (this.fullstate.entities[id].location == matchID) {
+                        childIDs.push(id)
+                    }
+                }
+                for (const key in childIDs.sort((a, b) => sortEntityID(a, b))) {
+                    childEntities.push(this.fullstate.entities[childIDs[key]])
+                }
+                return childEntities
             }
-            for (const key in childIDs.sort((a, b) => sortEntityID(a, b))) {
-                childEntities.push(this.fullstate.entities[childIDs[key]])
-            }
-            return childEntities
         },
 
         locationtree: [],
