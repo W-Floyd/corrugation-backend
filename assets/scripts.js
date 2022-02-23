@@ -243,9 +243,12 @@ document.addEventListener('alpine:init', () => {
         load(matchID, searchText) {
             if (searchText != "") {
                 this.searching = true
-                arr = []
+                let arr = []
 
-                for (const id in this.fullstate.entities) {
+                children = this.listChildLocationsDeep(this.currentEntity).sort((a, b) => sortEntityID(a, b))
+
+                for (const cid in children) {
+                    id = children[cid]
                     if (
                         this.fullstate.entities[id].name.toLowerCase().includes(searchText.toLowerCase()) ||
                         this.fullstate.entities[id].description.toLowerCase().includes(searchText.toLowerCase())
@@ -375,6 +378,18 @@ document.addEventListener('alpine:init', () => {
                 }
             }
             return childLocations.sort((a, b) => sortEntityID(a, b))
+        },
+
+        // Returns a list of child IDs, all of them
+        listChildLocationsDeep(x) {
+            let returnValue = []
+            for (key in this.fullstate.entities) {
+                if (this.fullstate.entities[key].location == x) {
+                    returnValue.push(key)
+                    returnValue.push(...this.listChildLocationsDeep(key))
+                }
+            }
+            return returnValue
         }
 
     })
