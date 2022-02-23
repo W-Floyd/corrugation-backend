@@ -173,7 +173,7 @@ document.addEventListener('alpine:init', () => {
             // Create a state change callback
             xhr.onreadystatechange = function () {
                 if (xhr.readyState === 4 && xhr.status == 200) {
-                    delete Alpine.store('entities').fullstate.entities[id]
+                    Alpine.store('entities').loadFullState()
                     return xhr.status
                 }
             };
@@ -265,8 +265,8 @@ document.addEventListener('alpine:init', () => {
                         childIDs.push(id)
                     }
                 }
-                for (const key in childIDs.sort((a, b) => sortEntityID(a, b))) {
-                    childEntities.push(this.fullstate.entities[childIDs[key]])
+                for (const id in childIDs.sort((a, b) => sortEntityID(a, b))) {
+                    childEntities.push(this.fullstate.entities[childIDs[id]])
                 }
                 return childEntities
             }

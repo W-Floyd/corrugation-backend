@@ -43,21 +43,21 @@
                 </ol>
             </nav>
 
+            <!-- Search -->
+            <input x-model="$store.entities.searchtext" placeholder="Search for an entity..." type="search"
+                class="w-full px-4 py-1 m-4 mx-auto bg-white rounded-full dark:bg-gray-900 ring-1 ring-gray-500/25" />
+
+            <!-- Empty -->
+            <p x-show="!$store.entities.hasChildren($store.entities.currentEntity)" class="text-2xl text-gray-500/50">
+                Empty</p>
 
             <div class="flex flex-wrap justify-center gap-4">
-
-                <input x-model="$store.entities.searchtext" placeholder="Search for an entity..." type="search"
-                    class="block w-full bg-gray-200 focus:outline-none focus:bg-white focus:shadow text-gray-700 font-bold rounded-lg px-4 py-3" />
-
-                <p x-show="!$store.entities.hasChildren($store.entities.currentEntity)"
-                    class="text-2xl text-gray-500/50">
-                    Empty</p>
 
                 <template
                     x-for="entity in $store.entities.load($store.entities.currentEntity, $store.entities.searchtext)">
 
                     <figure
-                        class="container relative max-w-sm bg-white shadow-md h-full grow min-w-sm dark:bg-gray-800 rounded-xl ring-1 ring-gray-500/25 hover:ring-gray-500/50 hover:shadow-lg">
+                        class="container relative h-full max-w-sm bg-white shadow-md grow min-w-sm dark:bg-gray-800 rounded-xl ring-1 ring-gray-500/25 hover:ring-gray-500/50 hover:shadow-lg">
 
                         <!-- Text stuff -->
                         <div class="p-8 h-max">
@@ -127,7 +127,7 @@
                             <template
                                 x-if="$store.entities.fullstate.entities[entity.id] != null && $store.entities.selectImages(entity.id) != null">
                                 <template x-for="(n, index) in $store.entities.selectImages(entity.id)">
-                                    <img class="flex-1 object-cover w-full rounded-xl h-56"
+                                    <img class="flex-1 object-cover w-full h-56 rounded-xl"
                                         :src="['/api/artifact/',n].join('')">
                                 </template>
                             </template>
@@ -181,7 +181,7 @@
                         <label for="quantity">Image</label>
                         <input name="file" type="file" id="file"
                             x-on:change="$store.newEntityDialog.files = Object.values($event.target.files)"
-                            class="col-span-3 bg-white ring-1 dark:bg-gray-900 dark:hover:bg-gray-700 rounded-sm"
+                            class="col-span-3 bg-white rounded-sm ring-1 dark:bg-gray-900 dark:hover:bg-gray-700"
                             accept="image/*" multiple>
 
                         <input class="display:none" name="photo" type="file" id="photo" x-show="false"
@@ -193,15 +193,15 @@
                     <div class="flex mt-8 space-x-2">
                         <button type="button"
                             x-on:click="$store.api.newEntity(); $store.newEntityDialog.opened = false; $store.entities.reload($store.entities.currentEntity)"
-                            class="px-4 py-2 text-white h-10 bg-blue-500 rounded-full shadow float-bottom hover:bg-blue-600 active:shadow-lg mouse focus:outline-1">
+                            class="h-10 px-4 py-2 text-white bg-blue-500 rounded-full shadow float-bottom hover:bg-blue-600 active:shadow-lg mouse focus:outline-1">
                             Submit
                         </button>
                         <button type="button" x-on:click="$store.newEntityDialog.opened = false"
-                            class="px-4 py-2 text-white h-10 bg-red-500 rounded-full shadow float-bottom hover:bg-red-600 active:shadow-lg mouse focus:outline-1">
+                            class="h-10 px-4 py-2 text-white bg-red-500 rounded-full shadow float-bottom hover:bg-red-600 active:shadow-lg mouse focus:outline-1">
                             Cancel
                         </button>
                         <button type="button" x-on:click="document.getElementById('photo').click();"
-                            class="px-4 py-2 text-white h-10 bg-blue-500 rounded-full shadow float-bottom hover:bg-blue-600 active:shadow-lg mouse focus:outline-1">
+                            class="h-10 px-4 py-2 text-white bg-blue-500 rounded-full shadow float-bottom hover:bg-blue-600 active:shadow-lg mouse focus:outline-1">
                             Photo
                         </button>
                     </div>
@@ -252,11 +252,11 @@
                     <div class="flex mt-8 space-x-2">
                         <button type="button"
                             x-on:click="$store.moveEntityDialog.move(); $store.moveEntityDialog.opened = false; $store.entities.reload($store.entities.currentEntity)"
-                            class="px-4 py-2 text-white h-10 bg-blue-500 rounded-full shadow float-bottom hover:bg-blue-600 active:shadow-lg mouse focus:outline-1">
+                            class="h-10 px-4 py-2 text-white bg-blue-500 rounded-full shadow float-bottom hover:bg-blue-600 active:shadow-lg mouse focus:outline-1">
                             Submit
                         </button>
                         <button type="button" x-on:click="$store.moveEntityDialog.opened = false"
-                            class="px-4 py-2 text-white h-10 bg-red-500 rounded-full shadow float-bottom hover:bg-red-600 active:shadow-lg mouse focus:outline-1">
+                            class="h-10 px-4 py-2 text-white bg-red-500 rounded-full shadow float-bottom hover:bg-red-600 active:shadow-lg mouse focus:outline-1">
                             Cancel
                         </button>
                     </div>
