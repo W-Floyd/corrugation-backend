@@ -54,6 +54,8 @@ document.addEventListener('alpine:init', () => {
         sourceEntity: null,
         targetLocation: null,
 
+        searchtext: '',
+
         init() {
             this.reset()
         },
@@ -61,6 +63,7 @@ document.addEventListener('alpine:init', () => {
         reset() {
             this.opened = false
             this.targetLocation = null
+            this.searchText = null
         },
 
         open(x) {
@@ -71,10 +74,11 @@ document.addEventListener('alpine:init', () => {
         },
 
         move() {
+            this.targetLocation = document.getElementById("moveEntitySelect").value
             Alpine.store('api').moveEntity(this.sourceEntity, this.targetLocation)
         },
 
-        getNotContains() {
+        getNotContains(searchText) {
             ret = []
             for (const key in Alpine.store('entities').fullstate.entities) {
                 target = key
@@ -89,6 +93,25 @@ document.addEventListener('alpine:init', () => {
                     ret.push(key)
                 }
             }
+
+            let arr = []
+
+            if (searchText != "") {
+
+                for (const cid in ret) {
+                    id = ret[cid]
+                    if (
+                        Alpine.store('entities').fullstate.entities[id].name.toLowerCase().includes(searchText.toLowerCase()) ||
+                        Alpine.store('entities').fullstate.entities[id].description.toLowerCase().includes(searchText.toLowerCase())
+                    ) {
+                        arr.push(id)
+                    }
+                }
+
+                return arr
+
+            }
+
             return ret
         },
 

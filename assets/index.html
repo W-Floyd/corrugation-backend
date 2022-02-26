@@ -238,9 +238,20 @@
 
                     <div class="grid grid-cols-1 space-y-2">
 
-                        <select x-model="$store.moveEntityDialog.targetLocation">
-                            <option value="0">World</option>
-                            <template x-for="id in $store.moveEntityDialog.getNotContains()">
+                        <input x-model="$store.moveEntityDialog.searchtext" id="moveEntitySearch"
+                            placeholder="Search for a location..." type="search"
+                            class="w-full px-4 py-1 m-4 mx-auto bg-white rounded-full dark:bg-gray-900 ring-1 ring-gray-500/25" />
+
+                        <select x-model="$store.moveEntityDialog.targetLocation" id="moveEntitySelect">
+
+                            <option value="" disabled>Select a location</option>
+
+                            <template x-if="$store.moveEntityDialog.searchtext == ''">
+                                <option value="0">World</option>
+                            </template>
+
+                            <template
+                                x-for="id in $store.moveEntityDialog.getNotContains($store.moveEntityDialog.searchtext)">
                                 <option x-text="$store.moveEntityDialog.formatOption(id)" :value="id">
                                 </option>
                             </template>
