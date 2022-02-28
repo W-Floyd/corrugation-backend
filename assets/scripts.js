@@ -240,7 +240,11 @@ document.addEventListener('alpine:init', () => {
 
     Alpine.store('entities', {
 
+        searchtextpredebounce: '',
         searchtext: '',
+        debouncesearch() {
+            this.searchtext = this.searchtextpredebounce
+        },
         searching: false,
 
         init() {
