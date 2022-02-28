@@ -168,6 +168,7 @@ func server(cmd *cobra.Command, args []string) {
 	// Middleware
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
+	e.Use(middleware.CORS())
 
 	e.Static("/", viper.GetString("assets"))
 
