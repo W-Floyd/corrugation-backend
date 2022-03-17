@@ -102,7 +102,8 @@ document.addEventListener('alpine:init', () => {
                     id = ret[cid]
                     if (
                         Alpine.store('entities').fullstate.entities[id].name.toLowerCase().includes(searchText.toLowerCase()) ||
-                        Alpine.store('entities').fullstate.entities[id].description.toLowerCase().includes(searchText.toLowerCase())
+                        Alpine.store('entities').fullstate.entities[id].description.toLowerCase().includes(searchText.toLowerCase()) ||
+                        id == searchText.toLowerCase()
                     ) {
                         arr.push(id)
                     }
@@ -278,7 +279,8 @@ document.addEventListener('alpine:init', () => {
                     id = children[cid]
                     if (
                         this.fullstate.entities[id].name.toLowerCase().includes(searchText.toLowerCase()) ||
-                        this.fullstate.entities[id].description.toLowerCase().includes(searchText.toLowerCase())
+                        this.fullstate.entities[id].description.toLowerCase().includes(searchText.toLowerCase()) ||
+                        id == searchText.toLowerCase()
                     ) {
                         arr.push(this.fullstate.entities[id])
                     }

@@ -68,10 +68,17 @@
                         <!-- Text stuff -->
                         <div class="p-8 h-max">
 
+                            <!-- Title -->
+                            <div class="flex list-reset space-x-2 items-baseline mb-2 cursor-pointer"
+                                @click="$store.entities.setCurrentEntity(entity.id)">
+                                <div class="text-xl w-min font-medium text-black/50  dark:text-white/50"
+                                    x-text="'('+ entity.id + ')'"></div>
+                                <div x-text="entity.metadata.quantity != 0 && ($store.entities.searching && $store.moveEntityDialog.formatOption(entity.id) || entity.name) + ' (x' + entity.metadata.quantity +')' ||  ($store.entities.searching && $store.moveEntityDialog.formatOption(entity.id) || entity.name) "
+                                    class="text-xl font-bold "></div>
+
+                            </div>
                             <!-- Name -->
-                            <div x-text="entity.metadata.quantity != 0 && ($store.entities.searching && $store.moveEntityDialog.formatOption(entity.id) || entity.name) + ' (' + entity.metadata.quantity +')' ||  ($store.entities.searching && $store.moveEntityDialog.formatOption(entity.id) || entity.name) "
-                                class="mb-2 text-xl font-bold cursor-pointer"
-                                @click="$store.entities.setCurrentEntity(entity.id)"></div>
+
 
                             <!-- Description, if present -->
                             <template x-if=" entity.description !=''">
@@ -82,7 +89,8 @@
                             <!-- Children, if present. -->
                             <div x-show=" $store.entities.hasChildren(entity.id)">
                                 <p class="mb-2 font-semibold">Contains:</p>
-                                <div class="flex flex-wrap gap-2 ">
+                                <div
+                                    class="flex flex-wrap gap-2 overflow-hidden hover:overflow-y-auto max-h-48 shadow-md p-2 ring-1 ring-gray-500/10 hover:ring-gray-500/25 hover:shadow-lg rounded-md">
 
                                     <template x-for="childID in $store.entities.listChildLocations(entity.id)">
                                         <div class="p-2 rounded cursor-pointer bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 hover:bg-gray-100 hover:shadow-sm ring-gray-200 dark:ring-slate-500 ring-1 hover:ring-blue-500/75 active:shadow-md"
@@ -165,8 +173,11 @@
                     class="relative w-full max-w-2xl p-8 overflow-y-auto bg-white border border-black rounded-lg dark:bg-gray-800">
 
                     <!-- Title -->
-                    <h1 class="pb-4 text-3xl font-medium">Create New Entity</h1>
-
+                    <div class="grid grid-cols-2 w-fit space-x-2 items-baseline">
+                        <h1 class="pb-4 text-3xl font-medium">Create New Entity</h1>
+                        <h2 class="pb-4 text-2xl font-medium text-black/50  dark:text-white/50"
+                            x-text="'('+ ($store.entities.fullstate.lastentityid+1) + ')'"></h2>
+                    </div>
 
                     <div class="grid grid-cols-4 space-y-2">
 
@@ -184,7 +195,7 @@
                             x-model="$store.newEntityDialog.entity.metadata.quantity"
                             class="col-span-3 bg-white rounded-sm dark:bg-gray-900 ring-1">
 
-                        <label for="quantity">Image</label>
+                        <label for="file">Image</label>
                         <input name="file" type="file" id="file"
                             x-on:change="$store.newEntityDialog.files = Object.values($event.target.files)"
                             class="col-span-3 bg-white rounded-sm ring-1 dark:bg-gray-900 dark:hover:bg-gray-700"
