@@ -244,7 +244,7 @@
             <div x-show="$store.moveEntityDialog.opened" x-transition
                 x-on:click="$store.moveEntityDialog.opened = false"
                 class="relative flex items-center justify-center min-h-screen p-4 shadow-xl"
-                @keyup.enter="$store.api.newEntity(); $store.moveEntityDialog.opened = false; $store.entities.reload($store.entities.currentEntity)">
+                @keyup.enter="$store.moveEntityDialog.move(); $store.moveEntityDialog.opened = false; $store.entities.reload($store.entities.currentEntity)">
 
                 <div x-on:click.stop x-trap.noscroll.inert="$store.moveEntityDialog.opened"
                     class="relative w-full max-w-2xl p-8 overflow-y-auto bg-white border border-black rounded-lg dark:bg-gray-800">
