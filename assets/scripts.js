@@ -247,6 +247,7 @@ document.addEventListener('alpine:init', () => {
             this.searchtext = this.searchtextpredebounce
         },
         searching: false,
+        filterworld: false,
 
         init() {
             this.storeversion = -1
@@ -273,7 +274,11 @@ document.addEventListener('alpine:init', () => {
                 this.searching = true
                 let arr = []
 
-                children = this.listChildLocationsDeep(this.currentEntity).sort((a, b) => sortEntityID(a, b))
+                if (this.filterworld) {
+                    children = this.listChildLocationsDeep(0).sort((a, b) => sortEntityID(a, b))
+                } else {
+                    children = this.listChildLocationsDeep(this.currentEntity).sort((a, b) => sortEntityID(a, b))
+                }
 
                 for (const cid in children) {
                     id = children[cid]
