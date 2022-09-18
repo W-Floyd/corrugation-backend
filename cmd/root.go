@@ -24,12 +24,16 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"net/http"
 	"os"
 	"reflect"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/foolin/goview"
+	"github.com/foolin/goview/supports/echoview-v4"
 	"github.com/golang-jwt/jwt"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -76,8 +80,8 @@ func init() {
 	rootCmd.Flags().String("jwt", "", "JWT secret")
 	viper.BindPFlag("jwt-secret", rootCmd.Flags().Lookup("jwt"))
 
-	rootCmd.Flags().StringP("assets", "a", "assets", "Assets location")
-	viper.BindPFlag("assets", rootCmd.Flags().Lookup("assets"))
+	// rootCmd.Flags().StringP("assets", "a", "assets", "Assets location")
+	// viper.BindPFlag("assets", rootCmd.Flags().Lookup("assets"))
 
 	rootCmd.Flags().StringP("data", "d", "data", "Data location")
 	viper.BindPFlag("data", rootCmd.Flags().Lookup("data"))
@@ -139,6 +143,19 @@ func InverseTransformExample(pathKey *diskv.PathKey) (key string) {
 	return strings.Join(pathKey.Path, "/") + "/" + pathKey.FileName
 }
 
+func props(v ...any) map[string]any {
+	if len(v)%2 != 0 {
+		panic("uneven number of key/value pairs")
+	}
+
+	m := map[string]any{}
+	for i := 0; i < len(v); i += 2 {
+		m[fmt.Sprint(v[i])] = v[i+1]
+	}
+
+	return m
+}
+
 func server(cmd *cobra.Command, args []string) {
 
 	if viper.GetBool("authentication") {
@@ -170,7 +187,28 @@ func server(cmd *cobra.Command, args []string) {
 	e.Use(middleware.Recover())
 	e.Use(middleware.CORS())
 
-	e.Static("/", viper.GetString("assets"))
+	c := goview.DefaultConfig
+	c.DisableCache = true
+
+	c.Funcs = template.FuncMap{
+		"unescapeHTML": func(s string) any {
+			return template.HTML(s)
+		},
+		"copy": func() string {
+			return time.Now().Format("2006")
+		},
+		"componentButtonRound": componentButtonRound,
+	}
+
+	e.Renderer = echoview.New(c)
+
+	e.GET("/", func(c echo.Context) error {
+		return c.Render(http.StatusOK, "index", echo.Map{
+			"title": "Corrugation",
+		})
+	})
+
+	e.Use(middleware.Static("assets"))
 
 	r := e.Group("/api")
 

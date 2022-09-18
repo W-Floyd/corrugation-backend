@@ -1,0 +1,72 @@
+<body x-data class="text-black transition duration-200 ease-in dark:text-white bg-gray-50 dark:bg-gray-900">
+
+    <h1 x-show="$store.isLoading">Loading...</h1>
+
+    <div x-show="!$store.isLoading">
+
+        <div class="container mx-auto">
+            <nav class="w-full rounded-md">
+                <ol class="flex list-reset">
+                    <template x-for="(n, index) in $store.entities.locationtree">
+                        <div class="flex list-reset">
+
+                            <li>
+                                <a @click="$store.entities.setCurrentEntity(n)"
+                                    class="text-blue-600 no-underline cursor-pointer dark:text-sky-400 dark:hover:text-sky-300 hover:text-blue-700 hover:underline"
+                                    x-text="$store.entities.readname(n)"></a>
+                            </li>
+
+                            <li>
+                                <span class="mx-2 text-gray-500">/</span>
+                            </li>
+
+                        </div>
+                    </template>
+                    <li>
+                        <span
+                            class="font-bold text-blue-600 cursor-pointer dark:text-sky-400 dark:hover:text-sky-300 hover:text-blue-700"
+                            @click="$store.newEntityDialog.open($store.entities.currentEntity)">+</span>
+                    </li>
+                </ol>
+            </nav>
+
+            <!-- Search -->
+            <div class="flex flex-row items-center gap-2">
+                <div>
+                    <svg viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
+                        <path fill-rule="evenodd"
+                            d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zM6.262 6.072a8.25 8.25 0 1010.562-.766 4.5 4.5 0 01-1.318 1.357L14.25 7.5l.165.33a.809.809 0 01-1.086 1.085l-.604-.302a1.125 1.125 0 00-1.298.21l-.132.131c-.439.44-.439 1.152 0 1.591l.296.296c.256.257.622.374.98.314l1.17-.195c.323-.054.654.036.905.245l1.33 1.108c.32.267.46.694.358 1.1a8.7 8.7 0 01-2.288 4.04l-.723.724a1.125 1.125 0 01-1.298.21l-.153-.076a1.125 1.125 0 01-.622-1.006v-1.089c0-.298-.119-.585-.33-.796l-1.347-1.347a1.125 1.125 0 01-.21-1.298L9.75 12l-1.64-1.64a6 6 0 01-1.676-3.257l-.172-1.03z"
+                            clip-rule="evenodd" />
+                    </svg>
+                </div>
+
+                <input type="checkbox" x-model="$store.entities.filterworld" class="float-left" />
+                <input x-model="$store.entities.searchtextpredebounce"
+                    @input.debounce="$store.entities.debouncesearch()" placeholder="Search for an entity..."
+                    type="search"
+                    class="w-full px-4 py-1 m-4 mx-auto bg-white rounded-full dark:bg-gray-900 ring-1 ring-gray-500/25" />
+            </div>
+
+            <!-- Empty -->
+            <p x-show="!$store.entities.hasChildren($store.entities.currentEntity)" class="text-2xl text-gray-500/50">
+                Empty</p>
+
+            <div class="flex flex-wrap justify-center gap-4">
+
+                <template
+                    x-for="entity in $store.entities.load($store.entities.currentEntity, $store.entities.searchtext)">
+
+                    {{ include "layouts/card" }}
+
+                </template>
+
+            </div>
+        </div>
+
+        {{ include "layouts/newEntity" }}
+
+        {{ include "layouts/moveEntity" }}
+
+    </div>
+
+</body>

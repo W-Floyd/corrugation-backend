@@ -1,0 +1,74 @@
+<!-- New Entity Dialog -->
+<div x-show="$store.newEntityDialog.opened" style="display: none"
+    x-on:keydown.escape.prevent.stop="$store.newEntityDialog.opened = false" role="dialog"
+    class="fixed inset-0 overflow-y-auto">
+
+    <!-- Overlay -->
+    <div x-show="$store.newEntityDialog.opened" x-transition.opacity
+        class="fixed inset-0 bg-black bg-opacity-50 dark:bg-gray-900 dark:bg-opacity-50">
+    </div>
+
+    <!-- Panel -->
+    <div x-show="$store.newEntityDialog.opened" x-transition x-on:click="$store.newEntityDialog.opened = false"
+        class="relative flex items-center justify-center min-h-screen p-4 shadow-xl"
+        @keyup.enter="$store.api.newEntity(); $store.newEntityDialog.opened = false; $store.entities.reload($store.entities.currentEntity)">
+
+        <div x-on:click.stop x-trap.noscroll.inert="$store.newEntityDialog.opened"
+            class="relative w-full max-w-2xl p-8 overflow-y-auto bg-white border border-black rounded-lg dark:bg-gray-800">
+
+            <!-- Title -->
+            <div class="grid grid-cols-2 w-fit space-x-2 items-baseline">
+                <h1 class="pb-4 text-3xl font-medium">Create New Entity</h1>
+                <h2 class="pb-4 text-2xl font-medium text-black/50  dark:text-white/50"
+                    x-text="'('+ ($store.entities.fullstate.lastentityid+1) + ')'"></h2>
+            </div>
+
+            <div class="grid grid-cols-4 space-y-2">
+
+                <label for="name">Name</label>
+                <input name="name" autofocus id="name" type="text" x-model="$store.newEntityDialog.entity.name"
+                    class="col-span-3 bg-white rounded-sm dark:bg-gray-900 ring-1">
+
+                <label for="description">Description</label>
+                <textarea name="description" id="description" type="text" @keyup.enter.stop
+                    x-model="$store.newEntityDialog.entity.description"
+                    class="col-span-3 bg-white rounded-sm dark:bg-gray-900 ring-1"></textarea>
+
+                <label for="quantity">Quantity</label>
+                <input name="quantity" id="quantity" type="number" min="0" step="1"
+                    x-model="$store.newEntityDialog.entity.metadata.quantity"
+                    class="col-span-3 bg-white rounded-sm dark:bg-gray-900 ring-1">
+
+                <label for="file">Image</label>
+                <input name="file" type="file" id="file"
+                    x-on:change="$store.newEntityDialog.files = Object.values($event.target.files)"
+                    class="col-span-3 bg-white rounded-sm ring-1 dark:bg-gray-900 dark:hover:bg-gray-700"
+                    accept="image/*" multiple>
+
+                <input class="display:none" name="photo" type="file" id="photo" x-show="false"
+                    x-on:change="$store.newEntityDialog.files = Object.values($event.target.files)" accept="image/*"
+                    capture="camera">
+            </div>
+
+            <!-- Buttons -->
+            <div class="flex mt-8 space-x-2">
+                <button type="button"
+                    x-on:click="$store.api.newEntity(); $store.newEntityDialog.opened = false; $store.entities.reload($store.entities.currentEntity)"
+                    class="h-10 px-4 py-2 text-white bg-blue-500 rounded-full shadow float-bottom hover:bg-blue-600 active:shadow-lg mouse focus:outline-1">
+                    Submit
+                </button>
+                <button type="button" x-on:click="$store.newEntityDialog.opened = false"
+                    class="h-10 px-4 py-2 text-white bg-red-500 rounded-full shadow float-bottom hover:bg-red-600 active:shadow-lg mouse focus:outline-1">
+                    Cancel
+                </button>
+                <button type="button" x-on:click="document.getElementById('photo').click();"
+                    class="h-10 px-4 py-2 text-white bg-blue-500 rounded-full shadow float-bottom hover:bg-blue-600 active:shadow-lg mouse focus:outline-1">
+                    Photo
+                </button>
+            </div>
+
+
+        </div>
+
+    </div>
+</div>

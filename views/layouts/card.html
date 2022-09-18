@@ -1,0 +1,59 @@
+<figure
+    class="container relative h-full max-w-sm bg-white shadow-md grow min-w-sm dark:bg-gray-800 rounded-xl ring-1 ring-gray-500/25 hover:ring-gray-500/50 hover:shadow-lg">
+
+    <!-- Text stuff -->
+    <div class="p-8 h-max">
+
+        <!-- Title -->
+        <div class="flex list-reset space-x-2 items-baseline mb-2 cursor-pointer"
+            @click="$store.entities.setCurrentEntity(entity.id)">
+            <div class="text-xl w-min font-medium text-black/50  dark:text-white/50" x-text="'('+ entity.id + ')'">
+            </div>
+            <div x-text="entity.metadata.quantity != 0 && ($store.entities.searching && $store.moveEntityDialog.formatOption(entity.id) || entity.name) + ' (x' + entity.metadata.quantity +')' ||  ($store.entities.searching && $store.moveEntityDialog.formatOption(entity.id) || entity.name) "
+                class="text-xl font-bold "></div>
+
+        </div>
+        <!-- Name -->
+
+
+        <!-- Description, if present -->
+        <template x-if=" entity.description !=''">
+            <p x-text=" entity.description">
+            </p>
+        </template>
+
+        <!-- Children, if present. -->
+        <div x-show=" $store.entities.hasChildren(entity.id)">
+            <p class="mb-2 font-semibold">Contains:</p>
+            <div
+                class="flex flex-wrap gap-2 overflow-hidden hover:overflow-y-auto max-h-48 shadow-md p-2 ring-1 ring-gray-500/10 hover:ring-gray-500/25 hover:shadow-lg rounded-md">
+
+                <template x-for="childID in $store.entities.listChildLocations(entity.id)">
+                    <div class="p-2 rounded cursor-pointer bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 hover:bg-gray-100 hover:shadow-sm ring-gray-200 dark:ring-slate-500 ring-1 hover:ring-blue-500/75 active:shadow-md"
+                        x-text="$store.entities.fullstate.entities[childID].name"
+                        @click="$store.entities.setCurrentEntity(childID)">
+                    </div>
+                </template>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Buttons -->
+
+    {{ componentButtonRound "$store.api.delete(entity.id)" "red" "trash-solid" | unescapeHTML }}
+    {{ componentButtonRound "$store.moveEntityDialog.open(entity.id)" "blue" "hand-raised-solid" | unescapeHTML }}
+    {{ componentButtonRound "$store.newEntityDialog.open(entity.id)" "blue" "plus-solid" | unescapeHTML }}
+
+    <!-- Images -->
+    <div class="flex flex-row justify-center w-full">
+        <template
+            x-if="$store.entities.fullstate.entities[entity.id] != null && $store.entities.selectImages(entity.id) != null">
+            <template x-for="(n, index) in $store.entities.selectImages(entity.id)">
+                <img class="flex-1 object-cover w-full h-56 rounded-xl" :src="['/api/artifact/',n].join('')">
+            </template>
+        </template>
+    </div>
+
+</figure>
