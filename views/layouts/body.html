@@ -53,8 +53,8 @@
 
             <div class="flex flex-wrap justify-center gap-4">
 
-                <template
-                    x-for="entity in $store.entities.load($store.entities.currentEntity, $store.entities.searchtext)">
+                <template x-for="entity in $store.entities.load($store.entities.currentEntity, $store.entities.searchtext)"
+                    :key="entity.id">
 
                     {{ include "layouts/card" }}
 

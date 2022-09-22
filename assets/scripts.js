@@ -130,7 +130,7 @@ document.addEventListener('alpine:init', () => {
             }
             tree.push('World')
             tree.reverse()
-            return tree.join('/')
+            return '(' + x + ') ' + tree.join('/')
         },
 
     })
@@ -181,6 +181,31 @@ document.addEventListener('alpine:init', () => {
 
             // Converting JSON data to string
             var data = JSON.stringify({ location: parseInt(y) });
+
+            // Sending data with the request
+            xhr.send(data);
+        },
+
+        updateEntity(entity) {
+            // Creating a XHR object
+            let xhr = new XMLHttpRequest();
+            let url = "/api/entity/" + entity.id.toString();
+
+            // open a connection
+            xhr.open("PATCH", url, false);
+
+            // Set the request header i.e. which type of content you are sending
+            xhr.setRequestHeader("Content-Type", "application/json");
+
+            // Create a state change callback
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === 4 && xhr.status == 200) {
+                    return xhr.status
+                }
+            };
+
+            // Converting JSON data to string
+            var data = JSON.stringify(entity);
 
             // Sending data with the request
             xhr.send(data);

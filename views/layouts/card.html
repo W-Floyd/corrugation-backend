@@ -1,26 +1,44 @@
 <figure
-    class="container relative h-full max-w-sm bg-white shadow-md grow min-w-sm dark:bg-gray-800 rounded-xl ring-1 ring-gray-500/25 hover:ring-gray-500/50 hover:shadow-lg">
+    class="container relative h-full max-w-sm bg-white shadow-md grow min-w-sm dark:bg-gray-800 rounded-xl ring-1 ring-gray-500/25 hover:ring-gray-500/50 hover:shadow-lg"
+    x-data="{ editmode: false }" @click.outside="editmode = false; $store.api.updateEntity(entity)">
 
     <!-- Text stuff -->
     <div class="p-8 h-max">
 
         <!-- Title -->
-        <div class="flex list-reset space-x-2 items-baseline mb-2 cursor-pointer"
-            @click="$store.entities.setCurrentEntity(entity.id)">
-            <div class="text-xl w-min font-medium text-black/50  dark:text-white/50" x-text="'('+ entity.id + ')'">
-            </div>
-            <div x-text="entity.metadata.quantity != 0 && ($store.entities.searching && $store.moveEntityDialog.formatOption(entity.id) || entity.name) + ' (x' + entity.metadata.quantity +')' ||  ($store.entities.searching && $store.moveEntityDialog.formatOption(entity.id) || entity.name) "
-                class="text-xl font-bold "></div>
 
+        <div x-show="!editmode">
+            <div class="flex list-reset space-x-2 items-baseline mb-2 cursor-pointer"
+                @click="$store.entities.setCurrentEntity(entity.id)">
+                <div class="text-xl w-min font-medium text-black/50  dark:text-white/50" x-text="'('+ entity.id + ')'">
+                </div>
+                <div x-text="entity.metadata.quantity != 0 && entity.metadata.quantity != null && ($store.entities.searching && $store.moveEntityDialog.formatOption(entity.id) || entity.name) + ' (x' + entity.metadata.quantity +')' ||  ($store.entities.searching && $store.moveEntityDialog.formatOption(entity.id) || entity.name) "
+                    class="text-xl font-bold "></div>
+            </div>
+        </div>
+        <div x-show="editmode">
+            <div class="flex list-reset space-x-2 items-baseline mb-2 cursor-pointer">
+                <div class="text-xl w-min font-medium text-black/50  dark:text-white/50" x-text="'('+ entity.id + ')'">
+                </div>
+                <input type="text" x-model="entity.name" class="bg-white rounded-sm dark:bg-gray-900 ring-1">
+                <input type="number" min="0" x-model.number="entity.metadata.quantity"
+                    class="bg-white rounded-sm dark:bg-gray-900 ring-1 w-10">
+            </div>
         </div>
         <!-- Name -->
 
 
         <!-- Description, if present -->
-        <template x-if=" entity.description !=''">
-            <p x-text=" entity.description">
-            </p>
-        </template>
+
+        <div x-show="!editmode">
+            <template x-if="entity.description !=''">
+                <p x-text="entity.description">
+                </p>
+            </template>
+        </div>
+        <div x-show="editmode">
+            <textarea x-model="entity.description" class="bg-white rounded-sm dark:bg-gray-900 ring-1 w-full"></textarea>
+        </div>
 
         <!-- Children, if present. -->
         <div x-show=" $store.entities.hasChildren(entity.id)">
@@ -44,6 +62,8 @@
 
     {{ componentButtonRound "$store.api.delete(entity.id)" "red" "trash-solid" | unescapeHTML }}
     {{ componentButtonRound "$store.moveEntityDialog.open(entity.id)" "blue" "hand-raised-solid" | unescapeHTML }}
+    {{ componentButtonRound "if(!editmode){ editmode=true } else { editmode=false; $store.api.updateEntity(entity); }"
+    "blue" "pencil-solid" | unescapeHTML }}
     {{ componentButtonRound "$store.newEntityDialog.open(entity.id)" "blue" "plus-solid" | unescapeHTML }}
 
     <!-- Images -->

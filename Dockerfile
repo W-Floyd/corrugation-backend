@@ -1,7 +1,7 @@
 # Dockerfile References: https://docs.docker.com/engine/reference/builder/
 
 # Start from golang:1.12-alpine base image
-FROM golang:alpine
+FROM golang:1.19-alpine
 
 # The latest alpine images don't have some tools like (`git` and `bash`).
 # Adding git, bash and openssh to the image
@@ -47,3 +47,5 @@ EXPOSE 8083
 ENTRYPOINT ["/app/main" ]
 
 COPY assets/ /assets
+COPY views/ /views
+COPY components/ /components
