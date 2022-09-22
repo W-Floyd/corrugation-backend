@@ -1,7 +1,8 @@
 <figure
     class="container relative h-full max-w-sm bg-white shadow-md grow min-w-sm dark:bg-gray-800 rounded-xl ring-1 ring-gray-500/25 hover:ring-gray-500/50 hover:shadow-lg"
     x-data="{ editmode: false, localentity: cloneDeep(entity) }"
-    @click.outside="if (editmode) { editmode = false }">
+    @click.outside="if (editmode) { editmode = false }"
+    @keyup.enter="if(editmode){ $store.api.updateEntity(localentity); editmode=false; $store.entities.fullstate.entities[entity.id]=cloneDeep(localentity); entity=cloneDeep(localentity); }">
 
     <!-- Text stuff -->
     <div class="p-8 h-max">
@@ -38,8 +39,8 @@
             </template>
         </div>
         <div x-show="editmode">
-            <textarea x-model="localentity.description"
-                class="bg-white rounded-sm dark:bg-gray-900 ring-1 w-full"></textarea>
+            <textarea x-model="localentity.description" class="bg-white rounded-sm dark:bg-gray-900 ring-1 w-full"
+                @keyup.enter.stop></textarea>
         </div>
 
         <!-- Children, if present. -->
