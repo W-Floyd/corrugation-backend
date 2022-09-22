@@ -1,6 +1,7 @@
 <figure
     class="container relative h-full max-w-sm bg-white shadow-md grow min-w-sm dark:bg-gray-800 rounded-xl ring-1 ring-gray-500/25 hover:ring-gray-500/50 hover:shadow-lg"
-    x-data="{ editmode: false }" @click.outside="editmode = false; $store.api.updateEntity(entity)">
+    x-data="{ editmode: false, localentity: cloneDeep(entity) }"
+    @click.outside="if (editmode) { editmode = false }">
 
     <!-- Text stuff -->
     <div class="p-8 h-max">
@@ -20,8 +21,8 @@
             <div class="flex list-reset space-x-2 items-baseline mb-2 cursor-pointer">
                 <div class="text-xl w-min font-medium text-black/50  dark:text-white/50" x-text="'('+ entity.id + ')'">
                 </div>
-                <input type="text" x-model="entity.name" class="bg-white rounded-sm dark:bg-gray-900 ring-1">
-                <input type="number" min="0" x-model.number="entity.metadata.quantity"
+                <input type="text" x-model.lazy="localentity.name" class="bg-white rounded-sm dark:bg-gray-900 ring-1">
+                <input type="number" min="0" x-model.number.lazy="localentity.metadata.quantity"
                     class="bg-white rounded-sm dark:bg-gray-900 ring-1 w-10">
             </div>
         </div>
@@ -37,7 +38,8 @@
             </template>
         </div>
         <div x-show="editmode">
-            <textarea x-model="entity.description" class="bg-white rounded-sm dark:bg-gray-900 ring-1 w-full"></textarea>
+            <textarea x-model="localentity.description"
+                class="bg-white rounded-sm dark:bg-gray-900 ring-1 w-full"></textarea>
         </div>
 
         <!-- Children, if present. -->
@@ -62,8 +64,7 @@
 
     {{ componentButtonRound "$store.api.delete(entity.id)" "red" "trash-solid" | unescapeHTML }}
     {{ componentButtonRound "$store.moveEntityDialog.open(entity.id)" "blue" "hand-raised-solid" | unescapeHTML }}
-    {{ componentButtonRound "if(!editmode){ editmode=true } else { editmode=false; $store.api.updateEntity(entity); }"
-    "blue" "pencil-solid" | unescapeHTML }}
+    {{ componentButtonRound "if(!editmode){ localentity=cloneDeep(entity); editmode=true; } else { $store.api.updateEntity(localentity); editmode=false; $store.entities.fullstate.entities[entity.id]=cloneDeep(localentity); entity=cloneDeep(localentity); }" "blue" "pencil-solid" | unescapeHTML }}
     {{ componentButtonRound "$store.newEntityDialog.open(entity.id)" "blue" "plus-solid" | unescapeHTML }}
 
     <!-- Images -->

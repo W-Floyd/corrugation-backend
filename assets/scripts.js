@@ -482,3 +482,23 @@ function sortEntityID(a, b) {
 
     return 0;
 }
+
+function cloneDeep(aObject) {
+    // Prevent undefined objects
+    // if (!aObject) return aObject;
+  
+    let bObject = Array.isArray(aObject) ? [] : {};
+  
+    let value;
+    for (const key in aObject) {
+  
+      // Prevent self-references to parent object
+      // if (Object.is(aObject[key], aObject)) continue;
+      
+      value = aObject[key];
+  
+      bObject[key] = (value === null) ? null : (typeof value === "object") ? cloneDeep(value) : value;
+    }
+  
+    return bObject;
+  }
