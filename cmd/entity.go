@@ -22,7 +22,6 @@ func parseID(c echo.Context) (int, error) {
 }
 
 func createEntity(c echo.Context) error {
-	store.LastEntityID += 1
 
 	loc := Entity{}
 
@@ -38,16 +37,27 @@ func createEntity(c echo.Context) error {
 		loc.Description = c.FormValue("description")
 	}
 
-	loc.ID = store.LastEntityID
+	if loc.ID == 0 {
+		loc.ID = store.LastEntityID() + 1
+	}
 
-	store.Entities[store.LastEntityID] = loc
+	if _, exists := store.Entities[loc.ID]; exists {
+		if store.Entities[loc.ID].Metadata.IsLabeled {
+			return c.JSON(http.StatusConflict, "Entity exists with labeled entity "+strconv.Itoa(int(loc.ID)))
+		}
+		e := store.Entities[loc.ID]
+		e.ID = store.LastEntityID() + 1
+		store.Entities[e.ID] = e
+	}
 
-	if err := updateModification(store.LastEntityID); err != nil {
+	store.Entities[loc.ID] = loc
+
+	if err := updateModification(loc.ID); err != nil {
 		return err
 	}
 
 	updateStore()
-	return c.JSON(http.StatusOK, strconv.Itoa(int(store.LastEntityID)))
+	return c.JSON(http.StatusOK, strconv.Itoa(int(loc.ID)))
 }
 
 func getEntity(c echo.Context) error {
@@ -271,4 +281,20 @@ func sortEntities(s []Entity) (out []Entity) {
 		return out[p].Name < out[q].Name
 	})
 	return
+}
+
+func firstId(c echo.Context) error {
+	candidates := unlabeledIDs()
+	candidates = append(candidates, emptyIDs()...)
+
+	min := store.LastEntityID() + 1
+
+	for _, val := range candidates {
+		if val < min {
+			min = val
+		}
+	}
+
+	return c.JSON(http.StatusOK, min)
+
 }

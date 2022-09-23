@@ -1,7 +1,18 @@
 <!-- New Entity Dialog -->
 <div x-show="$store.newEntityDialog.opened" style="display: none"
     x-on:keydown.escape.prevent.stop="$store.newEntityDialog.opened = false" role="dialog"
-    class="fixed inset-0 overflow-y-auto">
+    class="fixed inset-0 overflow-y-auto"
+    x-data="{
+        async entityid() {
+            if ($store.newEntityDialog.entity.metadata.islabeled){
+                id = await $store.api.firstAvailableID()
+            } else {
+                id = await $store.api.firstFreeID()
+            }
+            $store.newEntityDialog.entity.id=id
+            return id
+        }
+    }">
 
     <!-- Overlay -->
     <div x-show="$store.newEntityDialog.opened" x-transition.opacity
@@ -11,7 +22,7 @@
     <!-- Panel -->
     <div x-show="$store.newEntityDialog.opened" x-transition x-on:click="$store.newEntityDialog.opened = false"
         class="relative flex items-center justify-center min-h-screen p-4 shadow-xl"
-        @keyup.enter="$store.api.newEntity(); $store.newEntityDialog.opened = false; $store.entities.reload($store.entities.currentEntity)">
+        @keyup.enter="$store.api.newEntity(); $store.newEntityDialog.close()">
 
         <div x-on:click.stop x-trap.noscroll.inert="$store.newEntityDialog.opened"
             class="relative w-full max-w-2xl p-8 overflow-y-auto bg-white border border-black rounded-lg dark:bg-gray-800">
@@ -20,14 +31,19 @@
             <div class="grid grid-cols-2 w-fit space-x-2 items-baseline">
                 <h1 class="pb-4 text-3xl font-medium">Create New Entity</h1>
                 <h2 class="pb-4 text-2xl font-medium text-black/50  dark:text-white/50"
-                    x-text="'('+ ($store.entities.fullstate.lastentityid+1) + ')'"></h2>
+                    x-text="'('+ (await entityid()) + ')'"></h2>
             </div>
 
             <div class="grid grid-cols-4 space-y-2">
 
-                <label for="name">Name</label>
+                <label class="col-span-1" for="name">Name</label>
                 <input name="name" autofocus id="name" type="text" x-model="$store.newEntityDialog.entity.name"
-                    class="col-span-3 bg-white rounded-sm dark:bg-gray-900 ring-1">
+                    class="col-span-2 bg-white rounded-sm dark:bg-gray-900 ring-1">
+                <div class="col-span-1 pl-4">
+                    <label for="islabeled">Is Labeled</label>
+                    <input name="islabeled" id="islabeled" type="checkbox"
+                        x-model="$store.newEntityDialog.entity.metadata.islabeled">
+                </div>
 
                 <label for="description">Description</label>
                 <textarea name="description" id="description" type="text" @keyup.enter.stop
@@ -53,7 +69,7 @@
             <!-- Buttons -->
             <div class="flex mt-8 space-x-2">
                 <button type="button"
-                    x-on:click="$store.api.newEntity(); $store.newEntityDialog.opened = false; $store.entities.reload($store.entities.currentEntity)"
+                    x-on:click="$store.api.newEntity(); $store.newEntityDialog.close()"
                     class="h-10 px-4 py-2 text-white bg-blue-500 rounded-full shadow float-bottom hover:bg-blue-600 active:shadow-lg mouse focus:outline-1">
                     Submit
                 </button>

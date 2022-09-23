@@ -25,6 +25,7 @@ type Metadata struct {
 	Tags           []string `json:"tags"`
 	LastModified   string   `json:"lastmodified"`
 	LastModifiedBy string   `json:"lastmodifiedby"`
+	IsLabeled      bool     `json:"islabeled"`
 }
 
 type Entity struct {
@@ -39,7 +40,6 @@ type Entity struct {
 type Store struct {
 	Entities       map[EntityID]Entity     `json:"entities"`
 	Artifacts      map[ArtifactID]Artifact `json:"artifacts"`
-	LastEntityID   EntityID                `json:"lastentityid"`
 	LastArtifactID ArtifactID              `json:"lastartifactid"`
 	StoreVersion   int                     `json:"storeversion"`
 }
@@ -79,4 +79,37 @@ func resetStore() error {
 
 func storeVersion(c echo.Context) error {
 	return c.JSON(http.StatusOK, store.StoreVersion)
+}
+
+func emptyIDs() []EntityID {
+	gaps := []EntityID{}
+	for i := EntityID(1); i < store.LastEntityID()+1; i++ {
+		if _, exists := store.Entities[i]; !exists {
+			gaps = append(gaps, i)
+		}
+	}
+
+	return gaps
+
+}
+
+func unlabeledIDs() []EntityID {
+	unlabeled := []EntityID{}
+	for k, _ := range store.Entities {
+		if !store.Entities[k].Metadata.IsLabeled {
+			unlabeled = append(unlabeled, store.Entities[k].ID)
+		}
+	}
+
+	return unlabeled
+}
+
+func (s Store) LastEntityID() EntityID {
+	largest := EntityID(0)
+	for k, _ := range s.Entities {
+		if k > largest {
+			largest = k
+		}
+	}
+	return EntityID(largest)
 }

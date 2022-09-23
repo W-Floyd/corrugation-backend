@@ -247,6 +247,20 @@ func server(cmd *cobra.Command, args []string) {
 	r.GET("/entity/find/children/:id/full/recursive", getContainsFullRecursive)
 	r.GET("/entity/find/locations", findEntitiesWithChildren)
 	r.GET("/entity/find/locations/full", findEntitiesWithChildrenFull)
+	r.GET("/entity/find/firstid", firstId)
+	r.GET("/entity/find/nextid", func(c echo.Context) error {
+		return c.JSON(http.StatusOK, store.LastEntityID()+1)
+	})
+	r.GET("/entity/find/firstfreeid", func(c echo.Context) error {
+		free := emptyIDs()
+		min := store.LastEntityID() + 1
+		for _, v := range free {
+			if v < min {
+				min = v
+			}
+		}
+		return c.JSON(http.StatusOK, min)
+	})
 	r.GET("/entity/:id/contains", getContains)
 	r.GET("/entity/:id/qrcode", qrGenerate)
 	r.GET("/entity/list", listEntities)

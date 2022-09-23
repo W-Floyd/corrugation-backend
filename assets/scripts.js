@@ -25,6 +25,7 @@ document.addEventListener('alpine:init', () => {
                     quantity: null,
                     owners: null,
                     tags: null,
+                    islabeled: null,
                 },
             }
         },
@@ -43,6 +44,11 @@ document.addEventListener('alpine:init', () => {
             this.entity.location = parseInt(this.targetLocation)
             this.entity.metadata.quantity = parseInt(this.entity.metadata.quantity)
             return this.entity
+        },
+
+        async close() {
+            this.opened = false
+            await Alpine.store('entities').reload()
         }
 
     })
@@ -119,6 +125,9 @@ document.addEventListener('alpine:init', () => {
         formatOption(x) {
             tree = []
             target = x
+            if (Alpine.store('entities').fullstate.entities[target] == null){
+                return null
+            }
             while (target != 0) {
                 if (Alpine.store('entities').fullstate.entities[target].name == null || Alpine.store('entities').fullstate.entities[target].name == '') {
                     tree.push(target)
@@ -136,7 +145,7 @@ document.addEventListener('alpine:init', () => {
     })
 
     Alpine.store('api', {
-        newEntity(data) {
+        newEntity() {
             // Creating a XHR object
             let xhr = new XMLHttpRequest();
             let url = "/api/entity";
@@ -260,6 +269,34 @@ document.addEventListener('alpine:init', () => {
                 xhr.send(fd);
             }
 
+        },
+
+        async firstAvailableID() {
+
+            let url = '/api/entity/find/firstid';
+            let options = {
+                method: 'GET'
+            }
+
+            result = await fetch(url, options)
+                .then(response => response.json());
+
+            return result
+        },
+
+        async firstFreeID() {
+
+            let url = '/api/entity/find/firstfreeid';
+            let options = {
+                method: 'GET'
+            }
+
+
+            result = await fetch(url, options)
+                .then(response => response.json());
+
+            return result
+
         }
 
     })
@@ -282,15 +319,15 @@ document.addEventListener('alpine:init', () => {
 
         currentEntity: 0,
 
-        setCurrentEntity(x) {
+        async setCurrentEntity(x) {
             this.currentEntity = x
             this.searchtext = ""
-            this.reload()
+            await this.reload()
         },
 
-        reload() {
-            this.loadFullState()
-            this.loadLocationTree()
+        async reload() {
+            await this.loadFullState()
+            await this.loadLocationTree()
         },
 
         // Returns the children of the current entity
@@ -486,19 +523,19 @@ function sortEntityID(a, b) {
 function cloneDeep(aObject) {
     // Prevent undefined objects
     // if (!aObject) return aObject;
-  
+
     let bObject = Array.isArray(aObject) ? [] : {};
-  
+
     let value;
     for (const key in aObject) {
-  
-      // Prevent self-references to parent object
-      // if (Object.is(aObject[key], aObject)) continue;
-      
-      value = aObject[key];
-  
-      bObject[key] = (value === null) ? null : (typeof value === "object") ? cloneDeep(value) : value;
+
+        // Prevent self-references to parent object
+        // if (Object.is(aObject[key], aObject)) continue;
+
+        value = aObject[key];
+
+        bObject[key] = (value === null) ? null : (typeof value === "object") ? cloneDeep(value) : value;
     }
-  
+
     return bObject;
-  }
+}
