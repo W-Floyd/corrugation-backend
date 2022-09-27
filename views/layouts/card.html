@@ -45,14 +45,14 @@
         </div>
 
         <!-- Children, if present. -->
-        <div x-show=" $store.entities.hasChildren(entity.id)">
+        <div x-show="$store.entities.hasChildren(entity.id)">
             <p class="mb-2 font-semibold">Contains:</p>
             <div
                 class="flex flex-wrap gap-2 overflow-hidden hover:overflow-y-auto max-h-48 shadow-md p-2 ring-1 ring-gray-500/10 hover:ring-gray-500/25 hover:shadow-lg rounded-md">
 
                 <template x-for="childID in $store.entities.listChildLocations(entity.id)">
                     <div class="p-2 rounded cursor-pointer bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 hover:bg-gray-100 hover:shadow-sm ring-gray-200 dark:ring-slate-500 ring-1 hover:ring-blue-500/75 active:shadow-md"
-                        x-text="$store.entities.fullstate.entities[childID].name"
+                        x-text="$store.entities.readname(childID)"
                         @click="$store.entities.setCurrentEntity(childID)">
                     </div>
                 </template>

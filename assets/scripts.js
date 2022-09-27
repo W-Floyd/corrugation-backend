@@ -125,7 +125,7 @@ document.addEventListener('alpine:init', () => {
         formatOption(x) {
             tree = []
             target = x
-            if (Alpine.store('entities').fullstate.entities[target] == null){
+            if (Alpine.store('entities').fullstate.entities[target] == null) {
                 return null
             }
             while (target != 0) {
@@ -438,6 +438,9 @@ document.addEventListener('alpine:init', () => {
         readname(x) {
             if (x == 0) {
                 return 'World'
+            }
+            if (this.fullstate.entities[x].name == '') {
+                return x
             }
             return this.fullstate.entities[x].name
         },
