@@ -79,8 +79,12 @@ document.addEventListener('alpine:init', () => {
             this.opened = true
         },
 
-        move() {
-            this.targetLocation = document.getElementById("moveEntitySelect").value
+        move(x) {
+            if (x == null) {
+                this.targetLocation = document.getElementById("moveEntitySelect").value
+            } else {
+                this.targetLocation = x
+            }
             Alpine.store('api').moveEntity(this.sourceEntity, this.targetLocation)
         },
 

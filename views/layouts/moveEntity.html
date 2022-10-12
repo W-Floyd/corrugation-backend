@@ -50,7 +50,7 @@
                     Submit
                 </button>
                 <button type="button"
-                    x-on:click="$store.moveEntityDialog.targetLocation=$store.entities.currentEntity; $store.moveEntityDialog.move(); $store.moveEntityDialog.opened = false; $store.entities.reload($store.entities.currentEntity)"
+                    x-on:click="$store.moveEntityDialog.move($store.entities.currentEntity); $store.moveEntityDialog.opened = false; $store.entities.reload($store.entities.currentEntity)"
                     class="h-10 px-4 py-2 text-white bg-blue-500 rounded-full shadow float-bottom hover:bg-blue-600 active:shadow-lg mouse focus:outline-1">
                     Move Here
                 </button>
