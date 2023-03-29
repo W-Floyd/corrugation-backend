@@ -24,7 +24,7 @@
                 <input type="number" min="0" x-model.number.lazy="localentity.metadata.quantity"
                     class="bg-white rounded-sm dark:bg-gray-900 ring-1 w-10">
                 <input type="checkbox" x-model="localentity.metadata.islabeled">
-                <input class="display:none" name="photo" type="file" id="photo" x-show="false"
+                <input class="display:none" name="photoedit" type="file" id="photoedit" x-show="false"
                     x-on:change="$store.editEntityDialog.files = Object.values($event.target.files)" accept="image/*"
                     capture="camera">
             </div>
@@ -70,7 +70,7 @@
     {{ componentButtonRound "if(!editmode){ localentity=cloneDeep(entity); editmode=true; }" "blue" "pencil-solid" | unescapeHTML }}
     {{ componentButtonRound "$store.newEntityDialog.open(entity.id)" "blue" "plus-solid" | unescapeHTML }}
     <div x-show="editmode">
-        {{ componentButtonRound "document.getElementById('photo').click();" "blue" "camera-solid" | unescapeHTML }}
+        {{ componentButtonRound "document.getElementById('photoedit').click();" "blue" "camera-solid" | unescapeHTML }}
         {{ componentButtonRound "$store.api.uploadArtifactsEdit(); localentity.artifacts=cloneDeep($store.editEntityDialog.entity.artifacts); $store.api.updateEntity(localentity); editmode=false; $store.entities.fullstate.entities[entity.id]=cloneDeep(localentity); entity=cloneDeep(localentity); $store.entities.reload();" "blue" "check-circle-solid" | unescapeHTML }}
     </div>
 
