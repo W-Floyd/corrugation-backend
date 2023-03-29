@@ -1,8 +1,7 @@
 <figure
     class="container relative h-full max-w-sm bg-white shadow-md grow min-w-sm dark:bg-gray-800 rounded-xl ring-1 ring-gray-500/25 hover:ring-gray-500/50 hover:shadow-lg"
     x-data="{ editmode: false, localentity: cloneDeep(entity) }"
-    @click.outside="if (editmode) { editmode = false }"
-    @keyup.enter="if(editmode){ localentity.artifact=$store.api.uploadArtifactsEdit(); $store.api.updateEntity(localentity); editmode=false; $store.entities.fullstate.entities[entity.id]=cloneDeep(localentity); entity=cloneDeep(localentity); $store.entities.reload() }">
+    @keyup.enter="if(editmode){ $store.api.uploadArtifactsEdit(); localentity.artifacts=cloneDeep($store.editEntityDialog.entity.artifacts); $store.api.updateEntity(localentity); editmode=false; $store.entities.fullstate.entities[entity.id]=cloneDeep(localentity); entity=cloneDeep(localentity); $store.entities.reload() }">
 
     <!-- Text stuff -->
     <div class="p-8 h-max">
@@ -69,7 +68,7 @@
 
     {{ componentButtonRound "$store.api.delete(entity.id)" "red" "trash-solid" | unescapeHTML }}
     {{ componentButtonRound "$store.moveEntityDialog.open(entity.id)" "blue" "hand-raised-solid" | unescapeHTML }}
-    {{ componentButtonRound "if(!editmode){ localentity=cloneDeep(entity); editmode=true; } else { localentity.artifact=$store.api.uploadArtifactsEdit(); $store.api.updateEntity(localentity); editmode=false; $store.entities.fullstate.entities[entity.id]=cloneDeep(localentity); entity=cloneDeep(localentity); $store.entities.reload(); }" "blue" "pencil-solid" | unescapeHTML }}
+    {{ componentButtonRound "if(!editmode){ localentity=cloneDeep(entity); editmode=true; } else { $store.api.uploadArtifactsEdit(); localentity.artifacts=cloneDeep($store.editEntityDialog.entity.artifacts); $store.api.updateEntity(localentity); editmode=false; $store.entities.fullstate.entities[entity.id]=cloneDeep(localentity); entity=cloneDeep(localentity); $store.entities.reload(); }" "blue" "pencil-solid" | unescapeHTML }}
     {{ componentButtonRound "$store.newEntityDialog.open(entity.id)" "blue" "plus-solid" | unescapeHTML }}
     <div x-show="editmode">
         {{ componentButtonRound "document.getElementById('photo').click();" "blue" "camera-solid" | unescapeHTML }}

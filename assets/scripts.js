@@ -75,14 +75,7 @@ document.addEventListener('alpine:init', () => {
                     islabeled: null,
                 },
             }
-        },
-
-        make() {
-            if (this.files != null) {
-                Alpine.store('api').uploadArtifactsEdit()
-            }
-            return this.entity
-        },
+        }
 
     })
 
@@ -326,7 +319,7 @@ document.addEventListener('alpine:init', () => {
                         if (Alpine.store('editEntityDialog').entity.artifacts == null) {
                             Alpine.store('editEntityDialog').entity.artifacts = []
                         }
-                        return parseInt(response)
+                        Alpine.store('editEntityDialog').entity.artifacts.push(parseInt(response))
                     }
                 };
 
