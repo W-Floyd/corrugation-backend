@@ -39,7 +39,7 @@ document.addEventListener('alpine:init', () => {
 
         make() {
             if (this.files != null) {
-                Alpine.store('api').uploadArtifacts()
+                Alpine.store('api').uploadArtifactsNew()
             }
             this.entity.location = parseInt(this.targetLocation)
             this.entity.metadata.quantity = parseInt(this.entity.metadata.quantity)
@@ -53,6 +53,38 @@ document.addEventListener('alpine:init', () => {
 
     })
 
+    Alpine.store('editEntityDialog', {
+        entity: {},
+        files: null,
+
+        init() {
+            this.reset()
+        },
+
+        reset() {
+            this.files = null
+            this.entity = {
+                name: null,
+                description: null,
+                artifacts: null,
+                location: null,
+                metadata: {
+                    quantity: null,
+                    owners: null,
+                    tags: null,
+                    islabeled: null,
+                },
+            }
+        },
+
+        make() {
+            if (this.files != null) {
+                Alpine.store('api').uploadArtifactsEdit()
+            }
+            return this.entity
+        },
+
+    })
 
     Alpine.store('moveEntityDialog', {
         opened: false,
@@ -243,7 +275,7 @@ document.addEventListener('alpine:init', () => {
             xhr.send();
         },
 
-        uploadArtifacts() {
+        uploadArtifactsNew() {
 
             for (key in Alpine.store('newEntityDialog').files) {
 
@@ -263,6 +295,38 @@ document.addEventListener('alpine:init', () => {
                             Alpine.store('newEntityDialog').entity.artifacts = []
                         }
                         Alpine.store('newEntityDialog').entity.artifacts.push(parseInt(response))
+                    }
+                };
+
+                // open a connection
+                xhr.open("POST", url, false);
+
+                // Sending data with the request
+                xhr.send(fd);
+            }
+
+        },
+
+        uploadArtifactsEdit() {
+
+            for (key in Alpine.store('editEntityDialog').files) {
+
+                // Create FormData instance
+                const fd = new FormData();
+                fd.append('file', Alpine.store('editEntityDialog').files[key]);
+
+                // Creating a XHR object
+                let xhr = new XMLHttpRequest();
+                let url = "/api/artifact";
+
+                // Create a state change callback
+                xhr.onreadystatechange = function () {
+                    if (xhr.readyState === 4 && xhr.status == 200) {
+                        let response = JSON.parse(xhr.responseText)
+                        if (Alpine.store('editEntityDialog').entity.artifacts == null) {
+                            Alpine.store('editEntityDialog').entity.artifacts = []
+                        }
+                        return parseInt(response)
                     }
                 };
 
