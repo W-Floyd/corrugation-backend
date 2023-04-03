@@ -302,6 +302,8 @@ document.addEventListener('alpine:init', () => {
 
         uploadArtifactsEdit() {
 
+            Alpine.store('editEntityDialog').files = [Alpine.store('editEntityDialog').files.reverse()[0]]
+
             for (key in Alpine.store('editEntityDialog').files) {
 
                 // Create FormData instance
@@ -319,7 +321,7 @@ document.addEventListener('alpine:init', () => {
                         if (Alpine.store('editEntityDialog').entity.artifacts == null) {
                             Alpine.store('editEntityDialog').entity.artifacts = []
                         }
-                        Alpine.store('editEntityDialog').entity.artifacts.push(parseInt(response))
+                        Alpine.store('editEntityDialog').entity.artifacts = [parseInt(response)]
                     }
                 };
 
@@ -329,6 +331,8 @@ document.addEventListener('alpine:init', () => {
                 // Sending data with the request
                 xhr.send(fd);
             }
+
+            Alpine.store('editEntityDialog').files = null
 
         },
 
@@ -410,7 +414,14 @@ document.addEventListener('alpine:init', () => {
                         this.fullstate.entities[id].description.toLowerCase().includes(searchText.toLowerCase()) ||
                         id == searchText.toLowerCase()
                     ) {
-                        arr.push(this.fullstate.entities[id])
+                        if (
+                            id == searchText ||
+                            this.fullstate.entities[id].name.toLowerCase() == searchText
+                        ) {
+                            arr.unshift(this.fullstate.entities[id])
+                        } else {
+                            arr.push(this.fullstate.entities[id])
+                        }
                     }
                 }
 
@@ -493,7 +504,7 @@ document.addEventListener('alpine:init', () => {
                 }
                 return images
             }
-            return null
+            return []
         },
 
         readname(x) {

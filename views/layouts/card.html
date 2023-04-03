@@ -67,17 +67,19 @@
 
     {{ componentButtonRound "$store.api.delete(entity.id)" "red" "trash-solid" | unescapeHTML }}
     {{ componentButtonRound "$store.moveEntityDialog.open(entity.id)" "blue" "hand-raised-solid" | unescapeHTML }}
-    {{ componentButtonRound "if(!editmode){ localentity=cloneDeep(entity); editmode=true; }" "blue" "pencil-solid" | unescapeHTML }}
+    <div x-show="!editmode">
+        {{ componentButtonRound "if(!editmode){ localentity=cloneDeep(entity); editmode=true; }" "blue" "pencil-solid" | unescapeHTML }}
+    </div>
     {{ componentButtonRound "$store.newEntityDialog.open(entity.id)" "blue" "plus-solid" | unescapeHTML }}
     <div x-show="editmode">
         {{ componentButtonRound "document.getElementById('photoedit').click();" "blue" "camera-solid" | unescapeHTML }}
-        {{ componentButtonRound "$store.api.uploadArtifactsEdit(); localentity.artifacts=cloneDeep($store.editEntityDialog.entity.artifacts); $store.api.updateEntity(localentity); editmode=false; $store.entities.fullstate.entities[entity.id]=cloneDeep(localentity); entity=cloneDeep(localentity); $store.entities.reload();" "blue" "check-circle-solid" | unescapeHTML }}
+        {{ componentButtonRound "if($store.editEntityDialog.files != null){$store.api.uploadArtifactsEdit(); localentity.artifacts=cloneDeep($store.editEntityDialog.entity.artifacts)}; $store.api.updateEntity(localentity); editmode=false; $store.entities.fullstate.entities[entity.id]=cloneDeep(localentity); entity=cloneDeep(localentity); $store.entities.reload();" "blue" "check-circle-solid" | unescapeHTML }}
     </div>
 
     <!-- Images -->
     <div class="flex flex-row justify-center w-full">
         <template
-            x-if="$store.entities.fullstate.entities[entity.id] != null && $store.entities.selectImages(entity.id) != null">
+            x-if="$store.entities.fullstate.entities[entity.id] != null && $store.entities.selectImages(entity.id).length>0">
             <template x-for="(n, index) in $store.entities.selectImages(entity.id)">
                 <img class="flex-1 object-cover w-full h-56 rounded-xl" :src="['/api/artifact/',n].join('')">
             </template>
