@@ -407,10 +407,11 @@ document.addEventListener('alpine:init', () => {
                 } else {
                     children = this.listChildLocationsDeep(this.currentEntity).sort((a, b) => sortEntityID(a, b))
                 }
-
                 if (searchText.includes('filter:missing-image')) {
-                    filterToMissingImage = true
+                    this.filterToMissingImage = true
                     searchText = searchText.replace('filter:missing-image', '')
+                } else {
+                    this.filterToMissingImage = false
                 }
 
                 for (const cid in children) {
@@ -421,7 +422,7 @@ document.addEventListener('alpine:init', () => {
                         id == searchText.toLowerCase()
                     ) {
                         if (
-                            !filterToMissingImage ||
+                            !this.filterToMissingImage ||
                             this.fullstate.entities[id].artifacts == null
                         ) {
                             if (
