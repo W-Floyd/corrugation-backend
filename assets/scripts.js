@@ -370,6 +370,7 @@ document.addEventListener('alpine:init', () => {
 
         searchtextpredebounce: '',
         searchtext: '',
+        filterToMissingImage: false,
         debouncesearch() {
             this.searchtext = this.searchtextpredebounce
         },
@@ -407,6 +408,11 @@ document.addEventListener('alpine:init', () => {
                     children = this.listChildLocationsDeep(this.currentEntity).sort((a, b) => sortEntityID(a, b))
                 }
 
+                if (searchText.includes('filter:missing-image')) {
+                    filterToMissingImage = true
+                    searchText = searchText.replace('filter:missing-image', '')
+                }
+
                 for (const cid in children) {
                     id = children[cid]
                     if (
@@ -415,12 +421,17 @@ document.addEventListener('alpine:init', () => {
                         id == searchText.toLowerCase()
                     ) {
                         if (
-                            id == searchText ||
-                            this.fullstate.entities[id].name.toLowerCase() == searchText
+                            !filterToMissingImage ||
+                            this.fullstate.entities[id].artifacts == null
                         ) {
-                            arr.unshift(this.fullstate.entities[id])
-                        } else {
-                            arr.push(this.fullstate.entities[id])
+                            if (
+                                id == searchText ||
+                                this.fullstate.entities[id].name.toLowerCase() == searchText
+                            ) {
+                                arr.unshift(this.fullstate.entities[id])
+                            } else {
+                                arr.push(this.fullstate.entities[id])
+                            }
                         }
                     }
                 }
