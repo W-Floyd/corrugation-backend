@@ -140,7 +140,14 @@ document.addEventListener('alpine:init', () => {
                         Alpine.store('entities').fullstate.entities[id].description.toLowerCase().includes(searchText.toLowerCase()) ||
                         id == searchText.toLowerCase()
                     ) {
-                        arr.push(id)
+                        if (
+                            id == searchText ||
+                            Alpine.store('entities').fullstate.entities[id].name.toLowerCase() == searchText.toLowerCase()
+                        ) {
+                            arr.unshift(id)
+                        } else {
+                            arr.push(id)
+                        }
                     }
                 }
 
@@ -444,7 +451,7 @@ document.addEventListener('alpine:init', () => {
                         ) {
                             if (
                                 id == searchText ||
-                                this.fullstate.entities[id].name.toLowerCase() == searchText
+                                this.fullstate.entities[id].name.toLowerCase() == searchText.toLowerCase()
                             ) {
                                 arr.unshift(this.fullstate.entities[id])
                             } else {
