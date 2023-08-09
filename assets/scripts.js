@@ -371,6 +371,7 @@ document.addEventListener('alpine:init', () => {
         searchtextpredebounce: '',
         searchtext: '',
         filterToMissingImage: false,
+        filterToOnlyImage: false,
         debouncesearch() {
             this.searchtext = this.searchtextpredebounce
         },
@@ -407,11 +408,21 @@ document.addEventListener('alpine:init', () => {
                 } else {
                     children = this.listChildLocationsDeep(this.currentEntity).sort((a, b) => sortEntityID(a, b))
                 }
+
                 if (searchText.includes('filter:missing-image')) {
                     this.filterToMissingImage = true
+                    this.filterToOnlyImage = false
                     searchText = searchText.replace('filter:missing-image', '')
                 } else {
                     this.filterToMissingImage = false
+                }
+
+                if (searchText.includes('filter:only-image')) {
+                    this.filterToMissingImage = false
+                    this.filterToOnlyImage = true
+                    searchText = searchText.replace('filter:only-image', '')
+                } else {
+                    this.filterToOnlyImage = false
                 }
 
                 for (const cid in children) {
@@ -422,8 +433,14 @@ document.addEventListener('alpine:init', () => {
                         id == searchText.toLowerCase()
                     ) {
                         if (
-                            !this.filterToMissingImage ||
-                            this.fullstate.entities[id].artifacts == null
+                            (
+                                !this.filterToMissingImage ||
+                                this.fullstate.entities[id].artifacts == null
+                            ) || (
+                                this.filterToOnlyImage &&
+                                this.fullstate.entities[id].artifacts != null &&
+                                this.fullstate.entities[id].artifacts.length > 0
+                            )
                         ) {
                             if (
                                 id == searchText ||
