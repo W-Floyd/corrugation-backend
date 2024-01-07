@@ -611,24 +611,24 @@ function sortEntityID(a, b) {
     let fa = ea.name.toLowerCase(),
         fb = eb.name.toLowerCase();
 
-    if (fa < fb) {
-        return -1;
-    }
-    if (fa > fb) {
-        return 1;
+    var collator = new Intl.Collator([], { numeric: true });
+    let retval = collator.compare(fa, fb)
+
+    if (retval != 0) {
+        return retval;
     }
 
     fa = ea.description.toLowerCase();
     fb = eb.description.toLowerCase();
 
-    if (fa < fb) {
-        return -1;
-    }
-    if (fa > fb) {
-        return 1;
+    retval = collator.compare(fa, fb)
+
+    if (retval != 0) {
+        return retval;
     }
 
-    return 0;
+    return collator.compare(a, b)
+
 }
 
 function cloneDeep(aObject) {
