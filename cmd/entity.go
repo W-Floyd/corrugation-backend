@@ -47,6 +47,11 @@ func createEntity(c echo.Context) error {
 		}
 		e := store.Entities[loc.ID]
 		e.ID = store.LastEntityID() + 1
+		for _, childEntity := range findContains(loc.ID) {
+			cE := store.Entities[childEntity]
+			cE.Location = e.ID
+			store.Entities[childEntity] = cE
+		}
 		store.Entities[e.ID] = e
 	}
 
