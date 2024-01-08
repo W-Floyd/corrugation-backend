@@ -384,6 +384,7 @@ document.addEventListener('alpine:init', () => {
         },
         searching: false,
         filterworld: false,
+        searchdescription: true,
 
         init() {
             this.storeversion = -1
@@ -436,7 +437,7 @@ document.addEventListener('alpine:init', () => {
                     id = children[cid]
                     if (
                         this.fullstate.entities[id].name.toLowerCase().includes(searchText.toLowerCase()) ||
-                        this.fullstate.entities[id].description.toLowerCase().includes(searchText.toLowerCase()) ||
+                        (this.searchdescription && this.fullstate.entities[id].description.toLowerCase().includes(searchText.toLowerCase())) ||
                         id == searchText.toLowerCase()
                     ) {
                         if (
