@@ -1,0 +1,39 @@
+services:
+  web:
+    build: .
+    ports:
+      - "8083:8083"
+    environment:
+      - CORRUGATION_DATABASE_TYPE=postgres # mysql|postgres|sqlite|sqlserver|clickhouse
+      # - CORRUGATION_DATABASE_NAME=corrugation # default: corrugation
+      - CORRUGATION_DATABASE_USERNAME=postgres
+      - CORRUGATION_DATABASE_PASSWORD=password
+      - CORRUGATION_DATABASE_ADDRESS=postgres
+      - CORRUGATION_DATABASE_TIMEZONE=America/Chicago
+      - CORRUGATION_JWT_SECRET=SuperSneaky
+    volumes:
+      - ./frontend:/app/frontend
+    depends_on:
+      postgres:
+        condition: service_healthy
+    links:
+      - postgres
+
+  postgres:
+    image: postgres
+    environment:
+      - POSTGRES_PASSWORD=password
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 1s
+      timeout: 5s
+      retries: 5
+
+  pgadmin:
+    image: dpage/pgadmin4
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: wfloyd@notmy.space
+      PGADMIN_DEFAULT_PASSWORD: root
+    ports:
+      - "5050:80"
