@@ -1,4 +1,4 @@
-package cmd
+package frontend
 
 import (
 	"encoding/json"
