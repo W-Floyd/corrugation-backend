@@ -1,6 +1,8 @@
 package backend
 
 import (
+	"time"
+
 	"gorm.io/gorm"
 )
 
@@ -10,9 +12,14 @@ type TagInput struct {
 }
 
 type Tag struct {
-	gorm.Model
-	Title string `gorm:"uniqueIndex"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	DeletedAt gorm.DeletedAt `gorm:"index"`
+
+	Title string `gorm:"primarykey"`
 	Color string
+
+	Records []*Record `gorm:"many2many:record_tags;"`
 }
 
 func (i *TagInput) Convert() (o Tag, err error) {

@@ -25,7 +25,7 @@ func GetTag(ctx context.Context, input *struct {
 	Title string `path:"title" example:"Electrical" doc:"Title of tag to get"`
 }) (output *TagOutput, err error) {
 	var tags []Tag
-	tags, err = GetTags(&input.Title)
+	tags, err = GetTags(&input.Title, true)
 	if err != nil {
 		return
 	}
@@ -42,7 +42,7 @@ var ListTagsOperation = huma.Operation{
 
 func ListTags(ctx context.Context, input *struct{}) (output *TagsOutput, err error) {
 	var tags []Tag
-	tags, err = GetTags(nil)
+	tags, err = GetTags(nil, false)
 	output = &TagsOutput{
 		Body: tags,
 	}

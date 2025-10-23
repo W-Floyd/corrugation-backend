@@ -10,12 +10,12 @@ import (
 const maxSearchDepth = 100
 
 type RecordInput struct {
-	Quantity    *uint     `required:"false"`
-	Label       *string   `required:"false"`
-	Title       *string   `required:"false"`
-	Description *string   `required:"false"`
-	Tags        []*string `required:"false"`
-	ParentID    *uint     `required:"false"`
+	Quantity    *uint       `required:"false"`
+	Label       *string     `required:"false"`
+	Title       *string     `required:"false"`
+	Description *string     `required:"false"`
+	Tags        []*TagInput `required:"false"`
+	ParentID    *uint       `required:"false"`
 }
 
 type Record struct {
@@ -25,7 +25,7 @@ type Record struct {
 	Label       *string
 	Title       *string
 	Description *string
-	Tags        []*string `gorm:"type:text"`
+	Tags        []*Tag `gorm:"many2many:record_tags;"`
 
 	ParentID *uint
 	Parent   *Record `gorm:"foreignKey:ParentID" json:"-"`
@@ -52,7 +52,32 @@ func (i *RecordInput) Convert() (o Record, err error) {
 		o.ParentID = i.ParentID
 	}
 
-	o.Tags = i.Tags
+	var foundTags []Tag
+	var foundTag *Tag
+
+	for _, tag := range i.Tags {
+		foundTags, err = gorm.G[Tag](db).Where("title = ?", tag.Title).Find(dbCtx)
+		if err != nil {
+			return
+		} else if len(foundTags) > 1 {
+			err = huma.Error500InternalServerError(errorMoreTagsThanExpected)
+			return
+		} else if len(foundTags) == 1 {
+			foundTag = &foundTags[0]
+		} else {
+			var newtag Tag
+			newtag, err = tag.Convert()
+			if err != nil {
+				return
+			}
+			err = gorm.G[Tag](db).Create(dbCtx, &newtag)
+			if err != nil {
+				return
+			}
+			foundTag = &newtag
+		}
+		o.Tags = append(o.Tags, foundTag)
+	}
 
 	return
 

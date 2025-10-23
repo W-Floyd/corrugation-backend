@@ -19,6 +19,15 @@ type BytesOutput struct {
 }
 
 func RegisterHandlers(api huma.API) {
+
+	huma.Register(api, GetStoreOperation, GetStore)
+	huma.Register(api, GetStoreVersionOperation, GetStoreVersion)
+	huma.Register(api, GetFirstFreeIDOperation, GetFirstFreeID)
+	huma.Register(api, CreateEntityOperation, CreateEntity)
+	huma.Register(api, PatchEntityOperation, PatchEntity)
+	huma.Register(api, GetEntityOperation, GetEntity)
+	huma.Register(api, DeleteEntityOperation, DeleteRecord)
+
 	huma.Register(api, ListRecordsOperation, ListRecords)
 	huma.Register(api, GetRecordOperation, GetRecord)
 	huma.Register(api, CreateRecordOperation, CreateRecord)
