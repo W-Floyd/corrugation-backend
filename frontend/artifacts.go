@@ -138,7 +138,7 @@ func uploadArtifact(c echo.Context) error {
 
 	}
 
-	store.Artifacts[store.LastArtifactID] = Artifact{
+	store.Artifacts[store.LastArtifactID] = FrontendArtifact{
 		Path:  location,
 		ID:    store.LastArtifactID,
 		Image: isImage,

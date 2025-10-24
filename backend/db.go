@@ -35,5 +35,6 @@ func InitAndMigrateDB() (err error) {
 	log.Println("InitAndMigrateDB")
 	db.AutoMigrate(&Record{})
 	db.AutoMigrate(&Tag{})
+	db.AutoMigrate(&Artifact{})
 	return nil
 }

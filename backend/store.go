@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/W-Floyd/corrugation-backend/frontend"
@@ -24,29 +25,29 @@ type EntityOutput struct {
 	Body EntityInput
 }
 type EntityPatch struct {
-	ID          frontend.EntityID      `json:"id" required:"false"`
-	Name        *string                `json:"name" required:"false"`
-	Description *string                `json:"description" required:"false"`
-	Artifacts   []*frontend.ArtifactID `json:"artifacts" required:"false"`
-	Location    *frontend.EntityID     `json:"location" required:"false"`
-	Metadata    *Metadata              `json:"metadata" required:"false"`
+	ID          frontend.EntityID  `json:"id" required:"false"`
+	Name        *string            `json:"name" required:"false"`
+	Description *string            `json:"description" required:"false"`
+	Artifacts   []*uint            `json:"artifacts" required:"false"`
+	Location    *frontend.EntityID `json:"location" required:"false"`
+	Metadata    *Metadata          `json:"metadata" required:"false"`
 }
 
 type EntityInput struct {
-	ID          frontend.EntityID      `json:"id"`
-	Name        *string                `json:"name" required:"false"`
-	Description *string                `json:"description" required:"false"`
-	Artifacts   []*frontend.ArtifactID `json:"artifacts" required:"false"`
-	Location    *frontend.EntityID     `json:"location" required:"false"`
-	Metadata    *Metadata              `json:"metadata" required:"false"`
+	ID          frontend.EntityID  `json:"id"`
+	Name        *string            `json:"name" required:"false"`
+	Description *string            `json:"description" required:"false"`
+	Artifacts   []*uint            `json:"artifacts" required:"false"`
+	Location    *frontend.EntityID `json:"location" required:"false"`
+	Metadata    *Metadata          `json:"metadata" required:"false"`
 }
 
 type StoreOutput struct {
 	Body struct {
-		Entities       map[frontend.EntityID]EntityInput         `json:"entities"`
-		Artifacts      map[frontend.ArtifactID]frontend.Artifact `json:"artifacts"`
-		LastArtifactID frontend.ArtifactID                       `json:"lastartifactid"`
-		StoreVersion   int                                       `json:"storeversion"`
+		Entities       map[frontend.EntityID]EntityInput  `json:"entities"`
+		Artifacts      map[uint]frontend.FrontendArtifact `json:"artifacts"`
+		LastArtifactID uint                               `json:"lastartifactid"`
+		StoreVersion   int                                `json:"storeversion"`
 	}
 }
 
@@ -64,7 +65,13 @@ func (record *Record) ToEntity() (output *EntityInput, err error) {
 					return &v
 				}
 			}(),
-			Description: record.Description,
+			Description: func() *string {
+				if record.Description == nil {
+					v := ""
+					return &v
+				}
+				return record.Description
+			}(),
 			Location: func() (output *frontend.EntityID) {
 				var v frontend.EntityID
 				if record.ParentID == nil {
@@ -73,6 +80,22 @@ func (record *Record) ToEntity() (output *EntityInput, err error) {
 					v = frontend.EntityID(*record.ParentID)
 				}
 				return &v
+			}(),
+			Artifacts: func() (output []*uint) {
+				records, err := gorm.G[Record](db).Preload("Artifacts", nil).Where("id = ?", record.ID).Find(dbCtx)
+				if err != nil {
+					return
+				} else if len(records) > 1 {
+					err = huma.Error500InternalServerError(errorMoreRecordsThanExpected)
+					return
+				} else if len(records) == 0 {
+					err = huma.Error404NotFound(errorRecordNotFound)
+					return
+				}
+				for _, a := range records[0].Artifacts {
+					output = append(output, &a.ID)
+				}
+				return
 			}(),
 			Metadata: &Metadata{
 				Quantity: func() *int {
@@ -129,6 +152,29 @@ func GetStore(ctx context.Context, input *struct{}) (output *StoreOutput, err er
 		output.Body.Entities[frontend.EntityID(record.ID)] = *e
 	}
 
+	as, err := gorm.G[Artifact](db).Find(dbCtx)
+	if err != nil {
+		return
+	}
+
+	output.Body.Artifacts = map[uint]frontend.FrontendArtifact{}
+
+	for _, a := range as {
+		output.Body.Artifacts[a.ID] = frontend.FrontendArtifact{
+			ID:   frontend.ArtifactID(a.ID),
+			Path: "/api/artifact/" + strconv.FormatUint(uint64(a.ID), 10),
+			Image: func() bool {
+				i, _ := a.GetInterface()
+				switch i.(type) {
+				case *Image:
+					return true
+				default:
+					return false
+				}
+			}(),
+		}
+	}
+
 	return
 }
 
@@ -136,14 +182,18 @@ type IntOutput struct {
 	Body int
 }
 
+type UIntOutput struct {
+	Body uint
+}
+
 var GetStoreVersionOperation = huma.Operation{
 	Method: http.MethodGet,
 	Path:   "/api/store/version",
 }
 
-func GetStoreVersion(ctx context.Context, input *struct{}) (output *IntOutput, err error) {
-	output = &IntOutput{
-		Body: int(time.Now().Unix()),
+func GetStoreVersion(ctx context.Context, input *struct{}) (output *UIntOutput, err error) {
+	output = &UIntOutput{
+		Body: uint(time.Now().Unix()),
 	}
 	return
 }
@@ -153,7 +203,7 @@ var GetFirstFreeIDOperation = huma.Operation{
 	Path:   "/api/entity/find/firstfreeid",
 }
 
-func GetFirstFreeID(ctx context.Context, input *struct{}) (output *IntOutput, err error) {
+func GetFirstFreeID(ctx context.Context, input *struct{}) (output *UIntOutput, err error) {
 	var records []Record
 	tx := db.Unscoped().Find(&records)
 	if tx.Error != nil {
@@ -161,11 +211,11 @@ func GetFirstFreeID(ctx context.Context, input *struct{}) (output *IntOutput, er
 		return
 	}
 
-	output = &IntOutput{}
+	output = &UIntOutput{}
 
 	for _, record := range records {
-		if int(record.ID) > output.Body {
-			output.Body = int(record.ID)
+		if record.ID > output.Body {
+			output.Body = record.ID
 		}
 	}
 
@@ -198,12 +248,19 @@ func CreateEntity(ctx context.Context, input *struct {
 	record.Description = input.Body.Description
 
 	location := input.Body.Location
-	if location != nil {
+	if location != nil && *location != 0 {
 		v := uint(*location)
 		record.ParentID = &v
 	}
 
-	// record.Artifacts // TODO
+	for _, a := range input.Body.Artifacts {
+		var artifact Artifact
+		artifact, err = GetArtifactFromDB(*a)
+		if err != nil {
+			return
+		}
+		record.Artifacts = append(record.Artifacts, &artifact)
+	}
 
 	var foundTags []Tag
 	var foundTag *Tag
@@ -322,6 +379,73 @@ func PatchEntity(ctx context.Context, input *struct {
 	}
 
 	output, err = r.ToEntity()
+
+	return
+}
+
+var CreateArtifactOperation = huma.Operation{
+	Method: http.MethodPost,
+	Path:   "/api/artifact",
+}
+
+func CreateArtifact(ctx context.Context, input *struct {
+	RawBody huma.MultipartFormFiles[struct {
+		File huma.FormFile `form:"file" required:"true"`
+	}]
+}) (output *UIntOutput, err error) {
+
+	f := input.RawBody.Data().File
+
+	var a ArtifactInterface
+
+	if strings.HasPrefix(f.ContentType, "image/") {
+		a = &Image{}
+	} else {
+		err = huma.Error415UnsupportedMediaType("unsupported media type " + f.ContentType)
+		return
+	}
+
+	err = a.Store(f)
+	if err != nil {
+		return
+	}
+
+	output = &UIntOutput{
+		Body: a.GetID(),
+	}
+
+	return
+}
+
+var GetArtifactOperation = huma.Operation{
+	Method: http.MethodGet,
+	Path:   "/api/artifact/{id}",
+}
+
+func GetArtifact(ctx context.Context, input *struct {
+	ID uint `path:"id" example:"1" doc:"Artifact ID to get"`
+}) (output *BytesOutput, err error) {
+
+	artifact, err := GetArtifactFromDB(input.ID)
+	if err != nil {
+		return
+	}
+
+	i, err := artifact.GetInterface()
+	if err != nil {
+		return
+	}
+
+	output = &BytesOutput{}
+
+	output.Body, err = i.GetSmallPreviewContents()
+	if err != nil {
+		return
+	}
+	output.ContentType, err = i.GetContentType()
+	if err != nil {
+		return
+	}
 
 	return
 }

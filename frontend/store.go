@@ -13,7 +13,7 @@ import (
 type EntityID int
 type ArtifactID int
 
-type Artifact struct {
+type FrontendArtifact struct {
 	ID    ArtifactID `json:"artifactid"`
 	Path  string     `json:"path"`
 	Image bool       `json:"image"`
@@ -38,10 +38,10 @@ type Entity struct {
 }
 
 type Store struct {
-	Entities       map[EntityID]Entity     `json:"entities"`
-	Artifacts      map[ArtifactID]Artifact `json:"artifacts"`
-	LastArtifactID ArtifactID              `json:"lastartifactid"`
-	StoreVersion   int                     `json:"storeversion"`
+	Entities       map[EntityID]Entity             `json:"entities"`
+	Artifacts      map[ArtifactID]FrontendArtifact `json:"artifacts"`
+	LastArtifactID ArtifactID                      `json:"lastartifactid"`
+	StoreVersion   int                             `json:"storeversion"`
 }
 
 func updateStore() {
@@ -73,7 +73,7 @@ func updateModification(eID EntityID) error {
 func resetStore() error {
 	store = *new(Store)
 	store.Entities = map[EntityID]Entity{}
-	store.Artifacts = map[ArtifactID]Artifact{}
+	store.Artifacts = map[ArtifactID]FrontendArtifact{}
 	updateStore()
 	return nil
 }

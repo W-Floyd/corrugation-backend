@@ -22,10 +22,12 @@ type Record struct {
 	gorm.Model
 
 	Quantity    *uint
-	Label       *string
-	Title       *string
+	Label       *string `gorm:"uniqueIndex"`
+	Title       *string `gorm:"index"`
 	Description *string
 	Tags        []*Tag `gorm:"many2many:record_tags;"`
+
+	Artifacts []*Artifact
 
 	ParentID *uint
 	Parent   *Record `gorm:"foreignKey:ParentID" json:"-"`
