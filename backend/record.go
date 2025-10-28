@@ -25,15 +25,15 @@ type RecordInput struct {
 type Record struct {
 	gorm.Model
 
-	Quantity    *uint
-	Label       *string `gorm:"uniqueIndex"`
-	Title       *string `gorm:"index"`
-	Description *string
-	Tags        []*Tag `gorm:"many2many:record_tags;"`
+	Quantity    *uint   `json:",omitempty"`
+	Label       *string `json:",omitempty" gorm:"uniqueIndex"`
+	Title       *string `json:",omitempty" gorm:"index"`
+	Description *string `json:",omitempty"`
+	Tags        []*Tag  `json:",omitempty" gorm:"many2many:record_tags;"`
 
-	Artifacts []*Artifact
+	Artifacts []*Artifact `json:",omitempty"`
 
-	ParentID *uint
+	ParentID *uint   `json:",omitempty"`
 	Parent   *Record `gorm:"foreignKey:ParentID" json:"-"`
 
 	Embedding     *[]byte `json:"-"` // JSON of embedding data

@@ -31,19 +31,19 @@ type ArtifactInterface interface {
 type Artifact struct {
 	gorm.Model
 
-	Data             *[]byte
-	OriginalFilename *string
-	ContentType      *string
+	Data             *[]byte `json:",omitempty"`
+	OriginalFilename *string `json:",omitempty"`
+	ContentType      *string `json:",omitempty"`
 
-	SmallPreviewID *uint
-	SmallPreview   *Artifact `gorm:"foreignKey:SmallPreviewID"`
-	LargePreviewID *uint
-	LargePreview   *Artifact `gorm:"foreignKey:LargePreviewID"`
+	SmallPreviewID *uint     `json:"-"`
+	SmallPreview   *Artifact `json:"-" gorm:"foreignKey:SmallPreviewID"`
+	LargePreviewID *uint     `json:"-"`
+	LargePreview   *Artifact `json:"-" gorm:"foreignKey:LargePreviewID"`
 
-	RecordID *uint
+	RecordID *uint `json:",omitempty"`
 
-	Embedding     *[]byte // JSON of embedding data
-	EmbeddingHash *string // Hash of JSON of embedding data (to allow caching)
+	Embedding     *[]byte `json:"-"` // JSON of embedding data
+	EmbeddingHash *string `json:"-"` // Hash of JSON of embedding data (to allow caching)
 
 }
 

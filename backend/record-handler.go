@@ -11,8 +11,8 @@ import (
 
 type ListRecordsInput struct {
 	ID            uint   `query:"id" example:"1" doc:"ID to get" required:"false"`
-	ChildrenDepth int    `query:"childrenDepth" example:"2" doc:"Depth to search for children, negative values mean unlimited search" required:"false"`
-	ParentDepth   int    `query:"parentDepth" example:"2" doc:"Depth to search for parents, negative values mean unlimited search" required:"false"`
+	ChildrenDepth int    `query:"childrenDepth" example:"2" doc:"Depth to search for children, negative values mean unlimited search" required:"false" dependentRequired:"id"`
+	ParentDepth   int    `query:"parentDepth" example:"2" doc:"Depth to search for parents, negative values mean unlimited search" required:"false" dependentRequired:"id"`
 	Search        string `query:"search" example:"Lamp" doc:"String to search embeddings with" required:"false"`
 }
 
