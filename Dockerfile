@@ -8,6 +8,11 @@ RUN npm run build
 
 # Stage 1: Build Go binary
 FROM golang:1.25-alpine AS backend
+
+# Add Maintainer Info
+LABEL maintainer="William Floyd <github@notmy.space>"
+
+# Set the Current Working Directory inside the container
 WORKDIR /app
 RUN apk add --no-cache bash git openssh libwebp gcc musl-dev
 COPY go.mod go.sum ./

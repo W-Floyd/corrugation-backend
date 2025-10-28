@@ -3,15 +3,17 @@ package backend
 import (
 	"context"
 	"net/http"
+	"strconv"
 
 	"github.com/danielgtaylor/huma/v2"
 	"gorm.io/gorm"
 )
 
 type ListRecordsInput struct {
-	ID            uint `query:"id" example:"1" doc:"ID to get" required:"false"`
-	ChildrenDepth int  `query:"childrenDepth" example:"2" doc:"Depth to search for children, negative values mean unlimited search" required:"false"`
-	ParentDepth   int  `query:"parentDepth" example:"2" doc:"Depth to search for parents, negative values mean unlimited search" required:"false"`
+	ID            uint   `query:"id" example:"1" doc:"ID to get" required:"false"`
+	ChildrenDepth int    `query:"childrenDepth" example:"2" doc:"Depth to search for children, negative values mean unlimited search" required:"false"`
+	ParentDepth   int    `query:"parentDepth" example:"2" doc:"Depth to search for parents, negative values mean unlimited search" required:"false"`
+	Search        string `query:"search" example:"Lamp" doc:"String to search embeddings with" required:"false"`
 }
 
 type RecordOutput struct {
@@ -31,7 +33,7 @@ func GetRecord(ctx context.Context, input *struct {
 	ID uint `path:"id" example:"1" doc:"ID to delete"`
 }) (output *RecordOutput, err error) {
 	var records []Record
-	records, err = GetRecords(&input.ID, nil, nil)
+	records, err = GetRecords(&input.ID, nil, nil, nil, nil, nil)
 	if err != nil {
 		return
 	}
@@ -48,7 +50,7 @@ var ListRecordsOperation = huma.Operation{
 
 func ListRecords(ctx context.Context, input *ListRecordsInput) (output *RecordsOutput, err error) {
 	var records []Record
-	records, err = GetRecordsFriendly(ctx, input.ID, input.ChildrenDepth, input.ParentDepth)
+	records, err = GetRecordsFriendly(ctx, input.ID, input.ChildrenDepth, input.ParentDepth, input.Search)
 	output = &RecordsOutput{
 		Body: records,
 	}
@@ -64,6 +66,11 @@ func CreateRecord(ctx context.Context, input *struct {
 	Body RecordInput
 }) (output *RecordOutput, err error) {
 	record, err := input.Body.Convert()
+	if err != nil {
+		return
+	}
+
+	err = record.GenerateEmbeddings()
 	if err != nil {
 		return
 	}
@@ -91,7 +98,7 @@ func DeleteRecord(ctx context.Context, input *struct {
 		return
 	}
 	if len(records) == 0 {
-		err = huma.Error404NotFound(errorRecordNotFound)
+		err = huma.Error404NotFound(errorRecordNotFound + " " + strconv.Itoa(int(input.ID)))
 		return
 	} else if len(records) > 1 {
 		err = huma.Error500InternalServerError(errorMoreRecordsThanExpected)
@@ -118,7 +125,7 @@ func DeleteRecord(ctx context.Context, input *struct {
 		return
 	}
 	if rowsAffected == 0 {
-		err = huma.Error404NotFound(errorRecordNotFound)
+		err = huma.Error404NotFound(errorRecordNotFound + " " + strconv.Itoa(int(input.ID)))
 	}
 	output = &EmptyOutput{}
 	return

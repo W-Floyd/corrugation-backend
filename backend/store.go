@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/W-Floyd/corrugation-backend/frontend"
@@ -82,17 +81,7 @@ func (record *Record) ToEntity() (output *EntityInput, err error) {
 				return &v
 			}(),
 			Artifacts: func() (output []*uint) {
-				records, err := gorm.G[Record](db).Preload("Artifacts", nil).Where("id = ?", record.ID).Find(dbCtx)
-				if err != nil {
-					return
-				} else if len(records) > 1 {
-					err = huma.Error500InternalServerError(errorMoreRecordsThanExpected)
-					return
-				} else if len(records) == 0 {
-					err = huma.Error404NotFound(errorRecordNotFound)
-					return
-				}
-				for _, a := range records[0].Artifacts {
+				for _, a := range record.Artifacts {
 					output = append(output, &a.ID)
 				}
 				return
@@ -139,12 +128,38 @@ var GetStoreOperation = huma.Operation{
 func GetStore(ctx context.Context, input *struct{}) (output *StoreOutput, err error) {
 
 	output = &StoreOutput{}
-	output.Body.StoreVersion = int(time.Now().Unix())
+
 	output.Body.Entities = make(map[frontend.EntityID]EntityInput)
 
-	records, err := GetRecords(nil, nil, nil)
+	records, err := GetRecords(nil, nil, nil, nil, []struct {
+		q string
+		h func(db gorm.PreloadBuilder) error
+	}{
+		{
+			q: "Artifacts",
+			h: func(db gorm.PreloadBuilder) error {
+				db.Select("id", "record_id")
+				return nil
+			},
+		},
+	}, nil)
+	if err != nil {
+		return
+	}
+
+	var newest time.Time
 
 	for _, record := range records {
+		if record.UpdatedAt.After(newest) {
+			newest = record.UpdatedAt
+		}
+		if record.CreatedAt.After(newest) {
+			newest = record.CreatedAt
+		}
+		if record.DeletedAt.Time.After(newest) {
+			newest = record.DeletedAt.Time
+		}
+
 		e, err := record.ToEntity()
 		if err != nil {
 			return output, err
@@ -152,7 +167,9 @@ func GetStore(ctx context.Context, input *struct{}) (output *StoreOutput, err er
 		output.Body.Entities[frontend.EntityID(record.ID)] = *e
 	}
 
-	as, err := gorm.G[Artifact](db).Find(dbCtx)
+	output.Body.StoreVersion = int(newest.Unix())
+
+	as, err := gorm.G[Artifact](db).Select("id", "content_type", "original_filename").Find(dbCtx)
 	if err != nil {
 		return
 	}
@@ -192,8 +209,26 @@ var GetStoreVersionOperation = huma.Operation{
 }
 
 func GetStoreVersion(ctx context.Context, input *struct{}) (output *UIntOutput, err error) {
+	records, err := GetRecords(nil, nil, nil, nil, nil, []string{"updated_at"})
+	if err != nil {
+		return
+	}
+
+	var newest time.Time
+
+	for _, record := range records {
+		if record.UpdatedAt.After(newest) {
+			newest = record.UpdatedAt
+		}
+		if record.CreatedAt.After(newest) {
+			newest = record.CreatedAt
+		}
+		if record.DeletedAt.Time.After(newest) {
+			newest = record.DeletedAt.Time
+		}
+	}
 	output = &UIntOutput{
-		Body: uint(time.Now().Unix()),
+		Body: uint(newest.Unix()),
 	}
 	return
 }
@@ -311,7 +346,7 @@ func GetEntity(ctx context.Context, input *struct {
 		err = huma.Error500InternalServerError("id must not be 0")
 	}
 
-	records, err := GetRecords(&input.ID, nil, nil)
+	records, err := GetRecords(&input.ID, nil, nil, nil, nil, nil)
 	if err != nil {
 		return
 	}
@@ -348,7 +383,7 @@ func PatchEntity(ctx context.Context, input *struct {
 	Body EntityPatch
 }) (output *EntityInput, err error) {
 
-	records, err := GetRecords(&input.ID, nil, nil)
+	records, err := GetRecords(&input.ID, nil, nil, nil, nil, nil)
 	if err != nil {
 		return
 	}
@@ -383,69 +418,12 @@ func PatchEntity(ctx context.Context, input *struct {
 	return
 }
 
-var CreateArtifactOperation = huma.Operation{
+var CreateArtifactStoreOperation = huma.Operation{
 	Method: http.MethodPost,
 	Path:   "/api/artifact",
 }
 
-func CreateArtifact(ctx context.Context, input *struct {
-	RawBody huma.MultipartFormFiles[struct {
-		File huma.FormFile `form:"file" required:"true"`
-	}]
-}) (output *UIntOutput, err error) {
-
-	f := input.RawBody.Data().File
-
-	var a ArtifactInterface
-
-	if strings.HasPrefix(f.ContentType, "image/") {
-		a = &Image{}
-	} else {
-		err = huma.Error415UnsupportedMediaType("unsupported media type " + f.ContentType)
-		return
-	}
-
-	err = a.Store(f)
-	if err != nil {
-		return
-	}
-
-	output = &UIntOutput{
-		Body: a.GetID(),
-	}
-
-	return
-}
-
-var GetArtifactOperation = huma.Operation{
+var GetArtifactStoreOperation = huma.Operation{
 	Method: http.MethodGet,
 	Path:   "/api/artifact/{id}",
-}
-
-func GetArtifact(ctx context.Context, input *struct {
-	ID uint `path:"id" example:"1" doc:"Artifact ID to get"`
-}) (output *BytesOutput, err error) {
-
-	artifact, err := GetArtifactFromDB(input.ID)
-	if err != nil {
-		return
-	}
-
-	i, err := artifact.GetInterface()
-	if err != nil {
-		return
-	}
-
-	output = &BytesOutput{}
-
-	output.Body, err = i.GetSmallPreviewContents()
-	if err != nil {
-		return
-	}
-	output.ContentType, err = i.GetContentType()
-	if err != nil {
-		return
-	}
-
-	return
 }

@@ -8,4 +8,7 @@ const (
 	errorArtifactNotFound          = "artifact not found"
 	errorMoreArtifactsThanExpected = "more artifacts than expected"
 	topLevelName                   = "World"
+
+	infinityAddress = "http://localhost:8002"
+	infinityModel   = "wkcn/TinyCLIP-ViT-8M-16-Text-3M-YFCC15M"
 )

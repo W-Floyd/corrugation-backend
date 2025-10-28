@@ -14,8 +14,9 @@ type PlaintextOutput struct {
 }
 
 type BytesOutput struct {
-	ContentType string `header:"Content-Type"`
-	Body        []byte
+	ContentType  string `header:"Content-Type"`
+	CacheControl string `header:"Cache-Control"`
+	Body         []byte
 }
 
 func RegisterHandlers(api huma.API) {
@@ -28,8 +29,8 @@ func RegisterHandlers(api huma.API) {
 	huma.Register(api, GetEntityOperation, GetEntity)
 	huma.Register(api, DeleteEntityOperation, DeleteRecord)
 
-	huma.Register(api, CreateArtifactOperation, CreateArtifact)
-	huma.Register(api, GetArtifactOperation, GetArtifact)
+	huma.Register(api, CreateArtifactStoreOperation, CreateArtifact)
+	huma.Register(api, GetArtifactStoreOperation, GetArtifact)
 
 	huma.Register(api, ListRecordsOperation, ListRecords)
 	huma.Register(api, GetRecordOperation, GetRecord)
@@ -37,6 +38,9 @@ func RegisterHandlers(api huma.API) {
 	huma.Register(api, DeleteRecordOperation, DeleteRecord)
 
 	huma.Register(api, VisualizeGraphRecordsOperation, VisualizeGraphRecords)
+
+	huma.Register(api, CreateArtifactOperation, CreateArtifact)
+	huma.Register(api, GetArtifactOperation, GetArtifact)
 
 	huma.Register(api, ListTagsOperation, ListTags)
 	huma.Register(api, GetTagOperation, GetTag)

@@ -2,10 +2,13 @@ package backend
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"io"
 	"math"
 	"net/http"
+	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/chai2010/webp"
@@ -16,18 +19,19 @@ import (
 
 type ArtifactInterface interface {
 	Store(file huma.FormFile) (err error)
-	GetOriginalContents() (output []byte, err error)
-	GetSmallPreviewContents() (output []byte, err error)
-	GetLargePreviewContents() (output []byte, err error)
+	GetOriginalContents() (output *[]byte, err error)
+	GetSmallPreviewContents() (output *[]byte, err error)
+	GetLargePreviewContents() (output *[]byte, err error)
 	GetOriginalFilename() (output string, err error)
 	GetContentType() (output string, err error)
 	GetID() (output uint)
+	GenerateEmbeddings() (err error)
 }
 
 type Artifact struct {
 	gorm.Model
 
-	Data             []byte
+	Data             *[]byte
 	OriginalFilename *string
 	ContentType      *string
 
@@ -37,6 +41,10 @@ type Artifact struct {
 	LargePreview   *Artifact `gorm:"foreignKey:LargePreviewID"`
 
 	RecordID *uint
+
+	Embedding     *[]byte // JSON of embedding data
+	EmbeddingHash *string // Hash of JSON of embedding data (to allow caching)
+
 }
 
 func GetArtifactFromDB(ID uint) (artifact Artifact, err error) {
@@ -62,7 +70,15 @@ func (a *Artifact) GetInterface() (output ArtifactInterface, err error) {
 		i := Image(*a)
 		output = &i
 	} else {
-		err = huma.Error415UnsupportedMediaType("unsupported content type " + *a.ContentType)
+		switch filepath.Ext(*a.OriginalFilename) {
+		case ".png", ".jpeg", ".jpg", ".webp":
+			i := Image(*a)
+			output = &i
+		default:
+			err = huma.Error415UnsupportedMediaType("unsupported content type " + *a.ContentType)
+			return
+		}
+
 	}
 	return
 }
@@ -70,12 +86,22 @@ func (a *Artifact) GetInterface() (output ArtifactInterface, err error) {
 type Image Artifact
 
 func (i *Image) Store(file huma.FormFile) (err error) {
+
 	b, err := io.ReadAll(file)
 	if err != nil {
 		return
 	}
 
-	i.Data = b
+	c := http.Client{}
+	c.Get(infinityAddress + "")
+
+	i.Data = &b
+
+	err = i.GenerateEmbeddings()
+	if err != nil {
+		return
+	}
+
 	i.OriginalFilename = &file.Filename
 	i.ContentType = &file.ContentType
 
@@ -96,49 +122,88 @@ func (i *Image) Store(file huma.FormFile) (err error) {
 	return
 }
 
+func (i *Image) computePreview(size int, quality float32) (o *Artifact, err error) {
+	preview, err := i.ComputePreview(size, quality)
+	if err != nil {
+		return
+	}
+	ct := http.DetectContentType(*preview)
+	o = &Artifact{
+		Data:        preview,
+		ContentType: &ct,
+	}
+	err = gorm.G[Artifact](db).Create(dbCtx, o)
+	return
+}
+
+func (i *Image) computeSmallPreview() (o *Artifact, err error) {
+	o, err = i.computePreview(625*1000, 70)
+	if err != nil {
+		return
+	}
+	i.SmallPreview = o
+	i.SmallPreviewID = &o.ID
+	if i.ID > 0 {
+		var n int
+		// n, err := gorm.G[Artifact](db).Where("id = ?", i.ID).Update(dbCtx, "small_preview", *o)
+		// if err != nil {
+		// 	return
+		// } else if n != 1 {
+		// 	err = errors.New("affected " + strconv.Itoa(n) + " image small_preview")
+		// 	return
+		// }
+		n, err = gorm.G[Artifact](db).Where("id = ?", i.ID).Update(dbCtx, "small_preview_id", o.ID)
+		if err != nil {
+			return
+		} else if n != 1 {
+			err = errors.New("affected " + strconv.Itoa(n) + " image small_preview_id")
+			return
+		}
+	}
+	return
+}
+
+func (i *Image) computeLargePreview() (o *Artifact, err error) {
+	o, err = i.computePreview(1250*1000, 75)
+	if err != nil {
+		return
+	}
+	i.LargePreview = o
+	i.LargePreviewID = &o.ID
+	if i.ID > 0 {
+		var n int
+		// n, err := gorm.G[Artifact](db).Where("id = ?", i.ID).Update(dbCtx, "large_preview", *o)
+		// if err != nil {
+		// 	return
+		// } else if n != 1 {
+		// 	err = errors.New("affected " + strconv.Itoa(n) + " image large_preview")
+		// 	return
+		// }
+		n, err = gorm.G[Artifact](db).Where("id = ?", i.ID).Update(dbCtx, "large_preview_id", o.ID)
+		if err != nil {
+			return
+		} else if n != 1 {
+			err = errors.New("affected " + strconv.Itoa(n) + " image large_preview_id")
+			return
+		}
+	}
+	return
+}
+
 func (i *Image) ComputePreviews() (err error) {
 
-	smallPreview, err := i.ComputePreview(625*1000, 70)
+	_, err = i.computeSmallPreview()
 	if err != nil {
 		return
 	}
-	largePreview, err := i.ComputePreview(1250*1000, 75)
-	if err != nil {
-		return
-	}
-
-	ctSmall := http.DetectContentType(smallPreview)
-	ctLarge := http.DetectContentType(largePreview)
-
-	smallPreviewImage := &Artifact{
-		Data:        smallPreview,
-		ContentType: &ctSmall,
-	}
-	largePreviewImage := &Artifact{
-		Data:        largePreview,
-		ContentType: &ctLarge,
-	}
-
-	err = gorm.G[Artifact](db).Create(dbCtx, smallPreviewImage)
-	if err != nil {
-		return
-	}
-	err = gorm.G[Artifact](db).Create(dbCtx, largePreviewImage)
-	if err != nil {
-		return
-	}
-
-	i.LargePreview = largePreviewImage
-	i.LargePreviewID = &largePreviewImage.ID
-	i.SmallPreview = smallPreviewImage
-	i.SmallPreviewID = &smallPreviewImage.ID
+	_, err = i.computeLargePreview()
 
 	return
 }
 
-func (i *Image) ComputePreview(maximumPixelCount int, quality float32) (output []byte, err error) {
+func (i *Image) ComputePreview(maximumPixelCount int, quality float32) (output *[]byte, err error) {
 
-	img, err := imaging.Decode(bytes.NewBuffer(i.Data), imaging.AutoOrientation(true))
+	img, err := imaging.Decode(bytes.NewBuffer(*i.Data), imaging.AutoOrientation(true))
 	if err != nil {
 		return
 	}
@@ -153,42 +218,51 @@ func (i *Image) ComputePreview(maximumPixelCount int, quality float32) (output [
 
 	webp.Encode(buf, img, &webp.Options{Quality: quality})
 
-	output, err = io.ReadAll(buf)
+	o, err := io.ReadAll(buf)
+	output = &o
 	return
 }
 
-func (i *Image) GetOriginalContents() (output []byte, err error) {
-	if len(i.Data) == 0 {
+func (i *Image) GetOriginalContents() (output *[]byte, err error) {
+	if i.Data == nil || len(*i.Data) == 0 {
 		err = errors.New("no data in image")
 		return
 	}
 	output = i.Data
 	return
 }
-func (i *Image) GetSmallPreviewContents() (output []byte, err error) {
-	if i.SmallPreview == nil || len(i.SmallPreview.Data) == 0 {
+func (i *Image) GetSmallPreviewContents() (output *[]byte, err error) {
+	if i.SmallPreview == nil || i.SmallPreview.Data == nil || len(*i.SmallPreview.Data) == 0 {
 		if i.SmallPreviewID != nil {
 			var a Artifact
 			a, err = GetArtifactFromDB(*i.SmallPreviewID)
 			output = a.Data
 			return
 		} else {
-			err = huma.Error500InternalServerError("no small preview in image")
+			_, err = i.computeSmallPreview()
+			if err != nil {
+				return
+			}
+			output = i.SmallPreview.Data
 			return
 		}
 	}
 	output = i.SmallPreview.Data
 	return
 }
-func (i *Image) GetLargePreviewContents() (output []byte, err error) {
-	if i.LargePreview == nil || len(i.LargePreview.Data) == 0 {
+func (i *Image) GetLargePreviewContents() (output *[]byte, err error) {
+	if i.LargePreview == nil || i.LargePreview.Data == nil || len(*i.LargePreview.Data) == 0 {
 		if i.LargePreviewID != nil {
 			var a Artifact
 			a, err = GetArtifactFromDB(*i.LargePreviewID)
 			output = a.Data
 			return
 		} else {
-			err = huma.Error500InternalServerError("no large preview in image")
+			_, err = i.computeLargePreview()
+			if err != nil {
+				return
+			}
+			output = i.LargePreview.Data
 			return
 		}
 	}
@@ -213,4 +287,46 @@ func (i *Image) GetContentType() (output string, err error) {
 }
 func (i *Image) GetID() (output uint) {
 	return i.ID
+}
+
+func GetArtifactEmbeddings() (e map[uint]struct {
+	embedding []float64
+	artifact  *Artifact
+}, err error) {
+	artifacts, err := gorm.G[Artifact](db).Select("id", "embedding", "embedding_hash", "record_id").Find(dbCtx)
+	if err != nil {
+		return
+	}
+
+	e = map[uint]struct {
+		embedding []float64
+		artifact  *Artifact
+	}{}
+
+	for _, a := range artifacts {
+		if a.Embedding == nil {
+			continue
+		}
+		var singleE []float64
+		singleE, ok := embeddingsCache[*a.EmbeddingHash]
+		if !ok {
+			singleE = []float64{}
+			subErr := json.Unmarshal(*a.Embedding, &singleE)
+			if subErr != nil {
+				err = subErr
+				return
+			}
+			embeddingsCache[*a.EmbeddingHash] = singleE
+		}
+		e[a.ID] = struct {
+			embedding []float64
+			artifact  *Artifact
+		}{
+			embedding: singleE,
+			artifact:  &a,
+		}
+	}
+
+	return
+
 }

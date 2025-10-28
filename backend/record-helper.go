@@ -5,7 +5,9 @@ import (
 	"context"
 	"errors"
 	"io"
+	"slices"
 	"strconv"
+	"strings"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-echarts/go-echarts/v2/charts"
@@ -15,9 +17,10 @@ import (
 	"gorm.io/gorm"
 )
 
-func GetRecordsFriendly(ctx context.Context, inputID uint, inputChildrenDepth int, inputParentDepth int) (records []Record, err error) {
+func GetRecordsFriendly(ctx context.Context, inputID uint, inputChildrenDepth int, inputParentDepth int, inputSearch string) (records []Record, err error) {
 	var ID *uint
 	var ChildrenDepth, ParentDepth *int
+	var Search *string
 	if inputID != 0 {
 		ID = &inputID
 	}
@@ -27,67 +30,183 @@ func GetRecordsFriendly(ctx context.Context, inputID uint, inputChildrenDepth in
 	if inputParentDepth != 0 {
 		ParentDepth = &inputParentDepth
 	}
-	records, err = GetRecords(ID, ChildrenDepth, ParentDepth)
+	if inputSearch != "" {
+		Search = &inputSearch
+	}
+	records, err = GetRecords(ID, ChildrenDepth, ParentDepth, Search, nil, nil)
 	return
 }
 
-func GetRecords(ID *uint, childrenDepth *int, parentDepth *int) (records []Record, err error) {
+func GetRecords(ID *uint, childrenDepth *int, parentDepth *int, search *string, preload []struct {
+	q string
+	h func(db gorm.PreloadBuilder) error
+}, selects []string) (records []Record, err error) {
 	if ID == nil {
 		if childrenDepth != nil {
 			err = errors.New("childrenDepth provided without an ID")
 			return
 		}
-		return gorm.G[Record](db).Find(dbCtx)
-	}
 
-	var recordsSearched []Record // This should come back with one value...
-	recordsSearched, err = gorm.G[Record](db).Where("id = ?", *ID).Find(dbCtx)
-	if err != nil {
-		return
-	}
-	if len(recordsSearched) == 0 {
-		err = huma.Error404NotFound(errorRecordNotFound)
-	}
-	records = append(records, recordsSearched...)
-
-	if childrenDepth != nil {
-		var recordPtrs []*Record
-		recordPtrs, err = GetChildrenRecurse(*ID, *childrenDepth, 0)
-
-		for _, record := range recordPtrs {
-			records = append(records, *record)
+		q := gorm.G[Record](db)
+		var v gorm.ChainInterface[Record]
+		if len(selects) > 1 {
+			v = q.Select(selects[0], selects[1:])
+		} else if len(selects) == 1 {
+			v = q.Select(selects[0])
 		}
-	}
-
-	if parentDepth != nil {
-		parentSearchCurrentDepth := 0
-		searchID := recordsSearched[0].ParentID
-		for {
-			if searchID == nil {
-				break
-			}
-			parentSearchCurrentDepth += 1
-			if *parentDepth > 0 && parentSearchCurrentDepth > *parentDepth {
-				break
-			} else if parentSearchCurrentDepth > maxSearchDepth {
-				err = errors.New("exceeded max search depth on parent")
-				return
-			}
-
-			var recordsSearched []Record
-			recordsSearched, err = gorm.G[Record](db).Where("id = ?", *searchID).Find(dbCtx)
-			if err != nil {
-				return
-			}
-			if len(recordsSearched) > 0 {
-				records = append(records, recordsSearched...)
-				searchID = recordsSearched[0].ParentID
+		for _, s := range preload {
+			if v != nil {
+				v = v.Preload(s.q, s.h)
 			} else {
-				err = errors.New("found no record for " + strconv.FormatUint(uint64(*searchID), 10))
-				return
+				v = q.Preload(s.q, s.h)
 			}
-
 		}
+		if v != nil {
+			records, err = v.Find(dbCtx)
+		} else {
+			records, err = q.Find(dbCtx)
+		}
+
+		if err != nil {
+			return
+		}
+
+	} else {
+
+		var recordsSearched []Record // This should come back with one value...
+		q := gorm.G[Record](db)
+		var v gorm.ChainInterface[Record]
+		if len(selects) > 1 {
+			v = q.Select(selects[0], selects[1:])
+		} else if len(selects) == 1 {
+			v = q.Select(selects[0])
+		}
+		for _, s := range preload {
+			if v != nil {
+				v = v.Preload(s.q, s.h)
+			} else {
+				v = q.Preload(s.q, s.h)
+			}
+		}
+		if v != nil {
+			recordsSearched, err = v.Where("id = ?", *ID).Find(dbCtx)
+		} else {
+			recordsSearched, err = q.Where("id = ?", *ID).Find(dbCtx)
+		}
+		if err != nil {
+			return
+		}
+		if len(recordsSearched) == 0 {
+			err = huma.Error404NotFound(errorRecordNotFound + " " + strconv.Itoa(int(*ID)))
+		}
+		records = append(records, recordsSearched...)
+
+		if childrenDepth != nil {
+			var recordPtrs []*Record
+			recordPtrs, err = GetChildrenRecurse(*ID, *childrenDepth, 0)
+
+			for _, record := range recordPtrs {
+				records = append(records, *record)
+			}
+		}
+
+		if parentDepth != nil {
+			parentSearchCurrentDepth := 0
+			searchID := recordsSearched[0].ParentID
+			for {
+				if searchID == nil {
+					break
+				}
+				parentSearchCurrentDepth += 1
+				if *parentDepth > 0 && parentSearchCurrentDepth > *parentDepth {
+					break
+				} else if parentSearchCurrentDepth > maxSearchDepth {
+					err = errors.New("exceeded max search depth on parent")
+					return
+				}
+
+				var recordsSearched []Record
+				recordsSearched, err = gorm.G[Record](db).Where("id = ?", *searchID).Find(dbCtx)
+				if err != nil {
+					return
+				}
+				if len(recordsSearched) > 0 {
+					records = append(records, recordsSearched...)
+					searchID = recordsSearched[0].ParentID
+				} else {
+					err = errors.New("found no record for " + strconv.FormatUint(uint64(*searchID), 10))
+					return
+				}
+
+			}
+		}
+
+	}
+
+	if search != nil {
+		var artifactSearch, recordSearch []struct {
+			id    uint
+			score float64
+		}
+		artifactSearch, err = SearchByArtifact(*search, 0.3)
+		if err != nil {
+			return
+		}
+
+		recordSearch, err = SearchByRecord(*search, 0.3)
+		if err != nil {
+			return
+		}
+
+		searchResults := append(artifactSearch, recordSearch...)
+
+		bestScore := map[uint]float64{}
+
+		for _, r := range searchResults {
+			score, ok := bestScore[r.id]
+			if !ok || r.score > score {
+				bestScore[r.id] = r.score
+			}
+		}
+
+		var recordMap = map[uint]*Record{}
+		for _, r := range records {
+			if (r.Title != nil && strings.Contains(strings.ToLower(*r.Title), strings.ToLower(*search))) ||
+				(r.Label != nil && strings.Contains(strings.ToLower(*r.Label), strings.ToLower(*search))) ||
+				(r.Description != nil && strings.Contains(strings.ToLower(*r.Description), strings.ToLower(*search))) {
+
+				bestScore[r.ID] = 1
+			}
+			recordMap[r.ID] = &r
+		}
+
+		recordIDs := []uint{}
+
+		for id := range bestScore {
+			recordIDs = append(recordIDs, id)
+		}
+
+		slices.SortFunc(recordIDs, func(a uint, b uint) int {
+			if bestScore[a] > bestScore[b] {
+				return -1
+			} else if bestScore[a] < bestScore[b] {
+				return 1
+			} else {
+				return 0
+			}
+		})
+
+		var filteredSortedRecords []Record
+
+		for _, rid := range recordIDs {
+			r, ok := recordMap[rid]
+			if ok && r != nil {
+				filteredSortedRecords = append(filteredSortedRecords, *r)
+			}
+		}
+
+		records = filteredSortedRecords
+
 	}
 
 	return
@@ -121,7 +240,7 @@ func GetChildrenRecurse(parentID uint, searchDepth int, currentDepth int) (recor
 
 func GetRecordsGraphFriendly(ctx context.Context, inputID uint, inputChildrenDepth int, inputParentDepth int) (graphOutput string, err error) {
 	var records []Record
-	records, err = GetRecordsFriendly(ctx, inputID, inputChildrenDepth, inputParentDepth)
+	records, err = GetRecordsFriendly(ctx, inputID, inputChildrenDepth, inputParentDepth, "")
 
 	recordMap := make(map[uint]*Record)
 
@@ -152,7 +271,7 @@ func GetRecordsGraphFriendly(ctx context.Context, inputID uint, inputChildrenDep
 
 func GetRecordsGraphFriendlyNative(ctx context.Context, inputID uint, inputChildrenDepth int, inputParentDepth int) (graphOutput string, err error) {
 	var records []Record
-	records, err = GetRecordsFriendly(ctx, inputID, inputChildrenDepth, inputParentDepth)
+	records, err = GetRecordsFriendly(ctx, inputID, inputChildrenDepth, inputParentDepth, "")
 	if err != nil {
 		return
 	}

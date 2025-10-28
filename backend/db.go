@@ -4,9 +4,12 @@ import (
 	"context"
 	"errors"
 	"log"
+	"os"
+	"time"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 var (
@@ -23,7 +26,19 @@ func ConnectDB(dbFilePath string) (err error) {
 		return errors.New("db is already defined, will not override")
 	}
 
-	db, err = gorm.Open(sqlite.Open(dbFilePath), &gorm.Config{})
+	newLogger := logger.New(
+		log.New(os.Stdout, "\r\n", log.LstdFlags), // io writer
+		logger.Config{
+			SlowThreshold:             100 * time.Millisecond, // Slow SQL threshold
+			LogLevel:                  logger.Info,            // Log level
+			IgnoreRecordNotFoundError: false,                  // Ignore ErrRecordNotFound error for logger
+			Colorful:                  true,                   // Disable color
+		},
+	)
+
+	db, err = gorm.Open(sqlite.Open(dbFilePath), &gorm.Config{
+		Logger: newLogger,
+	})
 
 	if err != nil {
 		log.Println("Connected to DB at", dbFilePath)
