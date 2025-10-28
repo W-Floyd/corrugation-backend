@@ -33,7 +33,18 @@ func GetRecordsFriendly(ctx context.Context, inputID uint, inputChildrenDepth in
 	if inputSearch != "" {
 		Search = &inputSearch
 	}
-	records, err = GetRecords(ID, ChildrenDepth, ParentDepth, Search, nil, nil)
+	records, err = GetRecords(ID, ChildrenDepth, ParentDepth, Search, []struct {
+		q string
+		h func(db gorm.PreloadBuilder) error
+	}{
+		{
+			q: "Artifacts",
+			h: func(db gorm.PreloadBuilder) error {
+				db.Select("id", "record_id")
+				return nil
+			},
+		},
+	}, nil)
 	return
 }
 

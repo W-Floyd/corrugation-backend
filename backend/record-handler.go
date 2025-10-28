@@ -33,7 +33,18 @@ func GetRecord(ctx context.Context, input *struct {
 	ID uint `path:"id" example:"1" doc:"ID to delete"`
 }) (output *RecordOutput, err error) {
 	var records []Record
-	records, err = GetRecords(&input.ID, nil, nil, nil, nil, nil)
+	records, err = GetRecords(&input.ID, nil, nil, nil, []struct {
+		q string
+		h func(db gorm.PreloadBuilder) error
+	}{
+		{
+			q: "Artifacts",
+			h: func(db gorm.PreloadBuilder) error {
+				db.Select("id", "record_id")
+				return nil
+			},
+		},
+	}, nil)
 	if err != nil {
 		return
 	}
