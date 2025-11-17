@@ -289,7 +289,7 @@ func (i *Image) GetID() (output uint) {
 	return i.ID
 }
 
-func GetArtifactEmbeddings() (e map[uint]struct {
+func GetArtifactEmbeddings() (e map[uint]*struct {
 	embedding []float64
 	artifact  *Artifact
 }, err error) {
@@ -298,7 +298,7 @@ func GetArtifactEmbeddings() (e map[uint]struct {
 		return
 	}
 
-	e = map[uint]struct {
+	e = map[uint]*struct {
 		embedding []float64
 		artifact  *Artifact
 	}{}
@@ -318,7 +318,7 @@ func GetArtifactEmbeddings() (e map[uint]struct {
 			}
 			embeddingsCache[*a.EmbeddingHash] = singleE
 		}
-		e[a.ID] = struct {
+		e[a.ID] = &struct {
 			embedding []float64
 			artifact  *Artifact
 		}{

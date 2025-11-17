@@ -43,7 +43,7 @@ type EntityInput struct {
 
 type StoreOutput struct {
 	Body struct {
-		Entities       map[frontend.EntityID]EntityInput  `json:"entities"`
+		Entities       map[frontend.EntityID]*EntityInput `json:"entities"`
 		Artifacts      map[uint]frontend.FrontendArtifact `json:"artifacts"`
 		LastArtifactID uint                               `json:"lastartifactid"`
 		StoreVersion   int                                `json:"storeversion"`
@@ -129,7 +129,7 @@ func GetStore(ctx context.Context, input *struct{}) (output *StoreOutput, err er
 
 	output = &StoreOutput{}
 
-	output.Body.Entities = make(map[frontend.EntityID]EntityInput)
+	output.Body.Entities = make(map[frontend.EntityID]*EntityInput)
 
 	records, err := GetRecords(nil, nil, nil, nil, []struct {
 		q string
@@ -164,10 +164,16 @@ func GetStore(ctx context.Context, input *struct{}) (output *StoreOutput, err er
 		if err != nil {
 			return output, err
 		}
-		output.Body.Entities[frontend.EntityID(record.ID)] = *e
+		output.Body.Entities[frontend.EntityID(record.ID)] = e
 	}
 
 	output.Body.StoreVersion = int(newest.Unix())
+
+	tx := db.Model(&Record{}).Unscoped().Select("MAX(id)").Find(&output.Body.LastArtifactID)
+	if tx.Error != nil {
+		err = tx.Error
+		return
+	}
 
 	as, err := gorm.G[Artifact](db).Select("id", "content_type", "original_filename").Find(dbCtx)
 	if err != nil {
@@ -209,7 +215,7 @@ var GetStoreVersionOperation = huma.Operation{
 }
 
 func GetStoreVersion(ctx context.Context, input *struct{}) (output *UIntOutput, err error) {
-	records, err := GetRecords(nil, nil, nil, nil, nil, []string{"updated_at"})
+	records, err := GetRecords(nil, nil, nil, nil, nil, []string{"updated_at", "created_at", "deleted_at"})
 	if err != nil {
 		return
 	}
@@ -239,23 +245,13 @@ var GetFirstFreeIDOperation = huma.Operation{
 }
 
 func GetFirstFreeID(ctx context.Context, input *struct{}) (output *UIntOutput, err error) {
-	var records []Record
-	tx := db.Unscoped().Find(&records)
+	output = &UIntOutput{}
+	tx := db.Model(&Record{}).Unscoped().Select("MAX(id)").Find(&output.Body)
 	if tx.Error != nil {
 		err = tx.Error
 		return
 	}
-
-	output = &UIntOutput{}
-
-	for _, record := range records {
-		if record.ID > output.Body {
-			output.Body = record.ID
-		}
-	}
-
 	output.Body += 1
-
 	return
 }
 
