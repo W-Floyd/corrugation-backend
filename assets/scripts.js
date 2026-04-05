@@ -617,8 +617,8 @@ function sortEntityID(a, b) {
     return retval;
   }
 
-  fa = ea.description.toLowerCase();
-  fb = eb.description.toLowerCase();
+  fa = ea.description ? ea.description.toLowerCase() : "";
+  fb = eb.description ? eb.description.toLowerCase() : "";
 
   retval = collator.compare(fa, fb);
 
