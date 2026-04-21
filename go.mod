@@ -7,7 +7,6 @@ require (
 	github.com/disintegration/imaging v1.6.2
 	github.com/foolin/goview v0.3.0
 	github.com/gabriel-vasile/mimetype v1.4.13
-	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/gorilla/websocket v1.5.3
 	github.com/labstack/echo/v4 v4.15.1
 	github.com/peterbourgon/diskv/v3 v3.0.1

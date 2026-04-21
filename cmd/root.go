@@ -34,7 +34,6 @@ import (
 
 	"github.com/foolin/goview"
 	"github.com/foolin/goview/supports/echoview-v4"
-	"github.com/golang-jwt/jwt"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/peterbourgon/diskv/v3"
@@ -77,23 +76,11 @@ func init() {
 
 	viper.SetEnvPrefix("CORRUGATION")
 
-	rootCmd.Flags().String("jwt", "", "JWT secret")
-	viper.BindPFlag("jwt-secret", rootCmd.Flags().Lookup("jwt"))
-
 	// rootCmd.Flags().StringP("assets", "a", "assets", "Assets location")
 	// viper.BindPFlag("assets", rootCmd.Flags().Lookup("assets"))
 
 	rootCmd.Flags().StringP("data", "d", "data", "Data location")
 	viper.BindPFlag("data", rootCmd.Flags().Lookup("data"))
-
-	rootCmd.Flags().StringP("username", "u", "", "Login username")
-	viper.BindPFlag("username", rootCmd.Flags().Lookup("username"))
-
-	rootCmd.Flags().StringP("password", "p", "", "Login password")
-	viper.BindPFlag("password", rootCmd.Flags().Lookup("password"))
-
-	rootCmd.Flags().Bool("auth", true, "Enable authentication")
-	viper.BindPFlag("authentication", rootCmd.Flags().Lookup("auth"))
 
 	rootCmd.Flags().Int("port", 8083, "Port to run server on")
 	viper.BindPFlag("port", rootCmd.Flags().Lookup("port"))
@@ -158,20 +145,6 @@ func props(v ...any) map[string]any {
 
 func server(cmd *cobra.Command, args []string) {
 
-	if viper.GetBool("authentication") {
-		checks := []string{
-			"jwt-secret",
-			"username",
-			"password",
-		}
-		for _, check := range checks {
-			if viper.GetString(check) == "" {
-				fmt.Fprintln(os.Stderr, "Error:", check+" must be defined when using auth")
-				os.Exit(1)
-			}
-		}
-	}
-
 	// Initialize a new diskv store, rooted at "data", with a 16MB cache.
 	d = diskv.New(diskv.Options{
 		BasePath:          viper.GetString("data"),
@@ -213,13 +186,6 @@ func server(cmd *cobra.Command, args []string) {
 	e.GET("/ws", wsHandler)
 
 	r := e.Group("/api")
-
-	if viper.GetBool("authentication") {
-		// Login route
-		e.POST("/login", login)
-		r.GET("/info", info)
-		r.Use(middleware.JWT([]byte(viper.GetString("jwt-secret"))))
-	}
 
 	// Restricted group
 
@@ -279,13 +245,6 @@ func server(cmd *cobra.Command, args []string) {
 
 	e.Logger.Fatal(e.Start(":" + strconv.Itoa(viper.GetInt("port"))))
 
-}
-
-func info(c echo.Context) error {
-	user := c.Get("user").(*jwt.Token)
-	claims := user.Claims.(jwt.MapClaims)
-	name := claims["name"].(string)
-	return c.JSON(http.StatusOK, "Welcome "+name+"!")
 }
 
 // chanToSlice reads all data from ch (which must be a chan), returning a
