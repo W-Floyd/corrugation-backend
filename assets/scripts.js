@@ -86,18 +86,31 @@ document.addEventListener("alpine:init", () => {
     _originalBlob: null,
     rotation: 0,
     landscape: false,
+    buttonRotation: 0,
     _beta: null,
     _gamma: null,
 
     _onResize() {
-      Alpine.store("camera").landscape = window.innerWidth > window.innerHeight;
+      const cam = Alpine.store("camera");
+      if (cam._beta !== null) return;
+      const mobile = navigator.maxTouchPoints > 0;
+      cam.landscape = mobile && window.innerWidth > window.innerHeight;
+      const angle = screen.orientation?.angle ?? 0;
+      cam.buttonRotation = mobile ? (angle === 90 ? 90 : angle === 270 ? -90 : angle === 180 ? 180 : 0) : 0;
     },
 
     _onOrientation(e) {
       const cam = Alpine.store("camera");
       cam._beta = e.beta;
       cam._gamma = e.gamma;
-      cam.landscape = Math.abs(e.gamma) > Math.abs(e.beta);
+      const gAbs = Math.abs(e.gamma);
+      const bAbs = Math.abs(e.beta);
+      if (cam.landscape) {
+        if (bAbs > gAbs + 15) cam.landscape = false;
+      } else {
+        if (gAbs > bAbs + 15) cam.landscape = true;
+      }
+      cam.buttonRotation = cam.landscape ? (e.gamma < 0 ? 90 : -90) : 0;
     },
 
     async _startOrientation() {
@@ -122,6 +135,7 @@ document.addEventListener("alpine:init", () => {
       this._beta = null;
       this._gamma = null;
       window.addEventListener("resize", this._onResize);
+      window.addEventListener("orientationchange", this._onResize);
       await this._startOrientation();
       this.callback = callback;
       this.previewUrl = null;
@@ -129,13 +143,13 @@ document.addEventListener("alpine:init", () => {
       this._originalBlob = null;
       this.rotation = 0;
       try {
-        const portrait = window.innerHeight > window.innerWidth;
+        const mobile = navigator.maxTouchPoints > 0;
+        const portrait = mobile && window.innerHeight > window.innerWidth;
+        const videoConstraints = mobile
+          ? { facingMode: "environment", width: { ideal: portrait ? 2160 : 3840 }, height: { ideal: portrait ? 3840 : 2160 } }
+          : { width: { ideal: 3840 }, aspectRatio: { ideal: 16 / 9 }, resizeMode: "none" };
         this.stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: "environment",
-            width: { ideal: portrait ? 2160 : 3840 },
-            height: { ideal: portrait ? 3840 : 2160 },
-          },
+          video: videoConstraints,
           audio: false,
         });
         this.opened = true;
@@ -152,7 +166,7 @@ document.addEventListener("alpine:init", () => {
       if (this._beta !== null && this._gamma !== null) {
         return Math.abs(this._beta) > Math.abs(this._gamma);
       }
-      return window.innerHeight > window.innerWidth;
+      return navigator.maxTouchPoints > 0 && window.innerHeight > window.innerWidth;
     },
 
     // gamma < 0: device rotated CW (top pointing left) → stream needs CCW correction
@@ -246,13 +260,13 @@ document.addEventListener("alpine:init", () => {
       this._originalBlob = null;
       this.rotation = 0;
       try {
-        const portrait = window.innerHeight > window.innerWidth;
+        const mobile = navigator.maxTouchPoints > 0;
+        const portrait = mobile && window.innerHeight > window.innerWidth;
+        const videoConstraints = mobile
+          ? { facingMode: "environment", width: { ideal: portrait ? 2160 : 3840 }, height: { ideal: portrait ? 3840 : 2160 } }
+          : { width: { ideal: 3840 }, aspectRatio: { ideal: 16 / 9 }, resizeMode: "none" };
         this.stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: "environment",
-            width: { ideal: portrait ? 2160 : 3840 },
-            height: { ideal: portrait ? 3840 : 2160 },
-          },
+          video: videoConstraints,
           audio: false,
         });
         Alpine.nextTick(() => {
@@ -270,6 +284,7 @@ document.addEventListener("alpine:init", () => {
 
     _reset() {
       window.removeEventListener("resize", this._onResize);
+      window.removeEventListener("orientationchange", this._onResize);
       window.removeEventListener("deviceorientation", this._onOrientation);
       this._beta = null;
       this._gamma = null;
