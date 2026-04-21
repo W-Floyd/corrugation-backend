@@ -47,7 +47,7 @@ export const api = {
       },
       body: JSON.stringify(entity),
     });
-    const id = await response.text();
+    const id = await response.json();
     return parseInt(id, 10);
   },
 
@@ -111,7 +111,7 @@ export const api = {
       method: 'POST',
       body: formData,
     });
-    const id = await response.text();
+    const id = await response.json();
     return parseInt(id, 10);
   },
 

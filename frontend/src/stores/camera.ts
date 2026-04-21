@@ -1,13 +1,13 @@
 import { defineStore } from 'pinia';
-import { ref } from 'vue';
+import { ref, shallowRef } from 'vue';
 
 export const useCameraStore = defineStore('camera', () => {
   const opened = ref(false);
-  const stream = ref<MediaStream | null>(null);
-  const callback = ref<((files: File[]) => void) | null>(null);
+  const stream = shallowRef<MediaStream | null>(null);
+  const callback = shallowRef<((files: File[]) => void) | null>(null);
   const previewUrl = ref<string | null>(null);
-  const pendingFile = ref<File | null>(null);
-  const _originalBlob = ref<Blob | null>(null);
+  const pendingFile = shallowRef<File | null>(null);
+  const _originalBlob = shallowRef<Blob | null>(null);
   let rotation = 0;
   let landscape = false;
   let buttonRotation = 0;
