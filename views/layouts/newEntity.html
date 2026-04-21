@@ -38,17 +38,36 @@
 
                 <label class="col-span-1" for="name">Name</label>
                 <input name="name" autofocus id="name" type="text" x-model="$store.newEntityDialog.entity.name"
+                    :placeholder="$store.blip.suggestedTitle || ''"
                     class="col-span-2 bg-white rounded-sm dark:bg-gray-900 ring-1">
                 <div class="col-span-1 pl-4">
                     <label for="islabeled">Is Labeled</label>
                     <input name="islabeled" id="islabeled" type="checkbox"
                         x-model="$store.newEntityDialog.entity.metadata.islabeled">
                 </div>
+                <template x-if="$store.blip.suggestedTitle || $store.blip.loading">
+                    <div class="col-start-2 col-span-2 -mt-1">
+                        <span x-show="$store.blip.loading" class="text-xs text-gray-400 italic">Describing image…</span>
+                        <button x-show="$store.blip.suggestedTitle && !$store.newEntityDialog.entity.name" type="button"
+                            @click="$store.newEntityDialog.entity.name = $store.blip.suggestedTitle"
+                            class="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 italic text-left"
+                            x-text="$store.blip.suggestedTitle"></button>
+                    </div>
+                </template>
 
                 <label for="description">Description</label>
                 <textarea name="description" id="description" type="text" @keyup.enter.stop
                     x-model="$store.newEntityDialog.entity.description"
+                    :placeholder="$store.blip.suggestedDescription || ''"
                     class="col-span-3 bg-white rounded-sm dark:bg-gray-900 ring-1"></textarea>
+                <template x-if="$store.blip.suggestedDescription && !$store.newEntityDialog.entity.description">
+                    <div class="col-start-2 col-span-3 -mt-1">
+                        <button type="button"
+                            @click="$store.newEntityDialog.entity.description = $store.blip.suggestedDescription"
+                            class="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 italic text-left"
+                            x-text="$store.blip.suggestedDescription"></button>
+                    </div>
+                </template>
 
                 <label for="quantity">Quantity</label>
                 <input name="quantity" id="quantity" type="number" min="0" step="1"

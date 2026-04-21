@@ -2,6 +2,26 @@
     class="container relative h-full max-w-sm bg-white shadow-md grow min-w-sm dark:bg-gray-800 rounded-xl ring-1 ring-gray-500/25 hover:ring-gray-500/50 hover:shadow-lg"
     x-data="{ editmode: false, localentity: cloneDeep(entity) }">
 
+    <!-- Match type badges -->
+    <div class="absolute top-2 right-2 flex gap-1 items-center">
+        <template x-if="$store.clip.enabled && $store.entities.searchtext && $store.clip.textMatchIds.has(entity.id)">
+            <span class="text-xs text-gray-400 font-medium px-1 rounded bg-gray-100 dark:bg-gray-700">T</span>
+        </template>
+        <template x-if="$store.clip.enabled && $store.clip.scores[entity.id] != null">
+            <span class="relative" x-data="{ tip: false }">
+                <span class="text-xs text-gray-400 px-1 rounded bg-gray-100 dark:bg-gray-700 cursor-default"
+                    x-text="Math.round($store.clip.scores[entity.id] * 100) + '%'"
+                    @mouseenter="tip = true" @mouseleave="tip = false"></span>
+                <div x-show="tip" x-cloak
+                    class="absolute right-0 top-6 z-20 w-52 p-2 text-xs bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-lg shadow-lg ring-1 ring-gray-200 dark:ring-gray-600 pointer-events-none">
+                    <p class="font-semibold mb-1">Visual similarity</p>
+                    <p x-text="'Cosine similarity: ' + $store.clip.scores[entity.id].toFixed(3)"></p>
+                    <p class="mt-1 text-gray-400">How closely this image matches your search text according to CLIP.</p>
+                </div>
+            </span>
+        </template>
+    </div>
+
     <!-- Text stuff -->
     <div class="p-8 h-max">
 

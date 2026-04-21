@@ -1,6 +1,26 @@
 document.addEventListener("alpine:init", () => {
   Alpine.store("isLoading", false);
 
+  Alpine.store("toasts", {
+    items: [],
+    add(message) {
+      const id = Date.now();
+      this.items.push({ id, message });
+      setTimeout(() => this.remove(id), 5000);
+    },
+    remove(id) {
+      this.items = this.items.filter((t) => t.id !== id);
+    },
+  });
+
+  const _consoleError = console.error.bind(console);
+  console.error = (...args) => {
+    _consoleError(...args);
+    Alpine.store("toasts").add(
+      args.map((a) => (a instanceof Error ? a.message : String(a))).join(" "),
+    );
+  };
+
   Alpine.store("newEntityDialog", {
     opened: false,
     entity: {},
@@ -96,7 +116,15 @@ document.addEventListener("alpine:init", () => {
       const mobile = navigator.maxTouchPoints > 0;
       cam.landscape = mobile && window.innerWidth > window.innerHeight;
       const angle = screen.orientation?.angle ?? 0;
-      cam.buttonRotation = mobile ? (angle === 90 ? 90 : angle === 270 ? -90 : angle === 180 ? 180 : 0) : 0;
+      cam.buttonRotation = mobile
+        ? angle === 90
+          ? 90
+          : angle === 270
+            ? -90
+            : angle === 180
+              ? 180
+              : 0
+        : 0;
     },
 
     _onOrientation(e) {
@@ -146,8 +174,16 @@ document.addEventListener("alpine:init", () => {
         const mobile = navigator.maxTouchPoints > 0;
         const portrait = mobile && window.innerHeight > window.innerWidth;
         const videoConstraints = mobile
-          ? { facingMode: "environment", width: { ideal: portrait ? 2160 : 3840 }, height: { ideal: portrait ? 3840 : 2160 } }
-          : { width: { ideal: 3840 }, aspectRatio: { ideal: 16 / 9 }, resizeMode: "none" };
+          ? {
+              facingMode: "environment",
+              width: { ideal: portrait ? 2160 : 3840 },
+              height: { ideal: portrait ? 3840 : 2160 },
+            }
+          : {
+              width: { ideal: 3840 },
+              aspectRatio: { ideal: 16 / 9 },
+              resizeMode: "none",
+            };
         this.stream = await navigator.mediaDevices.getUserMedia({
           video: videoConstraints,
           audio: false,
@@ -166,7 +202,9 @@ document.addEventListener("alpine:init", () => {
       if (this._beta !== null && this._gamma !== null) {
         return Math.abs(this._beta) > Math.abs(this._gamma);
       }
-      return navigator.maxTouchPoints > 0 && window.innerHeight > window.innerWidth;
+      return (
+        navigator.maxTouchPoints > 0 && window.innerHeight > window.innerWidth
+      );
     },
 
     // gamma < 0: device rotated CW (top pointing left) → stream needs CCW correction
@@ -211,11 +249,14 @@ document.addEventListener("alpine:init", () => {
       canvas.toBlob(
         (blob) => {
           this._originalBlob = blob;
-          this.pendingFile = new File([blob], "photo.jpg", { type: "image/jpeg" });
+          this.pendingFile = new File([blob], "photo.jpg", {
+            type: "image/jpeg",
+          });
           this.previewUrl = URL.createObjectURL(blob);
+          Alpine.store("blip").describe(this.previewUrl);
         },
         "image/jpeg",
-        0.92
+        0.92,
       );
     },
 
@@ -238,11 +279,13 @@ document.addEventListener("alpine:init", () => {
         if (this.previewUrl) URL.revokeObjectURL(this.previewUrl);
         canvas.toBlob(
           (rotatedBlob) => {
-            this.pendingFile = new File([rotatedBlob], "photo.jpg", { type: "image/jpeg" });
+            this.pendingFile = new File([rotatedBlob], "photo.jpg", {
+              type: "image/jpeg",
+            });
             this.previewUrl = URL.createObjectURL(rotatedBlob);
           },
           "image/jpeg",
-          0.92
+          0.92,
         );
       };
       img.src = URL.createObjectURL(blob);
@@ -263,8 +306,16 @@ document.addEventListener("alpine:init", () => {
         const mobile = navigator.maxTouchPoints > 0;
         const portrait = mobile && window.innerHeight > window.innerWidth;
         const videoConstraints = mobile
-          ? { facingMode: "environment", width: { ideal: portrait ? 2160 : 3840 }, height: { ideal: portrait ? 3840 : 2160 } }
-          : { width: { ideal: 3840 }, aspectRatio: { ideal: 16 / 9 }, resizeMode: "none" };
+          ? {
+              facingMode: "environment",
+              width: { ideal: portrait ? 2160 : 3840 },
+              height: { ideal: portrait ? 3840 : 2160 },
+            }
+          : {
+              width: { ideal: 3840 },
+              aspectRatio: { ideal: 16 / 9 },
+              resizeMode: "none",
+            };
         this.stream = await navigator.mediaDevices.getUserMedia({
           video: videoConstraints,
           audio: false,
@@ -279,6 +330,7 @@ document.addEventListener("alpine:init", () => {
     },
 
     close() {
+      Alpine.store("blip").clear();
       this._reset();
     },
 
@@ -596,6 +648,247 @@ document.addEventListener("alpine:init", () => {
     },
   });
 
+  Alpine.store("blip", {
+    loading: false,
+    suggestedTitle: null,
+    suggestedDescription: null,
+    _pipeline: null,
+
+    async _load() {
+      if (this._pipeline) return;
+      const { pipeline, env } =
+        await import("https://cdn.jsdelivr.net/npm/@huggingface/transformers");
+      env.allowLocalModels = false;
+      this._pipeline = await pipeline(
+        "image-to-text",
+        "Xenova/vit-gpt2-image-captioning",
+        { dtype: "fp32" },
+      );
+    },
+
+    async describe(imageUrl) {
+      this.suggestedTitle = null;
+      this.suggestedDescription = null;
+      this.loading = true;
+      try {
+        await this._load();
+        const [{ generated_text }] = await this._pipeline(imageUrl);
+        if (generated_text) {
+          const text = generated_text.trim();
+          const title = text.split(" ").slice(0, 4).join(" ");
+          this.suggestedTitle = title.charAt(0).toUpperCase() + title.slice(1);
+          this.suggestedDescription =
+            text.charAt(0).toUpperCase() + text.slice(1);
+        }
+      } catch (e) {
+        console.warn("[blip] describe failed:", e);
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    clear() {
+      this.suggestedTitle = null;
+      this.suggestedDescription = null;
+      this.loading = false;
+    },
+  });
+
+  Alpine.store("clip", {
+    enabled: false,
+    modelReady: false,
+    modelLoading: false,
+    encoded: 0,
+    total: 0,
+    results: [],
+    scores: {}, // entityId -> cosine similarity score
+    textMatchIds: new Set(),
+    searching: false,
+    _textModel: null,
+    _visionModel: null,
+    _processor: null,
+    _tokenizer: null,
+    _RawImage: null,
+    _embeddings: new Map(), // artifactId -> Float32Array
+    _artifactEntity: new Map(), // artifactId -> entityId
+
+    _indexArtifacts() {
+      const state = Alpine.store("entities").fullstate;
+      if (!state) return;
+      this._artifactEntity.clear();
+      for (const [eid, entity] of Object.entries(state.entities)) {
+        if (!entity.artifacts) continue;
+        for (const aid of entity.artifacts) {
+          if (state.artifacts?.[aid]?.image) {
+            this._artifactEntity.set(String(aid), String(eid));
+          }
+        }
+      }
+    },
+
+    async _loadModel() {
+      if (this._textModel) return;
+      this.modelLoading = true;
+      try {
+        const {
+          CLIPTextModelWithProjection,
+          CLIPVisionModelWithProjection,
+          AutoProcessor,
+          AutoTokenizer,
+          RawImage,
+          env,
+        } =
+          await import("https://cdn.jsdelivr.net/npm/@huggingface/transformers");
+        env.allowLocalModels = false;
+        this._RawImage = RawImage;
+        [this._textModel, this._visionModel, this._processor, this._tokenizer] =
+          await Promise.all([
+            CLIPTextModelWithProjection.from_pretrained(
+              "Xenova/clip-vit-base-patch32",
+            ),
+            CLIPVisionModelWithProjection.from_pretrained(
+              "Xenova/clip-vit-base-patch32",
+            ),
+            AutoProcessor.from_pretrained("Xenova/clip-vit-base-patch32"),
+            AutoTokenizer.from_pretrained("Xenova/clip-vit-base-patch32"),
+          ]);
+        this.modelReady = true;
+      } finally {
+        this.modelLoading = false;
+      }
+    },
+
+    _cacheKey(id) {
+      return `clip:${id}`;
+    },
+
+    _toBase64(arr) {
+      return btoa(String.fromCharCode(...new Uint8Array(arr.buffer)));
+    },
+
+    _fromBase64(b64) {
+      const bin = atob(b64);
+      const buf = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+      return new Float32Array(buf.buffer);
+    },
+
+    async _encodeOne(id) {
+      const cached = localStorage.getItem(this._cacheKey(id));
+      if (cached) {
+        this._embeddings.set(id, this._fromBase64(cached));
+        this.encoded++;
+        return;
+      }
+      const image = await this._RawImage.fromURL(`/api/artifact/${id}`);
+      const inputs = await this._processor(image);
+      const { image_embeds } = await this._visionModel(inputs);
+      const emb = this._normalize(image_embeds.data);
+      this._embeddings.set(id, emb);
+      localStorage.setItem(this._cacheKey(id), this._toBase64(emb));
+      this.encoded++;
+    },
+
+    async _encodeAll() {
+      const entitiesStore = Alpine.store("entities");
+      const descendants = new Set(
+        entitiesStore.listChildLocationsDeep(entitiesStore.currentEntity),
+      );
+      const ids = [...this._artifactEntity.keys()].filter(
+        (id) =>
+          !this._embeddings.has(id) &&
+          descendants.has(this._artifactEntity.get(id)),
+      );
+      if (!ids.length) return;
+      this.total += ids.length;
+      const concurrency = Math.max(
+        2,
+        Math.min(navigator.hardwareConcurrency ?? 4, 8),
+      );
+      const queue = [...ids];
+      await Promise.all(
+        Array.from({ length: concurrency }, async () => {
+          while (queue.length) {
+            const id = queue.shift();
+            await this._encodeOne(id).catch(() => {
+              this.total--;
+            });
+          }
+        }),
+      );
+    },
+
+    async activate() {
+      await this._loadModel();
+      await this._encodeAll();
+    },
+
+    async search(query) {
+      if (!query.trim()) {
+        this.results = [];
+        this.scores = {};
+        this.searching = false;
+        return;
+      }
+      this.searching = true;
+      if (!this.modelReady) await this.activate();
+      else await this._encodeAll();
+      const inputs = this._tokenizer([query], {
+        padding: true,
+        truncation: true,
+      });
+      const { text_embeds } = await this._textModel(inputs);
+      const tv = this._normalize(text_embeds.data);
+      const entitiesStore = Alpine.store("entities");
+      const descendants = new Set(
+        entitiesStore.listChildLocationsDeep(entitiesStore.currentEntity),
+      );
+      const best = new Map();
+      for (const [aid, iv] of this._embeddings) {
+        const eid = this._artifactEntity.get(aid);
+        if (!eid || !descendants.has(eid)) continue;
+        const score = this._dot(tv, iv);
+        if (!best.has(eid) || best.get(eid) < score) best.set(eid, score);
+      }
+      const sorted = [...best.entries()].sort((a, b) => b[1] - a[1]);
+      this.scores = Object.fromEntries(sorted);
+      this.results = sorted
+        .map(([eid]) => Alpine.store("entities").fullstate?.entities[eid])
+        .filter(Boolean);
+      this.searching = false;
+    },
+
+    _normalize(data) {
+      let n = 0;
+      for (const v of data) n += v * v;
+      n = Math.sqrt(n);
+      const out = new Float32Array(data.length);
+      for (let i = 0; i < data.length; i++) out[i] = data[i] / n;
+      return out;
+    },
+
+    _dot(a, b) {
+      let s = 0;
+      for (let i = 0; i < a.length; i++) s += a[i] * b[i];
+      return s;
+    },
+
+    merge(textResults) {
+      this.textMatchIds = new Set(textResults.map((e) => e.id));
+      if (!this.enabled || !this.results.length) return textResults;
+      const byClip = (a, b) =>
+        (this.scores[b.id] ?? 0) - (this.scores[a.id] ?? 0);
+      const textOnly = textResults.filter((e) => this.scores[e.id] == null);
+      const textAndClip = textResults
+        .filter((e) => this.scores[e.id] != null)
+        .sort(byClip);
+      const clipOnly = this.results
+        .filter((e) => !this.textMatchIds.has(e.id))
+        .sort(byClip);
+      return [...textOnly, ...textAndClip, ...clipOnly];
+    },
+  });
+
   Alpine.store("entities", {
     searchtextpredebounce: "",
     searchtext: "",
@@ -628,10 +921,15 @@ document.addEventListener("alpine:init", () => {
     async reload() {
       await this.loadFullState();
       await this.loadLocationTree();
+      Alpine.store("clip")._indexArtifacts();
     },
 
     connectWS() {
-      const url = (location.protocol === "https:" ? "wss" : "ws") + "://" + location.host + "/ws";
+      const url =
+        (location.protocol === "https:" ? "wss" : "ws") +
+        "://" +
+        location.host +
+        "/ws";
       const ws = new WebSocket(url);
       ws.onmessage = () => this.reload();
       ws.onclose = () => setTimeout(() => this.connectWS(), 3000);
