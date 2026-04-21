@@ -253,7 +253,6 @@ document.addEventListener("alpine:init", () => {
             type: "image/jpeg",
           });
           this.previewUrl = URL.createObjectURL(blob);
-          Alpine.store("blip").describe(this.previewUrl);
         },
         "image/jpeg",
         0.92,
@@ -330,8 +329,7 @@ document.addEventListener("alpine:init", () => {
     },
 
     close() {
-      Alpine.store("blip").clear();
-      this._reset();
+this._reset();
     },
 
     _reset() {
@@ -645,52 +643,6 @@ document.addEventListener("alpine:init", () => {
       result = await fetch(url, options).then((response) => response.json());
 
       return result;
-    },
-  });
-
-  Alpine.store("blip", {
-    loading: false,
-    suggestedTitle: null,
-    suggestedDescription: null,
-    _pipeline: null,
-
-    async _load() {
-      if (this._pipeline) return;
-      const { pipeline, env } =
-        await import("https://cdn.jsdelivr.net/npm/@huggingface/transformers");
-      env.allowLocalModels = false;
-      this._pipeline = await pipeline(
-        "image-to-text",
-        "Xenova/vit-gpt2-image-captioning",
-        { dtype: "fp32" },
-      );
-    },
-
-    async describe(imageUrl) {
-      this.suggestedTitle = null;
-      this.suggestedDescription = null;
-      this.loading = true;
-      try {
-        await this._load();
-        const [{ generated_text }] = await this._pipeline(imageUrl);
-        if (generated_text) {
-          const text = generated_text.trim();
-          const title = text.split(" ").slice(0, 4).join(" ");
-          this.suggestedTitle = title.charAt(0).toUpperCase() + title.slice(1);
-          this.suggestedDescription =
-            text.charAt(0).toUpperCase() + text.slice(1);
-        }
-      } catch (e) {
-        console.warn("[blip] describe failed:", e);
-      } finally {
-        this.loading = false;
-      }
-    },
-
-    clear() {
-      this.suggestedTitle = null;
-      this.suggestedDescription = null;
-      this.loading = false;
     },
   });
 
