@@ -273,18 +273,27 @@ defineExpose({ cardEl });
             <div class="flex gap-3">
                 <button
                     @click.stop="emit('deleteConfirmed')"
-                    class="h-9 px-4 rounded-full bg-red-500 hover:bg-red-600 text-white text-sm shadow"
+                    class="h-9 px-4 rounded-full bg-red-500 hover:bg-red-600 text-white text-sm shadow relative"
                 >
                     Delete
+                    <kbd
+                        v-if="showShortcuts && isSelected"
+                        class="absolute -top-2 -right-1 text-[9px] font-sans bg-gray-800 text-white rounded px-1 leading-3.5 pointer-events-none shadow"
+                        >Enter</kbd
+                    >
                 </button>
                 <button
                     @click.stop="emit('deleteCancelled')"
-                    class="h-9 px-4 rounded-full bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-sm shadow"
+                    class="h-9 px-4 rounded-full bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-sm shadow relative"
                 >
                     Cancel
+                    <kbd
+                        v-if="showShortcuts && isSelected"
+                        class="absolute -top-2 -right-1 text-[9px] font-sans bg-gray-800 text-white rounded px-1 leading-3.5 pointer-events-none shadow"
+                        >Esc</kbd
+                    >
                 </button>
             </div>
-            <p class="text-xs text-gray-400">↩ confirm · Esc cancel</p>
         </div>
         <!-- Match badges -->
         <div class="absolute top-2 right-2 flex gap-1 items-center">
@@ -417,6 +426,11 @@ defineExpose({ cardEl });
                 title="Delete entity"
             >
                 <TrashCanIcon :size="20" />
+                <kbd
+                    v-if="showShortcuts && isSelected"
+                    class="absolute -top-2 -right-1 text-[9px] font-sans bg-gray-800 text-white rounded px-1 leading-[14px] pointer-events-none shadow"
+                    >Del</kbd
+                >
             </button>
 
             <button
