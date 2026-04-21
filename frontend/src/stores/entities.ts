@@ -107,6 +107,7 @@ export const useEntitiesStore = defineStore('entities', () => {
   }
 
   async function setCurrentEntity(entityId: number): Promise<void> {
+    if (isNaN(entityId)) entityId = 0;
     currentEntity.value = entityId;
     window.location.hash = entityId === 0 ? '' : entityId.toString();
     searchtext.value = '';

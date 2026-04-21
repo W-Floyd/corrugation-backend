@@ -36,8 +36,9 @@ onMounted(() => {
 watch(
   () => route.params.entityId,
   async (newId) => {
-    if (newId !== undefined) {
-      await entitiesStore.setCurrentEntity(parseInt(newId as string, 10));
+    const id = parseInt(newId as string, 10);
+    if (!isNaN(id)) {
+      await entitiesStore.setCurrentEntity(id);
     }
   }
 );
