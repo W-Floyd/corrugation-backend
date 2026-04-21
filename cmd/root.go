@@ -24,16 +24,12 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"html/template"
 	"net/http"
 	"os"
 	"reflect"
 	"strconv"
 	"strings"
-	"time"
 
-	"github.com/foolin/goview"
-	"github.com/foolin/goview/supports/echoview-v4"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/peterbourgon/diskv/v3"
@@ -160,28 +156,8 @@ func server(cmd *cobra.Command, args []string) {
 	e.Use(middleware.Recover())
 	e.Use(middleware.CORS())
 
-	c := goview.DefaultConfig
-	c.DisableCache = true
-
-	c.Funcs = template.FuncMap{
-		"unescapeHTML": func(s string) any {
-			return template.HTML(s)
-		},
-		"copy": func() string {
-			return time.Now().Format("2006")
-		},
-		"componentButtonRound": componentButtonRound,
-	}
-
-	e.Renderer = echoview.New(c)
-
-	e.GET("/", func(c echo.Context) error {
-		return c.Render(http.StatusOK, "index", echo.Map{
-			"title": "Corrugation",
-		})
-	})
-
-	e.Use(middleware.Static("assets"))
+	e.Static("/assets", "dist/assets")
+	e.File("/favicon.ico", "dist/favicon.ico")
 
 	e.GET("/ws", wsHandler)
 
@@ -232,6 +208,10 @@ func server(cmd *cobra.Command, args []string) {
 	r.GET("/entity/:id/contains", getContains)
 	r.GET("/entity/:id/qrcode", qrGenerate)
 	r.GET("/entity/list", listEntities)
+
+	e.GET("/*", func(c echo.Context) error {
+		return c.File("dist/index.html")
+	})
 
 	if d.Has("store.json") {
 		data, err := d.Read("store.json")

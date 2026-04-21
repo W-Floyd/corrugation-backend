@@ -26,8 +26,10 @@ go build -ldflags="-extldflags -static" -o main .
 
 **Docker:**
 ```bash
-docker-compose up
+docker compose stop; docker compose up -d --build
 ```
+
+Using the Firefox MCP, run the docker comand and connect to `http://localhost:8083/` to inspect.
 
 ## Architecture
 

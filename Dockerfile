@@ -1,51 +1,27 @@
-# Dockerfile References: https://docs.docker.com/engine/reference/builder/
+# Stage 0: Build frontend
+FROM node:22-alpine AS frontend
+WORKDIR /app/frontend
+COPY frontend/package*.json ./
+RUN npm ci
+COPY frontend/ .
+RUN npm run build
 
-# Start from golang:1.12-alpine base image
-FROM golang:1.25-alpine
-
-# The latest alpine images don't have some tools like (`git` and `bash`).
-# Adding git, bash and openssh to the image
-RUN apk update && apk upgrade && apk add --no-cache bash git openssh
-
-# Add Maintainer Info
-LABEL maintainer="William Floyd <william.png2000@gmail.com>"
-
-# Set the Current Working Directory inside the container
+# Stage 1: Build Go binary
+FROM golang:1.25-alpine AS backend
 WORKDIR /app
-
-# Copy go mod and sum files
+RUN apk add --no-cache bash git openssh libwebp gcc musl-dev
 COPY go.mod go.sum ./
-
-# Download all dependancies. Dependencies will be cached if the go.mod and go.sum files are not changed
 RUN go mod download
-
-RUN apk add --no-cache libwebp
-RUN apk add --no-cache gcc
-RUN apk add --no-cache musl-dev
-
-# Copy the source from the current directory to the Working Directory inside the container
 COPY main.go main.go
 COPY cmd/ cmd/
-
-# Build the Go app
 RUN go build -ldflags="-extldflags -static" -o main .
 
+# Stage 2: Final image
 FROM scratch
-
 WORKDIR /
-
 ENV CORRUGATION_AUTHENTICATION=false
 ENV CORRUGATION_DATA=/data
-ENV CORRUGATION_ASSETS=/assets
-
-COPY --from=0 /app/main /app/main
-
-# Expose port 8083 to the outside world
+COPY --from=backend /app/main /app/main
+COPY --from=frontend /app/dist /dist
 EXPOSE 8083
-
-# Run the executable
-ENTRYPOINT ["/app/main" ]
-
-COPY assets/ /assets
-COPY views/ /views
-COPY components/ /components
+ENTRYPOINT ["/app/main"]

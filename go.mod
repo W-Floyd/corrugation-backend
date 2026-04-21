@@ -5,7 +5,6 @@ go 1.25.0
 require (
 	github.com/chai2010/webp v1.4.0
 	github.com/disintegration/imaging v1.6.2
-	github.com/foolin/goview v0.3.0
 	github.com/gabriel-vasile/mimetype v1.4.13
 	github.com/gorilla/websocket v1.5.3
 	github.com/labstack/echo/v4 v4.15.1
