@@ -103,7 +103,8 @@ const handleSubmit = async (): Promise<void> => {
   try {
     const location = props.location || 0;
     entity.value.location = location;
-    const entityId = await api.createEntity(entity.value);
+    const targetId = entity.value.metadata.isLabeled ? availableId.value : freeId.value;
+    const entityId = await api.createEntity({ ...entity.value, id: targetId });
     await entitiesStore.reload();
     emit('created', entityId);
     emit('update:visible', false);
