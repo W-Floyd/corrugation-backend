@@ -634,6 +634,37 @@ this._reset();
       return result;
     },
 
+    async quickCapture(location) {
+      Alpine.store("camera").open(async (files) => {
+        const fd = new FormData();
+        fd.append("file", files[0]);
+
+        let artifactXhr = new XMLHttpRequest();
+        artifactXhr.open("POST", "/api/artifact", false);
+        artifactXhr.send(fd);
+
+        let artifactId = null;
+        if (artifactXhr.status === 200) {
+          artifactId = parseInt(JSON.parse(artifactXhr.responseText));
+        }
+
+        let entity = {
+          name: null,
+          description: null,
+          artifacts: artifactId != null ? [artifactId] : null,
+          location: parseInt(location),
+          metadata: { quantity: null, owners: null, tags: null, islabeled: null },
+        };
+
+        let entityXhr = new XMLHttpRequest();
+        entityXhr.open("POST", "/api/entity", false);
+        entityXhr.setRequestHeader("Content-Type", "application/json");
+        entityXhr.send(JSON.stringify(entity));
+
+        await Alpine.store("entities").reload();
+      });
+    },
+
     async firstFreeID() {
       let url = "/api/entity/find/firstfreeid";
       let options = {
