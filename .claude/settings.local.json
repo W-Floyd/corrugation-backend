@@ -20,7 +20,8 @@
       "Bash(python3 -m json.tool)",
       "mcp__firefox-devtools__list_pages",
       "Bash(docker compose *)",
-      "Bash(npm install *)"
+      "Bash(npm install *)",
+      "Bash(./test.sh)"
     ]
   }
 }

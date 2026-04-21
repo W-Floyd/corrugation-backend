@@ -20,6 +20,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   entityUpdated: [entity: Entity];
+  createChild: [locationId: number];
 }>();
 
 const entitiesStore = useEntitiesStore();
@@ -32,10 +33,14 @@ const localEntity = ref<Entity>({
   ...props.entity,
   metadata: { ...props.entity.metadata },
 });
+const pendingDeletions = ref<Set<number>>(new Set());
 
 const handleUpdate = async (): Promise<void> => {
   try {
-    await api.patchEntity(props.entity.id, localEntity.value);
+    await Promise.all([...pendingDeletions.value].map(id => api.deleteArtifact(id)));
+    const artifacts = (localEntity.value.artifacts ?? []).filter(id => !pendingDeletions.value.has(id));
+    await api.patchEntity(props.entity.id, { ...localEntity.value, artifacts });
+    pendingDeletions.value = new Set();
     await entitiesStore.reload();
     editMode.value = false;
     emit('entityUpdated', localEntity.value);
@@ -88,13 +93,11 @@ const handleQuickCaptureCallback = async (files: File[]): Promise<void> => {
   if (files.length === 0 || !files[0]) return;
   try {
     const artifactId = await api.uploadArtifact(files[0]);
-    const updatedEntity = { ...localEntity.value };
-    if (!updatedEntity.artifacts) updatedEntity.artifacts = [];
-    updatedEntity.artifacts.push(artifactId);
-    await api.patchEntity(props.entity.id, updatedEntity);
+    const artifacts = [...(props.entity.artifacts ?? []), artifactId];
+    await api.patchEntity(props.entity.id, { artifacts });
     await entitiesStore.reload();
     editMode.value = false;
-    emit('entityUpdated', updatedEntity);
+    emit('entityUpdated', props.entity);
     toastsStore.add('Artifact captured and added');
   } catch (error) {
     console.error('Failed to capture artifact:', error);
@@ -146,25 +149,18 @@ const handleCancel = (): void => {
     ...props.entity,
     metadata: { ...props.entity.metadata },
   };
+  pendingDeletions.value = new Set();
   editMode.value = false;
 };
 
-const handleRemoveArtifact = async (artifactId: number): Promise<void> => {
-  try {
-    await api.deleteArtifact(artifactId);
-    const updatedEntity = { ...localEntity.value };
-    if (updatedEntity.artifacts) {
-      updatedEntity.artifacts = updatedEntity.artifacts.filter(
-        (id) => id !== artifactId
-      );
-    }
-    localEntity.value = updatedEntity;
-    await handleUpdate();
-    toastsStore.add('Artifact removed');
-  } catch (error) {
-    console.error('Failed to remove artifact:', error);
-    toastsStore.add('Failed to remove artifact');
+const toggleArtifactDeletion = (artifactId: number): void => {
+  const next = new Set(pendingDeletions.value);
+  if (next.has(artifactId)) {
+    next.delete(artifactId);
+  } else {
+    next.add(artifactId);
   }
+  pendingDeletions.value = next;
 };
 
 const isImageArtifact = (artifactId: number): boolean => {
@@ -172,8 +168,9 @@ const isImageArtifact = (artifactId: number): boolean => {
 };
 
 const images = computed(() => {
-  if (!localEntity.value.artifacts) return [];
-  return localEntity.value.artifacts.filter(isImageArtifact);
+  const artifacts = editMode.value ? localEntity.value.artifacts : props.entity.artifacts;
+  if (!artifacts) return [];
+  return artifacts.filter(isImageArtifact);
 });
 
 const handleEditArtifact = async (file: File): Promise<void> => {
@@ -351,7 +348,7 @@ const handleEditArtifact = async (file: File): Promise<void> => {
       </button>
 
       <button
-        @click="handleCreateChild"
+        @click="emit('createChild', entity.id)"
         class="h-10 w-10 p-0 m-0 flex items-center justify-center bg-blue-500 rounded-full shadow hover:bg-blue-600 active:shadow-lg text-white"
         title="Create child entity"
       >
@@ -411,15 +408,17 @@ const handleEditArtifact = async (file: File): Promise<void> => {
         <template v-for="n in images" :key="n">
           <div class="relative flex-1">
             <img
-              class="object-cover w-full h-56 rounded-xl"
+              class="object-cover w-full h-56 rounded-xl transition-opacity"
+              :class="pendingDeletions.has(n) ? 'opacity-30' : 'opacity-100'"
               :src="`/api/artifact/${n}`"
               :alt="`Artifact ${n}`"
             />
             <button
               type="button"
-              @click="handleRemoveArtifact(n)"
-              class="absolute top-1 right-1 w-6 h-6 flex items-center justify-center rounded-full bg-red-500 hover:bg-red-600 text-white text-sm leading-none"
-              title="Remove artifact"
+              @click="toggleArtifactDeletion(n)"
+              class="absolute top-1 right-1 w-6 h-6 flex items-center justify-center rounded-full text-white text-sm leading-none transition-colors"
+              :class="pendingDeletions.has(n) ? 'bg-gray-400 hover:bg-gray-500' : 'bg-red-500 hover:bg-red-600'"
+              :title="pendingDeletions.has(n) ? 'Undo removal' : 'Remove artifact'"
             >
               <CloseIcon :size="16" />
             </button>

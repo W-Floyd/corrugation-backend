@@ -170,6 +170,7 @@ onMounted(() => {
                 v-model="entity.name"
                 class="flex-1 bg-white rounded-sm dark:bg-gray-900 ring-1 px-2 py-1"
                 autofocus
+                @keydown.enter.prevent="handleSubmit"
               />
               <span class="text-lg font-medium text-gray-400 dark:text-white/50 shrink-0">
                 ({{ entity.metadata.islabeled ? availableId : freeId }})

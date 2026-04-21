@@ -24,6 +24,7 @@ const cameraStore = useCameraStore();
 const clipStore = useClipStore();
 const toastsStore = useToastsStore();
 const newEntityVisible = ref(false);
+const newEntityLocation = ref(0);
 
 const handleFabCapture = (): void => {
   cameraStore.open(async (files: File[]) => {
@@ -77,7 +78,7 @@ watch(
     <div v-else>
       <!-- Header with breadcrumbs -->
       <div class="w-full pt-4 px-4 pb-4">
-        <BreadcrumbNav @open-new-entity="newEntityVisible = true" />
+        <BreadcrumbNav @open-new-entity="newEntityLocation = entitiesStore.currentEntity; newEntityVisible = true" />
 
         <!-- Search bar -->
         <SearchBar />
@@ -95,6 +96,7 @@ watch(
             v-for="entity in clipStore.merge(entitiesStore.load(entitiesStore.currentEntity, entitiesStore.searchtext), entitiesStore)"
             :key="entity.id"
             :entity="entity"
+            @create-child="(id) => { newEntityLocation = id; newEntityVisible = true; }"
           />
         </div>
       </div>
@@ -103,7 +105,7 @@ watch(
     <!-- Floating action buttons -->
     <div class="fixed bottom-6 right-6 flex flex-col gap-3">
       <button
-        @click="newEntityVisible = true"
+        @click="newEntityLocation = entitiesStore.currentEntity; newEntityVisible = true"
         class="h-14 w-14 flex items-center justify-center rounded-full bg-blue-500 hover:bg-blue-600 text-white shadow-lg active:shadow-xl"
         title="Create new entity"
       >
@@ -122,7 +124,7 @@ watch(
     <CameraModal />
 
     <!-- Dialogs -->
-    <NewEntityDialog :visible="newEntityVisible" :location="entitiesStore.currentEntity" @update:visible="newEntityVisible = $event" />
+    <NewEntityDialog :visible="newEntityVisible" :location="newEntityLocation" @update:visible="newEntityVisible = $event" />
     <MoveEntityDialog />
 
     <!-- Toast notifications -->
