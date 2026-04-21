@@ -87,19 +87,35 @@
     {{ componentButtonRound "$store.moveEntityDialog.open(entity.id)" "blue" "hand-raised-solid" | unescapeHTML }}
     <div x-show="!editmode">
         {{ componentButtonRound "if(!editmode){ localentity=cloneDeep(entity); editmode=true; }" "blue" "pencil-solid" | unescapeHTML }}
+        {{ componentButtonRound "$store.api.quickCaptureToEntity(entity)" "blue" "camera-solid" | unescapeHTML }}
     </div>
     {{ componentButtonRound "$store.newEntityDialog.open(entity.id)" "blue" "plus-solid" | unescapeHTML }}
     <div x-show="editmode">
         {{ componentButtonRound "$store.camera.open(files => { $store.editEntityDialog.files = files })" "blue" "camera-solid" | unescapeHTML }}
         {{ componentButtonRound "if($store.editEntityDialog.files != null){$store.api.uploadArtifactsEdit(); localentity.artifacts=cloneDeep($store.editEntityDialog.entity.artifacts)}; $store.api.updateEntity(localentity); editmode=false; $store.entities.fullstate.entities[entity.id]=cloneDeep(localentity); entity=cloneDeep(localentity); $store.entities.reload();" "blue" "check-circle-solid" | unescapeHTML }}
+        <button @click="localentity=cloneDeep(entity); editmode=false;"
+            class="float-right w-10 h-10 p-0 m-4 bg-red-500 rounded-full shadow hover:bg-red-600 active:shadow-lg focus:outline-1 text-white text-xl leading-none">
+            &times;
+        </button>
     </div>
 
     <!-- Images -->
     <div class="flex flex-row justify-center w-full">
-        <template
-            x-if="$store.entities.fullstate.entities[entity.id] != null && $store.entities.selectImages(entity.id).length>0">
+        <template x-if="!editmode && $store.entities.fullstate.entities[entity.id] != null && $store.entities.selectImages(entity.id).length>0">
             <template x-for="(n, index) in $store.entities.selectImages(entity.id)">
                 <img class="flex-1 object-cover w-full h-56 rounded-xl" :src="['/api/artifact/',n].join('')">
+            </template>
+        </template>
+        <template x-if="editmode && localentity.artifacts != null && localentity.artifacts.length > 0">
+            <template x-for="n in localentity.artifacts.filter(id => $store.entities.fullstate.artifacts[id]?.image)">
+                <div class="relative flex-1">
+                    <img class="object-cover w-full h-56 rounded-xl" :src="['/api/artifact/',n].join('')">
+                    <button type="button"
+                        @click="localentity.artifacts = localentity.artifacts.filter(id => id !== n)"
+                        class="absolute top-1 right-1 w-6 h-6 flex items-center justify-center rounded-full bg-red-500 hover:bg-red-600 text-white text-sm leading-none">
+                        &times;
+                    </button>
+                </div>
             </template>
         </template>
     </div>

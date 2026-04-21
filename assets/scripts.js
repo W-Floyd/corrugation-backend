@@ -634,6 +634,27 @@ this._reset();
       return result;
     },
 
+    async quickCaptureToEntity(entity) {
+      Alpine.store("camera").open(async (files) => {
+        const fd = new FormData();
+        fd.append("file", files[0]);
+
+        let artifactXhr = new XMLHttpRequest();
+        artifactXhr.open("POST", "/api/artifact", false);
+        artifactXhr.send(fd);
+
+        if (artifactXhr.status === 200) {
+          const artifactId = parseInt(JSON.parse(artifactXhr.responseText));
+          const updated = JSON.parse(JSON.stringify(entity));
+          if (!updated.artifacts) updated.artifacts = [];
+          updated.artifacts.push(artifactId);
+          Alpine.store("api").updateEntity(updated);
+          Alpine.store("entities").fullstate.entities[entity.id] = updated;
+          await Alpine.store("entities").reload();
+        }
+      });
+    },
+
     async quickCapture(location) {
       Alpine.store("camera").open(async (files) => {
         const fd = new FormData();
