@@ -22,7 +22,7 @@ export interface Artifact {
   image: boolean;
 }
 
-export type EntityCreate = Omit<Entity, 'id'>;
+export type EntityCreate = Omit<Entity, "id">;
 
 export interface FullState {
   entities: Record<number, Entity>;

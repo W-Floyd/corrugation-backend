@@ -1,4 +1,4 @@
-import type { Entity, Artifact, FullState, Metadata } from './types';
+import type { Entity, Artifact, FullState, Metadata } from "./types";
 
 export interface EntityCreate {
   id?: number;
@@ -32,7 +32,7 @@ export const api = {
    * Fetch the complete store state from the backend
    */
   async getFullState(): Promise<FullState> {
-    const response = await fetch('/api/store');
+    const response = await fetch("/api/store");
     return response.json();
   },
 
@@ -40,10 +40,10 @@ export const api = {
    * Create a new entity and return its ID
    */
   async createEntity(entity: Partial<Entity>): Promise<number> {
-    const response = await fetch('/api/entity', {
-      method: 'POST',
+    const response = await fetch("/api/entity", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(entity),
     });
@@ -56,9 +56,9 @@ export const api = {
    */
   async updateEntity(id: number, entity: Entity): Promise<void> {
     await fetch(`/api/entity/${id}`, {
-      method: 'PUT',
+      method: "PUT",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(entity),
     });
@@ -69,9 +69,9 @@ export const api = {
    */
   async patchEntity(id: number, patch: Partial<Entity>): Promise<Entity> {
     const response = await fetch(`/api/entity/${id}`, {
-      method: 'PATCH',
+      method: "PATCH",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(patch),
     });
@@ -83,7 +83,7 @@ export const api = {
    */
   async deleteEntity(id: number): Promise<void> {
     await fetch(`/api/entity/${id}`, {
-      method: 'DELETE',
+      method: "DELETE",
     });
   },
 
@@ -92,9 +92,9 @@ export const api = {
    */
   async moveEntity(id: number, location: number): Promise<void> {
     await fetch(`/api/entity/${id}`, {
-      method: 'PATCH',
+      method: "PATCH",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({ location }),
     });
@@ -105,10 +105,10 @@ export const api = {
    */
   async uploadArtifact(file: File): Promise<number> {
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append("file", file);
 
-    const response = await fetch('/api/artifact', {
-      method: 'POST',
+    const response = await fetch("/api/artifact", {
+      method: "POST",
       body: formData,
     });
     const id = await response.json();
@@ -120,7 +120,7 @@ export const api = {
    */
   async deleteArtifact(id: number): Promise<void> {
     await fetch(`/api/artifact/${id}`, {
-      method: 'DELETE',
+      method: "DELETE",
     });
   },
 
@@ -128,7 +128,7 @@ export const api = {
    * Get the first free entity ID (gap in sequence)
    */
   async firstFreeId(): Promise<number> {
-    const response = await fetch('/api/entity/find/firstfreeid');
+    const response = await fetch("/api/entity/find/firstfreeid");
     return response.json();
   },
 
@@ -136,7 +136,7 @@ export const api = {
    * Get the next available ID (first unlabeled or first free)
    */
   async firstAvailableId(): Promise<number> {
-    const response = await fetch('/api/entity/find/firstid');
+    const response = await fetch("/api/entity/find/firstid");
     return response.json();
   },
 

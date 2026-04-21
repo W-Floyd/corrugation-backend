@@ -1,7 +1,7 @@
-import { defineStore } from 'pinia';
-import { ref, shallowRef } from 'vue';
+import { defineStore } from "pinia";
+import { ref, shallowRef } from "vue";
 
-export const useCameraStore = defineStore('camera', () => {
+export const useCameraStore = defineStore("camera", () => {
   const opened = ref(false);
   const stream = shallowRef<MediaStream | null>(null);
   const callback = shallowRef<((files: File[]) => void) | null>(null);
@@ -45,34 +45,33 @@ export const useCameraStore = defineStore('camera', () => {
 
   const _startOrientation = async (): Promise<void> => {
     // DeviceOrientationEvent.requestPermission is an iOS Safari extension not in standard TS types
-    const DeviceOrientationEventIOS = DeviceOrientationEvent as typeof DeviceOrientationEvent & {
-      requestPermission?: () => Promise<string>;
-    };
+    const DeviceOrientationEventIOS =
+      DeviceOrientationEvent as typeof DeviceOrientationEvent & {
+        requestPermission?: () => Promise<string>;
+      };
     if (
-      typeof DeviceOrientationEventIOS !== 'undefined' &&
-      typeof DeviceOrientationEventIOS.requestPermission === 'function'
+      typeof DeviceOrientationEventIOS !== "undefined" &&
+      typeof DeviceOrientationEventIOS.requestPermission === "function"
     ) {
       try {
         const perm = await DeviceOrientationEventIOS.requestPermission();
-        if (perm === 'granted') {
-          window.addEventListener('deviceorientation', _onOrientation);
+        if (perm === "granted") {
+          window.addEventListener("deviceorientation", _onOrientation);
         }
       } catch (e) {
-        console.warn('Device orientation permission denied:', e);
+        console.warn("Device orientation permission denied:", e);
       }
-    } else if (typeof DeviceOrientationEvent !== 'undefined') {
-      window.addEventListener('deviceorientation', _onOrientation);
+    } else if (typeof DeviceOrientationEvent !== "undefined") {
+      window.addEventListener("deviceorientation", _onOrientation);
     }
   };
 
-  async function open(
-    cb: (files: File[]) => void
-  ): Promise<void> {
+  async function open(cb: (files: File[]) => void): Promise<void> {
     landscape = window.innerWidth > window.innerHeight;
     _beta = null;
     _gamma = null;
-    window.addEventListener('resize', _onResize);
-    window.addEventListener('orientationchange', _onResize);
+    window.addEventListener("resize", _onResize);
+    window.addEventListener("orientationchange", _onResize);
     await _startOrientation();
     callback.value = cb;
     previewUrl.value = null;
@@ -82,24 +81,26 @@ export const useCameraStore = defineStore('camera', () => {
     try {
       const mobile = navigator.maxTouchPoints > 0;
       const portrait = mobile && window.innerHeight > window.innerWidth;
-      const videoConstraints = (mobile
-        ? {
-            facingMode: 'environment' as const,
-            width: { ideal: portrait ? 2160 : 3840 },
-            height: { ideal: portrait ? 3840 : 2160 },
-          }
-        : {
-            width: { ideal: 3840 },
-            aspectRatio: { ideal: 16 / 9 },
-            resizeMode: 'none' as const,
-          }) as MediaTrackConstraints;
+      const videoConstraints = (
+        mobile
+          ? {
+              facingMode: "environment" as const,
+              width: { ideal: portrait ? 2160 : 3840 },
+              height: { ideal: portrait ? 3840 : 2160 },
+            }
+          : {
+              width: { ideal: 3840 },
+              aspectRatio: { ideal: 16 / 9 },
+              resizeMode: "none" as const,
+            }
+      ) as MediaTrackConstraints;
       stream.value = await navigator.mediaDevices.getUserMedia({
         video: videoConstraints,
         audio: false,
       });
       opened.value = true;
     } catch (e) {
-      console.error('Camera error:', e);
+      console.error("Camera error:", e);
     }
   }
 
@@ -121,13 +122,13 @@ export const useCameraStore = defineStore('camera', () => {
   }
 
   function capture(): void {
-    const video = document.getElementById('cameraVideo') as HTMLVideoElement;
-    const canvas = document.getElementById('cameraCanvas') as HTMLCanvasElement;
+    const video = document.getElementById("cameraVideo") as HTMLVideoElement;
+    const canvas = document.getElementById("cameraCanvas") as HTMLCanvasElement;
     if (!video || !canvas) return;
 
     const vw = video.videoWidth;
     const vh = video.videoHeight;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
     const streamPortrait = vh > vw;
@@ -157,13 +158,13 @@ export const useCameraStore = defineStore('camera', () => {
       (blob) => {
         if (!blob) return;
         _originalBlob.value = blob;
-        pendingFile.value = new File([blob], 'photo.jpg', {
-          type: 'image/jpeg',
+        pendingFile.value = new File([blob], "photo.jpg", {
+          type: "image/jpeg",
         });
         previewUrl.value = URL.createObjectURL(blob);
       },
-      'image/jpeg',
-      0.92
+      "image/jpeg",
+      0.92,
     );
   }
 
@@ -174,14 +175,16 @@ export const useCameraStore = defineStore('camera', () => {
     const blob = _originalBlob.value;
     const img = new Image();
     img.onload = () => {
-      const canvas = document.getElementById('cameraCanvas') as HTMLCanvasElement;
+      const canvas = document.getElementById(
+        "cameraCanvas",
+      ) as HTMLCanvasElement;
       if (!canvas) return;
 
       const swap = rotation % 180 !== 0;
       canvas.width = swap ? img.height : img.width;
       canvas.height = swap ? img.width : img.height;
 
-      const ctx = canvas.getContext('2d');
+      const ctx = canvas.getContext("2d");
       if (!ctx) return;
 
       ctx.save();
@@ -196,13 +199,13 @@ export const useCameraStore = defineStore('camera', () => {
       canvas.toBlob(
         (rotatedBlob) => {
           if (!rotatedBlob) return;
-          pendingFile.value = new File([rotatedBlob], 'photo.jpg', {
-            type: 'image/jpeg',
+          pendingFile.value = new File([rotatedBlob], "photo.jpg", {
+            type: "image/jpeg",
           });
           previewUrl.value = URL.createObjectURL(rotatedBlob);
         },
-        'image/jpeg',
-        0.92
+        "image/jpeg",
+        0.92,
       );
     };
     img.src = URL.createObjectURL(blob);
@@ -224,23 +227,25 @@ export const useCameraStore = defineStore('camera', () => {
     try {
       const mobile = navigator.maxTouchPoints > 0;
       const portrait = mobile && window.innerHeight > window.innerWidth;
-      const videoConstraints = (mobile
-        ? {
-            facingMode: 'environment' as const,
-            width: { ideal: portrait ? 2160 : 3840 },
-            height: { ideal: portrait ? 3840 : 2160 },
-          }
-        : {
-            width: { ideal: 3840 },
-            aspectRatio: { ideal: 16 / 9 },
-            resizeMode: 'none' as const,
-          }) as MediaTrackConstraints;
+      const videoConstraints = (
+        mobile
+          ? {
+              facingMode: "environment" as const,
+              width: { ideal: portrait ? 2160 : 3840 },
+              height: { ideal: portrait ? 3840 : 2160 },
+            }
+          : {
+              width: { ideal: 3840 },
+              aspectRatio: { ideal: 16 / 9 },
+              resizeMode: "none" as const,
+            }
+      ) as MediaTrackConstraints;
       stream.value = await navigator.mediaDevices.getUserMedia({
         video: videoConstraints,
         audio: false,
       });
     } catch (e) {
-      console.error('Camera error:', e);
+      console.error("Camera error:", e);
     }
   }
 
@@ -249,9 +254,9 @@ export const useCameraStore = defineStore('camera', () => {
   }
 
   function _reset(): void {
-    window.removeEventListener('resize', _onResize);
-    window.removeEventListener('orientationchange', _onResize);
-    window.removeEventListener('deviceorientation', _onOrientation);
+    window.removeEventListener("resize", _onResize);
+    window.removeEventListener("orientationchange", _onResize);
+    window.removeEventListener("deviceorientation", _onOrientation);
     _beta = null;
     _gamma = null;
     if (stream.value) {

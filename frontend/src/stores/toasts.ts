@@ -1,12 +1,12 @@
-import { defineStore } from 'pinia';
-import { ref } from 'vue';
+import { defineStore } from "pinia";
+import { ref } from "vue";
 
 interface Toast {
   id: number;
   message: string;
 }
 
-export const useToastsStore = defineStore('toasts', () => {
+export const useToastsStore = defineStore("toasts", () => {
   const items = ref<Toast[]>([]);
 
   function add(message: string): void {

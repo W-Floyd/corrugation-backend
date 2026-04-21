@@ -1,14 +1,14 @@
-import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
-import type { Entity, FullState } from '@/api/types';
-import { api } from '@/api';
+import { defineStore } from "pinia";
+import { ref, computed } from "vue";
+import type { Entity, FullState } from "@/api/types";
+import { api } from "@/api";
 
 interface LocationNode {
   id: number;
   name: string;
 }
 
-export const useEntitiesStore = defineStore('entities', () => {
+export const useEntitiesStore = defineStore("entities", () => {
   // State
   const fullstate = ref<FullState>({
     entities: {},
@@ -16,8 +16,8 @@ export const useEntitiesStore = defineStore('entities', () => {
     storeversion: -1,
   });
 
-  const searchtextpredebounce = ref('');
-  const searchtext = ref('');
+  const searchtextpredebounce = ref("");
+  const searchtext = ref("");
   const filterToMissingImage = ref(false);
   const filterToOnlyImage = ref(false);
   const searching = ref(false);
@@ -32,7 +32,7 @@ export const useEntitiesStore = defineStore('entities', () => {
   // Actions
   async function loadFullState(): Promise<void> {
     try {
-      const versionResponse = await fetch('/api/store/version');
+      const versionResponse = await fetch("/api/store/version");
       const newVersion = await versionResponse.json();
 
       if (fullstate.value.storeversion !== newVersion) {
@@ -41,7 +41,7 @@ export const useEntitiesStore = defineStore('entities', () => {
         fullstate.value = response;
       }
     } catch (error) {
-      console.error('Failed to load full state:', error);
+      console.error("Failed to load full state:", error);
     }
   }
 
@@ -51,7 +51,7 @@ export const useEntitiesStore = defineStore('entities', () => {
   }
 
   function connectWS(): void {
-    const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
+    const protocol = location.protocol === "https:" ? "wss" : "ws";
     const url = `${protocol}://${location.host}/ws`;
 
     ws = new WebSocket(url);
@@ -97,10 +97,10 @@ export const useEntitiesStore = defineStore('entities', () => {
 
   function readname(entityId: number): string {
     if (entityId === 0) {
-      return 'World';
+      return "World";
     }
     const entity = fullstate.value.entities[entityId];
-    if (!entity || !entity.name || entity.name === '') {
+    if (!entity || !entity.name || entity.name === "") {
       return entityId.toString();
     }
     return entity.name;
@@ -109,8 +109,8 @@ export const useEntitiesStore = defineStore('entities', () => {
   async function setCurrentEntity(entityId: number): Promise<void> {
     if (isNaN(entityId)) entityId = 0;
     currentEntity.value = entityId;
-    window.location.hash = entityId === 0 ? '' : entityId.toString();
-    searchtext.value = '';
+    window.location.hash = entityId === 0 ? "" : entityId.toString();
+    searchtext.value = "";
     await reload();
     if (entityId !== 0 && !fullstate.value.entities[entityId]) {
       await setCurrentEntity(0);
@@ -154,7 +154,7 @@ export const useEntitiesStore = defineStore('entities', () => {
   }
 
   function load(matchId: number, searchText: string): Entity[] {
-    if (searchText !== '') {
+    if (searchText !== "") {
       searching.value = true;
       const children: number[] = [];
 
@@ -166,18 +166,18 @@ export const useEntitiesStore = defineStore('entities', () => {
         childIds.forEach((id) => children.push(id));
       }
 
-      if (searchText.includes('filter:missing-image')) {
+      if (searchText.includes("filter:missing-image")) {
         filterToMissingImage.value = true;
         filterToOnlyImage.value = false;
-        searchText = searchText.replace('filter:missing-image', '');
+        searchText = searchText.replace("filter:missing-image", "");
       } else {
         filterToMissingImage.value = false;
       }
 
-      if (searchText.includes('filter:only-image')) {
+      if (searchText.includes("filter:only-image")) {
         filterToMissingImage.value = false;
         filterToOnlyImage.value = true;
-        searchText = searchText.replace('filter:only-image', '');
+        searchText = searchText.replace("filter:only-image", "");
       } else {
         filterToOnlyImage.value = false;
       }
@@ -197,9 +197,9 @@ export const useEntitiesStore = defineStore('entities', () => {
         const idMatch = id === searchText.toLowerCase();
 
         if (nameMatch || descMatch || idMatch) {
-          const hasImages =
-            entity.artifacts && entity.artifacts.length > 0;
-          const hasNoImages = !entity.artifacts || entity.artifacts.length === 0;
+          const hasImages = entity.artifacts && entity.artifacts.length > 0;
+          const hasNoImages =
+            !entity.artifacts || entity.artifacts.length === 0;
 
           if (
             filterToMissingImage.value &&
@@ -277,8 +277,8 @@ function sortEntityID(a: number, b: number): number {
 
   if (!ea || !eb) return 0;
 
-  const fa = ea.name?.toLowerCase() ?? '';
-  const fb = eb.name?.toLowerCase() ?? '';
+  const fa = ea.name?.toLowerCase() ?? "";
+  const fb = eb.name?.toLowerCase() ?? "";
 
   const collator = new Intl.Collator([], { numeric: true });
   let retval = collator.compare(fa, fb);
@@ -287,8 +287,8 @@ function sortEntityID(a: number, b: number): number {
     return retval;
   }
 
-  const faDesc = ea.description ? ea.description.toLowerCase() : '';
-  const fbDesc = eb.description ? eb.description.toLowerCase() : '';
+  const faDesc = ea.description ? ea.description.toLowerCase() : "";
+  const fbDesc = eb.description ? eb.description.toLowerCase() : "";
 
   retval = collator.compare(faDesc, fbDesc);
 

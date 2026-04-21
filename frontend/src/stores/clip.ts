@@ -1,12 +1,12 @@
-import { defineStore } from 'pinia';
-import { ref, onActivated } from 'vue';
-import type { FullState } from '@/api/types';
+import { defineStore } from "pinia";
+import { ref, onActivated } from "vue";
+import type { FullState } from "@/api/types";
 
 interface EntityIdMap {
   [key: string]: string;
 }
 
-export const useClipStore = defineStore('clip', () => {
+export const useClipStore = defineStore("clip", () => {
   const enabled = ref(false);
   const modelReady = ref(false);
   const modelLoading = ref(false);
@@ -35,7 +35,9 @@ export const useClipStore = defineStore('clip', () => {
       // Dynamically load from CDN
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore: CDN URL import intentional at runtime
-      const transformersModule = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.1' as string);
+      const transformersModule = await import(
+        "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.1" as string
+      );
       const {
         CLIPTextModelWithProjection,
         CLIPVisionModelWithProjection,
@@ -48,25 +50,20 @@ export const useClipStore = defineStore('clip', () => {
       env.allowLocalModels = false;
       _RawImage = RawImage;
 
-      [
-        _textModel,
-        _visionModel,
-        _processor,
-        _tokenizer,
-      ] = await Promise.all([
+      [_textModel, _visionModel, _processor, _tokenizer] = await Promise.all([
         CLIPTextModelWithProjection.from_pretrained(
-          'Xenova/clip-vit-base-patch32'
+          "Xenova/clip-vit-base-patch32",
         ),
         CLIPVisionModelWithProjection.from_pretrained(
-          'Xenova/clip-vit-base-patch32'
+          "Xenova/clip-vit-base-patch32",
         ),
-        AutoProcessor.from_pretrained('Xenova/clip-vit-base-patch32'),
-        AutoTokenizer.from_pretrained('Xenova/clip-vit-base-patch32'),
+        AutoProcessor.from_pretrained("Xenova/clip-vit-base-patch32"),
+        AutoTokenizer.from_pretrained("Xenova/clip-vit-base-patch32"),
       ]);
 
       modelReady.value = true;
     } catch (error) {
-      console.error('CLIP model loading error:', error);
+      console.error("CLIP model loading error:", error);
       modelReady.value = false;
     } finally {
       modelLoading.value = false;
@@ -124,12 +121,17 @@ export const useClipStore = defineStore('clip', () => {
     }
   }
 
-  async function _encodeAll(fullstate: FullState, currentEntityId: number): Promise<void> {
-    const descendants = new Set(_listChildLocationsDeep(fullstate, currentEntityId));
+  async function _encodeAll(
+    fullstate: FullState,
+    currentEntityId: number,
+  ): Promise<void> {
+    const descendants = new Set(
+      _listChildLocationsDeep(fullstate, currentEntityId),
+    );
     const ids = [..._artifactEntity.keys()].filter(
       (id) =>
         !_embeddings.has(id) &&
-        descendants.has(parseInt(_artifactEntity.get(id) || '', 10))
+        descendants.has(parseInt(_artifactEntity.get(id) || "", 10)),
     );
 
     if (!ids.length) return;
@@ -138,7 +140,7 @@ export const useClipStore = defineStore('clip', () => {
 
     const concurrency = Math.max(
       2,
-      Math.min(navigator.hardwareConcurrency ?? 4, 8)
+      Math.min(navigator.hardwareConcurrency ?? 4, 8),
     );
 
     const queue = [...ids];
@@ -153,11 +155,14 @@ export const useClipStore = defineStore('clip', () => {
             total.value--;
           }
         }
-      })
+      }),
     );
   }
 
-  async function activate(fullstate: FullState, currentEntityId: number): Promise<void> {
+  async function activate(
+    fullstate: FullState,
+    currentEntityId: number,
+  ): Promise<void> {
     await _loadModel();
     await _encodeAll(fullstate, currentEntityId);
   }
@@ -186,7 +191,7 @@ export const useClipStore = defineStore('clip', () => {
   async function search(
     query: string,
     fullstate: FullState,
-    currentEntityId: number
+    currentEntityId: number,
   ): Promise<void> {
     if (!query.trim()) {
       results.value = [];
@@ -211,14 +216,19 @@ export const useClipStore = defineStore('clip', () => {
     const { text_embeds } = await _textModel!(inputs);
     const tv = _normalize(text_embeds.data);
 
-    const descendants = new Set(_listChildLocationsDeep(fullstate, currentEntityId));
+    const descendants = new Set(
+      _listChildLocationsDeep(fullstate, currentEntityId),
+    );
     const best = new Map<number, number>();
 
     for (const [aid, iv] of _embeddings) {
       const eid = _artifactEntity.get(aid);
       if (!eid || !descendants.has(parseInt(eid, 10))) continue;
       const score = _dot(tv, iv);
-      if (!best.has(parseInt(eid, 10)) || best.get(parseInt(eid, 10))! < score) {
+      if (
+        !best.has(parseInt(eid, 10)) ||
+        best.get(parseInt(eid, 10))! < score
+      ) {
         best.set(parseInt(eid, 10), score);
       }
     }
@@ -232,10 +242,7 @@ export const useClipStore = defineStore('clip', () => {
     searching.value = false;
   }
 
-  function merge(
-    textResults: any[],
-    entitiesStore: any
-  ): any[] {
+  function merge(textResults: any[], entitiesStore: any): any[] {
     textMatchIds.value = new Set(textResults.map((e: any) => e.id));
 
     if (!enabled.value || !results.value.length) {
@@ -260,14 +267,14 @@ export const useClipStore = defineStore('clip', () => {
   // Helper to list child locations deep (similar to entities store)
   function _listChildLocationsDeep(
     fullstate: FullState,
-    entityId: number
+    entityId: number,
   ): number[] {
     const returnValue: number[] = [];
     for (const key in fullstate.entities) {
       if (fullstate.entities[key]?.location === entityId) {
         returnValue.push(parseInt(key, 10));
         returnValue.push(
-          ..._listChildLocationsDeep(fullstate, parseInt(key, 10))
+          ..._listChildLocationsDeep(fullstate, parseInt(key, 10)),
         );
       }
     }

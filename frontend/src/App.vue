@@ -1,22 +1,22 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, watch, ref, computed, nextTick } from 'vue';
-import { useRouter, useRoute } from 'vue-router';
-import { useEntitiesStore } from '@/stores/entities';
-import { useCameraStore } from '@/stores/camera';
-import { useClipStore } from '@/stores/clip';
-import { useToastsStore } from '@/stores/toasts';
-import EntityCard from '@/components/EntityCard.vue';
-import CameraModal from '@/components/CameraModal.vue';
-import NewEntityDialog from '@/components/NewEntityDialog.vue';
-import MoveEntityDialog from '@/components/MoveEntityDialog.vue';
-import CommandDialog from '@/components/CommandDialog.vue';
-import SearchBar from '@/components/SearchBar.vue';
-import BreadcrumbNav from '@/components/BreadcrumbNav.vue';
-import QuickCaptureCard from '@/components/QuickCaptureCard.vue';
-import ToastContainer from '@/components/ToastContainer.vue';
-import PlusIcon from 'vue-material-design-icons/Plus.vue';
-import CameraIcon from 'vue-material-design-icons/Camera.vue';
-import { api } from '@/api';
+import { onMounted, onUnmounted, watch, ref, computed, nextTick } from "vue";
+import { useRouter, useRoute } from "vue-router";
+import { useEntitiesStore } from "@/stores/entities";
+import { useCameraStore } from "@/stores/camera";
+import { useClipStore } from "@/stores/clip";
+import { useToastsStore } from "@/stores/toasts";
+import EntityCard from "@/components/EntityCard.vue";
+import CameraModal from "@/components/CameraModal.vue";
+import NewEntityDialog from "@/components/NewEntityDialog.vue";
+import MoveEntityDialog from "@/components/MoveEntityDialog.vue";
+import CommandDialog from "@/components/CommandDialog.vue";
+import SearchBar from "@/components/SearchBar.vue";
+import BreadcrumbNav from "@/components/BreadcrumbNav.vue";
+import QuickCaptureCard from "@/components/QuickCaptureCard.vue";
+import ToastContainer from "@/components/ToastContainer.vue";
+import PlusIcon from "vue-material-design-icons/Plus.vue";
+import CameraIcon from "vue-material-design-icons/Camera.vue";
+import { api } from "@/api";
 
 const router = useRouter();
 const route = useRoute();
@@ -37,350 +37,492 @@ const cardRefs = ref<Record<number, { cardEl: HTMLElement | null }>>({});
 const deleteConfirmId = ref<number | null>(null);
 
 const visibleEntities = computed(() =>
-  clipStore.merge(entitiesStore.load(entitiesStore.currentEntity, entitiesStore.searchtext), entitiesStore)
+    clipStore.merge(
+        entitiesStore.load(
+            entitiesStore.currentEntity,
+            entitiesStore.searchtext,
+        ),
+        entitiesStore,
+    ),
 );
 
-const anyDialogOpen = computed(() =>
-  newEntityVisible.value || moveDialogVisible.value || commandDialogVisible.value
+const anyDialogOpen = computed(
+    () =>
+        newEntityVisible.value ||
+        moveDialogVisible.value ||
+        commandDialogVisible.value,
 );
 
 const handleFabCapture = (): void => {
-  cameraStore.open(async (files: File[]) => {
-    if (!files[0]) return;
-    try {
-      const artifactId = await api.uploadArtifact(files[0]);
-      await api.createEntity({
-        name: null, description: null, artifacts: [artifactId],
-        location: entitiesStore.currentEntity,
-        metadata: { quantity: null, owners: null, tags: null, islabeled: false, lastModified: null, lastModifiedBy: null },
-      });
-      await entitiesStore.reload();
-      toastsStore.add('Entity created from photo');
-    } catch {
-      toastsStore.add('Failed to create entity from photo');
-    }
-  });
+    cameraStore.open(async (files: File[]) => {
+        if (!files[0]) return;
+        try {
+            const artifactId = await api.uploadArtifact(files[0]);
+            await api.createEntity({
+                name: null,
+                description: null,
+                artifacts: [artifactId],
+                location: entitiesStore.currentEntity,
+                metadata: {
+                    quantity: null,
+                    owners: null,
+                    tags: null,
+                    islabeled: false,
+                    lastModified: null,
+                    lastModifiedBy: null,
+                },
+            });
+            await entitiesStore.reload();
+            toastsStore.add("Entity created from photo");
+        } catch {
+            toastsStore.add("Failed to create entity from photo");
+        }
+    });
 };
 
 const confirmDeleteEntity = async (entityId: number): Promise<void> => {
-  deleteConfirmId.value = null;
-  selectedEntityId.value = null;
-  try {
-    await api.deleteEntity(entityId);
-    await entitiesStore.reload();
-    toastsStore.add('Entity deleted');
-  } catch {
-    toastsStore.add('Failed to delete entity');
-  }
+    deleteConfirmId.value = null;
+    selectedEntityId.value = null;
+    try {
+        await api.deleteEntity(entityId);
+        await entitiesStore.reload();
+        toastsStore.add("Entity deleted");
+    } catch {
+        toastsStore.add("Failed to delete entity");
+    }
 };
 
 const handleQuickCaptureOnEntity = (entityId: number): void => {
-  cameraStore.open(async (files: File[]) => {
-    if (!files[0]) return;
-    try {
-      const artifactId = await api.uploadArtifact(files[0]);
-      const entity = entitiesStore.fullstate.entities[entityId];
-      const artifacts = [...(entity?.artifacts ?? []), artifactId];
-      await api.patchEntity(entityId, { artifacts });
-      await entitiesStore.reload();
-      toastsStore.add('Artifact captured and added');
-    } catch {
-      toastsStore.add('Failed to capture artifact');
-    }
-  });
+    cameraStore.open(async (files: File[]) => {
+        if (!files[0]) return;
+        try {
+            const artifactId = await api.uploadArtifact(files[0]);
+            const entity = entitiesStore.fullstate.entities[entityId];
+            const artifacts = [...(entity?.artifacts ?? []), artifactId];
+            await api.patchEntity(entityId, { artifacts });
+            await entitiesStore.reload();
+            toastsStore.add("Artifact captured and added");
+        } catch {
+            toastsStore.add("Failed to capture artifact");
+        }
+    });
 };
 
 const handleQuickCaptureNewChild = (parentId: number): void => {
-  cameraStore.open(async (files: File[]) => {
-    if (!files[0]) return;
-    try {
-      const artifactId = await api.uploadArtifact(files[0]);
-      await api.createEntity({
-        name: null, description: null, artifacts: [artifactId],
-        location: parentId,
-        metadata: { quantity: null, owners: null, tags: null, islabeled: false, lastModified: null, lastModifiedBy: null },
-      });
-      await entitiesStore.reload();
-      toastsStore.add('Entity created from photo');
-    } catch {
-      toastsStore.add('Failed to create entity from photo');
-    }
-  });
+    cameraStore.open(async (files: File[]) => {
+        if (!files[0]) return;
+        try {
+            const artifactId = await api.uploadArtifact(files[0]);
+            await api.createEntity({
+                name: null,
+                description: null,
+                artifacts: [artifactId],
+                location: parentId,
+                metadata: {
+                    quantity: null,
+                    owners: null,
+                    tags: null,
+                    islabeled: false,
+                    lastModified: null,
+                    lastModifiedBy: null,
+                },
+            });
+            await entitiesStore.reload();
+            toastsStore.add("Entity created from photo");
+        } catch {
+            toastsStore.add("Failed to create entity from photo");
+        }
+    });
 };
 
-const navigateGrid = (direction: 'up' | 'down' | 'left' | 'right'): void => {
-  const entities = visibleEntities.value;
-  if (entities.length === 0) return;
+const navigateGrid = (direction: "up" | "down" | "left" | "right"): void => {
+    const entities = visibleEntities.value;
+    if (entities.length === 0) return;
 
-  if (selectedEntityId.value === null) {
-    selectedEntityId.value = entities[0].id;
-    return;
-  }
+    if (selectedEntityId.value === null) {
+        selectedEntityId.value = entities[0].id;
+        return;
+    }
 
-  const currentEl = cardRefs.value[selectedEntityId.value]?.cardEl;
-  if (!currentEl) return;
+    const currentEl = cardRefs.value[selectedEntityId.value]?.cardEl;
+    if (!currentEl) return;
 
-  const cur = currentEl.getBoundingClientRect();
-  const curCX = cur.left + cur.width / 2;
-  const curCY = cur.top + cur.height / 2;
+    const cur = currentEl.getBoundingClientRect();
+    const curCX = cur.left + cur.width / 2;
+    const curCY = cur.top + cur.height / 2;
 
-  let bestId: number | null = null;
-  let bestScore = Infinity;
+    let bestId: number | null = null;
+    let bestScore = Infinity;
 
-  for (const entity of entities) {
-    if (entity.id === selectedEntityId.value) continue;
-    const el = cardRefs.value[entity.id]?.cardEl;
-    if (!el) continue;
-    const r = el.getBoundingClientRect();
-    const cx = r.left + r.width / 2;
-    const cy = r.top + r.height / 2;
-    const dx = cx - curCX;
-    const dy = cy - curCY;
+    for (const entity of entities) {
+        if (entity.id === selectedEntityId.value) continue;
+        const el = cardRefs.value[entity.id]?.cardEl;
+        if (!el) continue;
+        const r = el.getBoundingClientRect();
+        const cx = r.left + r.width / 2;
+        const cy = r.top + r.height / 2;
+        const dx = cx - curCX;
+        const dy = cy - curCY;
 
-    const inDir = direction === 'right' ? dx > 10
-      : direction === 'left' ? dx < -10
-      : direction === 'down' ? dy > 10
-      : dy < -10;
-    if (!inDir) continue;
+        const inDir =
+            direction === "right"
+                ? dx > 10
+                : direction === "left"
+                  ? dx < -10
+                  : direction === "down"
+                    ? dy > 10
+                    : dy < -10;
+        if (!inDir) continue;
 
-    const primary = direction === 'left' || direction === 'right' ? Math.abs(dx) : Math.abs(dy);
-    const secondary = direction === 'left' || direction === 'right' ? Math.abs(dy) : Math.abs(dx);
-    const score = primary + secondary * 3;
-    if (score < bestScore) { bestScore = score; bestId = entity.id; }
-  }
+        const primary =
+            direction === "left" || direction === "right"
+                ? Math.abs(dx)
+                : Math.abs(dy);
+        const secondary =
+            direction === "left" || direction === "right"
+                ? Math.abs(dy)
+                : Math.abs(dx);
+        const score = primary + secondary * 3;
+        if (score < bestScore) {
+            bestScore = score;
+            bestId = entity.id;
+        }
+    }
 
-  if (bestId !== null) selectedEntityId.value = bestId;
+    if (bestId !== null) selectedEntityId.value = bestId;
 };
 
 const handleKeydown = (e: KeyboardEvent): void => {
-  if (e.key === 'Meta' || e.key === 'Alt') {
-    showShortcuts.value = true;
-    return;
-  }
+    if (e.key === "Meta" || e.key === "Alt") {
+        showShortcuts.value = true;
+        return;
+    }
 
-  const tag = (e.target as HTMLElement)?.tagName;
-  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+    const tag = (e.target as HTMLElement)?.tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
 
-  // Allow Escape through even with dialogs open
-  if (e.key === 'Escape') {
-    commandDialogVisible.value = false;
-    deleteConfirmId.value = null;
-    selectedEntityId.value = null;
-    return;
-  }
-
-  if (anyDialogOpen.value) return;
-
-  switch (e.key) {
-    case '/':
-      e.preventDefault();
-      commandDialogVisible.value = true;
-      break;
-
-    case 'ArrowDown':    e.preventDefault(); navigateGrid('down');  break;
-    case 'ArrowUp':     e.preventDefault(); navigateGrid('up');    break;
-    case 'ArrowRight':  e.preventDefault(); navigateGrid('right'); break;
-    case 'ArrowLeft':   e.preventDefault(); navigateGrid('left');  break;
-
-    case 'Enter':
-      e.preventDefault();
-      if (deleteConfirmId.value !== null) {
-        confirmDeleteEntity(deleteConfirmId.value);
-      } else if (selectedEntityId.value !== null) {
-        entitiesStore.setCurrentEntity(selectedEntityId.value);
+    // Allow Escape through even with dialogs open
+    if (e.key === "Escape") {
+        commandDialogVisible.value = false;
+        deleteConfirmId.value = null;
         selectedEntityId.value = null;
-      }
-      break;
+        return;
+    }
 
-    case 'Backspace':
-      e.preventDefault();
-      {
-        const cur = entitiesStore.currentEntity;
-        if (cur === 0) break;
-        const prevId = cur;
-        const ent = entitiesStore.fullstate.entities[cur];
-        entitiesStore.setCurrentEntity(ent?.location ?? 0).then(() => {
-          nextTick(() => { selectedEntityId.value = prevId; });
-        });
-      }
-      break;
+    if (anyDialogOpen.value) return;
 
-    case 'Delete':
-    case 'd':
-    case 'D':
-      if (!e.shiftKey && !e.metaKey && !e.ctrlKey && selectedEntityId.value !== null) {
-        e.preventDefault();
-        deleteConfirmId.value = selectedEntityId.value;
-      }
-      break;
+    switch (e.key) {
+        case "/":
+            e.preventDefault();
+            commandDialogVisible.value = true;
+            break;
 
-    case 'e':
-    case 'E':
-      if (!e.shiftKey && !e.metaKey && !e.ctrlKey && selectedEntityId.value !== null) {
-        e.preventDefault();
-        editEntityId.value = selectedEntityId.value;
-      }
-      break;
+        case "ArrowDown":
+            e.preventDefault();
+            navigateGrid("down");
+            break;
+        case "ArrowUp":
+            e.preventDefault();
+            navigateGrid("up");
+            break;
+        case "ArrowRight":
+            e.preventDefault();
+            navigateGrid("right");
+            break;
+        case "ArrowLeft":
+            e.preventDefault();
+            navigateGrid("left");
+            break;
 
-    case 'p':
-    case 'P':
-      if (!e.shiftKey && !e.metaKey && !e.ctrlKey && selectedEntityId.value !== null) {
-        e.preventDefault();
-        handleQuickCaptureOnEntity(selectedEntityId.value);
-      }
-      break;
+        case "Enter":
+            e.preventDefault();
+            if (deleteConfirmId.value !== null) {
+                confirmDeleteEntity(deleteConfirmId.value);
+            } else if (selectedEntityId.value !== null) {
+                entitiesStore.setCurrentEntity(selectedEntityId.value);
+                selectedEntityId.value = null;
+            }
+            break;
 
-    case 'c':
-    case 'C':
-      if (e.shiftKey && !e.metaKey && !e.ctrlKey && selectedEntityId.value !== null) {
-        e.preventDefault();
-        handleQuickCaptureNewChild(selectedEntityId.value);
-      } else if (!e.shiftKey && !e.metaKey && !e.ctrlKey) {
-        e.preventDefault();
-        handleFabCapture();
-      }
-      break;
+        case "Backspace":
+            e.preventDefault();
+            {
+                const cur = entitiesStore.currentEntity;
+                if (cur === 0) break;
+                const prevId = cur;
+                const ent = entitiesStore.fullstate.entities[cur];
+                entitiesStore.setCurrentEntity(ent?.location ?? 0).then(() => {
+                    nextTick(() => {
+                        selectedEntityId.value = prevId;
+                    });
+                });
+            }
+            break;
 
-    case 'n':
-    case 'N':
-      if (e.shiftKey && !e.metaKey && !e.ctrlKey && selectedEntityId.value !== null) {
-        e.preventDefault();
-        newEntityLocation.value = selectedEntityId.value;
-        newEntityVisible.value = true;
-      } else if (!e.shiftKey && !e.metaKey && !e.ctrlKey) {
-        e.preventDefault();
-        newEntityLocation.value = entitiesStore.currentEntity;
-        newEntityVisible.value = true;
-      }
-      break;
+        case "Delete":
+        case "d":
+        case "D":
+            if (
+                !e.shiftKey &&
+                !e.metaKey &&
+                !e.ctrlKey &&
+                selectedEntityId.value !== null
+            ) {
+                e.preventDefault();
+                deleteConfirmId.value = selectedEntityId.value;
+            }
+            break;
 
-    case 'm':
-    case 'M':
-      if (!e.shiftKey && !e.metaKey && !e.ctrlKey && selectedEntityId.value !== null) {
-        e.preventDefault();
-        moveDialogTargetId.value = selectedEntityId.value;
-        moveDialogVisible.value = true;
-      }
-      break;
-  }
+        case "e":
+        case "E":
+            if (
+                !e.shiftKey &&
+                !e.metaKey &&
+                !e.ctrlKey &&
+                selectedEntityId.value !== null
+            ) {
+                e.preventDefault();
+                editEntityId.value = selectedEntityId.value;
+            }
+            break;
+
+        case "p":
+        case "P":
+            if (
+                !e.shiftKey &&
+                !e.metaKey &&
+                !e.ctrlKey &&
+                selectedEntityId.value !== null
+            ) {
+                e.preventDefault();
+                handleQuickCaptureOnEntity(selectedEntityId.value);
+            }
+            break;
+
+        case "c":
+        case "C":
+            if (
+                e.shiftKey &&
+                !e.metaKey &&
+                !e.ctrlKey &&
+                selectedEntityId.value !== null
+            ) {
+                e.preventDefault();
+                handleQuickCaptureNewChild(selectedEntityId.value);
+            } else if (!e.shiftKey && !e.metaKey && !e.ctrlKey) {
+                e.preventDefault();
+                handleFabCapture();
+            }
+            break;
+
+        case "n":
+        case "N":
+            if (
+                e.shiftKey &&
+                !e.metaKey &&
+                !e.ctrlKey &&
+                selectedEntityId.value !== null
+            ) {
+                e.preventDefault();
+                newEntityLocation.value = selectedEntityId.value;
+                newEntityVisible.value = true;
+            } else if (!e.shiftKey && !e.metaKey && !e.ctrlKey) {
+                e.preventDefault();
+                newEntityLocation.value = entitiesStore.currentEntity;
+                newEntityVisible.value = true;
+            }
+            break;
+
+        case "m":
+        case "M":
+            if (
+                !e.shiftKey &&
+                !e.metaKey &&
+                !e.ctrlKey &&
+                selectedEntityId.value !== null
+            ) {
+                e.preventDefault();
+                moveDialogTargetId.value = selectedEntityId.value;
+                moveDialogVisible.value = true;
+            }
+            break;
+    }
 };
 
 const handleKeyup = (e: KeyboardEvent): void => {
-  if (e.key === 'Meta' || e.key === 'Alt') {
-    showShortcuts.value = false;
-  }
+    if (e.key === "Meta" || e.key === "Alt") {
+        showShortcuts.value = false;
+    }
 };
 
 // Initialize router from hash on app mount
 onMounted(() => {
-  const hashId = parseInt(window.location.hash.slice(1), 10);
-  if (!isNaN(hashId)) {
-    entitiesStore.setCurrentEntity(hashId);
-  } else {
-    entitiesStore.setCurrentEntity(0);
-  }
-  entitiesStore.connectWS();
-  window.addEventListener('keydown', handleKeydown);
-  window.addEventListener('keyup', handleKeyup);
+    const hashId = parseInt(window.location.hash.slice(1), 10);
+    if (!isNaN(hashId)) {
+        entitiesStore.setCurrentEntity(hashId);
+    } else {
+        entitiesStore.setCurrentEntity(0);
+    }
+    entitiesStore.connectWS();
+    window.addEventListener("keydown", handleKeydown);
+    window.addEventListener("keyup", handleKeyup);
 });
 
 onUnmounted(() => {
-  window.removeEventListener('keydown', handleKeydown);
-  window.removeEventListener('keyup', handleKeyup);
+    window.removeEventListener("keydown", handleKeydown);
+    window.removeEventListener("keyup", handleKeyup);
 });
 
 // Clear selection when navigating to a new entity
-watch(() => entitiesStore.currentEntity, () => {
-  selectedEntityId.value = null;
-  deleteConfirmId.value = null;
-});
+watch(
+    () => entitiesStore.currentEntity,
+    () => {
+        selectedEntityId.value = null;
+        deleteConfirmId.value = null;
+    },
+);
 
 // Watch hash changes
 watch(
-  () => route.params.entityId,
-  async (newId) => {
-    const id = parseInt(newId as string, 10);
-    if (!isNaN(id)) {
-      await entitiesStore.setCurrentEntity(id);
-    }
-  }
+    () => route.params.entityId,
+    async (newId) => {
+        const id = parseInt(newId as string, 10);
+        if (!isNaN(id)) {
+            await entitiesStore.setCurrentEntity(id);
+        }
+    },
 );
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white">
-    <!-- Loading state -->
-    <div v-if="entitiesStore.isLoading" class="flex items-center justify-center h-screen">
-      <span class="text-2xl text-gray-500">Loading...</span>
-    </div>
-
-    <!-- Main content -->
-    <div v-else>
-      <!-- Header with breadcrumbs -->
-      <div class="w-full pt-4 px-4 pb-4">
-        <BreadcrumbNav @open-new-entity="newEntityLocation = entitiesStore.currentEntity; newEntityVisible = true" />
-        <SearchBar />
-      </div>
-
-      <!-- Empty state or entity list -->
-      <div class="w-full px-4 mt-8">
-        <div v-if="!entitiesStore.hasChildren(entitiesStore.currentEntity)" class="flex items-center justify-center h-64">
-          <p class="text-2xl text-gray-500/50">Empty</p>
+    <div
+        class="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white"
+    >
+        <!-- Loading state -->
+        <div
+            v-if="entitiesStore.isLoading"
+            class="flex items-center justify-center h-screen"
+        >
+            <span class="text-2xl text-gray-500">Loading...</span>
         </div>
 
-        <!-- Entity grid -->
-        <div class="flex flex-wrap justify-center gap-4">
-          <EntityCard
-            v-for="entity in visibleEntities"
-            :key="entity.id"
-            :ref="(el: any) => { if (el) cardRefs[entity.id] = el; else delete cardRefs[entity.id]; }"
-            :entity="entity"
-            :is-selected="selectedEntityId === entity.id"
-            :show-shortcuts="showShortcuts"
-            :start-edit="editEntityId === entity.id"
-            :confirm-delete="deleteConfirmId === entity.id"
-            @select="selectedEntityId = entity.id; deleteConfirmId = null"
-            @create-child="(id) => { newEntityLocation = id; newEntityVisible = true; }"
-            @request-move="(id) => { moveDialogTargetId = id; moveDialogVisible = true; }"
-            @edit-started="editEntityId = null"
-            @delete-confirmed="confirmDeleteEntity(entity.id)"
-            @delete-cancelled="deleteConfirmId = null"
-          />
+        <!-- Main content -->
+        <div v-else>
+            <!-- Header with breadcrumbs -->
+            <div class="w-full pt-4 px-4 pb-4">
+                <BreadcrumbNav
+                    @open-new-entity="
+                        newEntityLocation = entitiesStore.currentEntity;
+                        newEntityVisible = true;
+                    "
+                />
+                <SearchBar />
+            </div>
+
+            <!-- Empty state or entity list -->
+            <div class="w-full px-4 mt-8">
+                <div
+                    v-if="
+                        !entitiesStore.hasChildren(entitiesStore.currentEntity)
+                    "
+                    class="flex items-center justify-center h-64"
+                >
+                    <p class="text-2xl text-gray-500/50">Empty</p>
+                </div>
+
+                <!-- Entity grid -->
+                <div class="flex flex-wrap justify-center gap-4">
+                    <EntityCard
+                        v-for="entity in visibleEntities"
+                        :key="entity.id"
+                        :ref="
+                            (el: any) => {
+                                if (el) cardRefs[entity.id] = el;
+                                else delete cardRefs[entity.id];
+                            }
+                        "
+                        :entity="entity"
+                        :is-selected="selectedEntityId === entity.id"
+                        :show-shortcuts="showShortcuts"
+                        :start-edit="editEntityId === entity.id"
+                        :confirm-delete="deleteConfirmId === entity.id"
+                        @select="
+                            selectedEntityId = entity.id;
+                            deleteConfirmId = null;
+                        "
+                        @create-child="
+                            (id) => {
+                                newEntityLocation = id;
+                                newEntityVisible = true;
+                            }
+                        "
+                        @request-move="
+                            (id) => {
+                                moveDialogTargetId = id;
+                                moveDialogVisible = true;
+                            }
+                        "
+                        @edit-started="editEntityId = null"
+                        @delete-confirmed="confirmDeleteEntity(entity.id)"
+                        @delete-cancelled="deleteConfirmId = null"
+                    />
+                </div>
+            </div>
         </div>
-      </div>
+
+        <!-- Floating action buttons -->
+        <div class="fixed bottom-6 right-6 flex flex-col gap-3">
+            <button
+                @click="
+                    newEntityLocation = entitiesStore.currentEntity;
+                    newEntityVisible = true;
+                "
+                class="relative h-14 w-14 flex items-center justify-center rounded-full bg-blue-500 hover:bg-blue-600 text-white shadow-lg active:shadow-xl"
+                title="Create new entity (N)"
+            >
+                <PlusIcon :size="28" />
+                <kbd
+                    v-if="showShortcuts"
+                    class="absolute -top-2 -right-1 text-[9px] font-sans bg-gray-800 text-white rounded px-1 leading-[14px] pointer-events-none shadow"
+                    >N</kbd
+                >
+            </button>
+            <button
+                @click="handleFabCapture"
+                class="relative h-14 w-14 flex items-center justify-center rounded-full bg-blue-500 hover:bg-blue-600 text-white shadow-lg active:shadow-xl"
+                title="Quick capture (C)"
+            >
+                <CameraIcon :size="28" />
+                <kbd
+                    v-if="showShortcuts"
+                    class="absolute -top-2 -right-1 text-[9px] font-sans bg-gray-800 text-white rounded px-1 leading-[14px] pointer-events-none shadow"
+                    >C</kbd
+                >
+            </button>
+        </div>
+
+        <!-- Camera modal -->
+        <CameraModal />
+
+        <!-- Dialogs -->
+        <NewEntityDialog
+            :visible="newEntityVisible"
+            :location="newEntityLocation"
+            @update:visible="newEntityVisible = $event"
+        />
+        <MoveEntityDialog
+            :visible="moveDialogVisible"
+            :target-entity-id="moveDialogTargetId"
+            @update:visible="moveDialogVisible = $event"
+        />
+        <CommandDialog
+            :visible="commandDialogVisible"
+            @update:visible="commandDialogVisible = $event"
+        />
+
+        <!-- Toast notifications -->
+        <ToastContainer />
     </div>
-
-    <!-- Floating action buttons -->
-    <div class="fixed bottom-6 right-6 flex flex-col gap-3">
-      <button
-        @click="newEntityLocation = entitiesStore.currentEntity; newEntityVisible = true"
-        class="relative h-14 w-14 flex items-center justify-center rounded-full bg-blue-500 hover:bg-blue-600 text-white shadow-lg active:shadow-xl"
-        title="Create new entity (N)"
-      >
-        <PlusIcon :size="28" />
-        <kbd v-if="showShortcuts" class="absolute -top-2 -right-1 text-[9px] font-sans bg-gray-800 text-white rounded px-1 leading-[14px] pointer-events-none shadow">N</kbd>
-      </button>
-      <button
-        @click="handleFabCapture"
-        class="relative h-14 w-14 flex items-center justify-center rounded-full bg-blue-500 hover:bg-blue-600 text-white shadow-lg active:shadow-xl"
-        title="Quick capture (C)"
-      >
-        <CameraIcon :size="28" />
-        <kbd v-if="showShortcuts" class="absolute -top-2 -right-1 text-[9px] font-sans bg-gray-800 text-white rounded px-1 leading-[14px] pointer-events-none shadow">C</kbd>
-      </button>
-    </div>
-
-    <!-- Camera modal -->
-    <CameraModal />
-
-    <!-- Dialogs -->
-    <NewEntityDialog :visible="newEntityVisible" :location="newEntityLocation" @update:visible="newEntityVisible = $event" />
-    <MoveEntityDialog :visible="moveDialogVisible" :target-entity-id="moveDialogTargetId" @update:visible="moveDialogVisible = $event" />
-    <CommandDialog :visible="commandDialogVisible" @update:visible="commandDialogVisible = $event" />
-
-    <!-- Toast notifications -->
-    <ToastContainer />
-  </div>
 </template>
 
 <style scoped>
