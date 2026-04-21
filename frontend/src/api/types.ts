@@ -4,7 +4,7 @@ export interface Metadata {
   tags: string[] | null;
   lastModified: string | null;
   lastModifiedBy: string | null;
-  isLabeled: boolean | null;
+  islabeled: boolean | null;
 }
 
 export interface Entity {

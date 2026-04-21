@@ -113,7 +113,7 @@ const handleCreateChild = async (): Promise<void> => {
         quantity: null,
         owners: null,
         tags: null,
-        isLabeled: false,
+        islabeled: false,
         lastModified: null,
         lastModifiedBy: null,
       },
@@ -270,11 +270,14 @@ const handleEditArtifact = async (file: File): Promise<void> => {
             class="bg-white rounded-sm dark:bg-gray-900 ring-1 w-10"
             placeholder="Qty"
           />
-          <input
-            type="checkbox"
-            v-model="localEntity.metadata.isLabeled"
-            class="w-4 h-4"
-          />
+          <label class="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 cursor-pointer">
+            <input
+              type="checkbox"
+              v-model="localEntity.metadata.islabeled"
+              class="w-4 h-4"
+            />
+            Labeled
+          </label>
         </div>
       </div>
 

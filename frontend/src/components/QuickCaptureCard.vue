@@ -34,7 +34,7 @@ const handleQuickCapture = async (entityId: number): Promise<void> => {
               quantity: null,
               owners: null,
               tags: null,
-              isLabeled: false,
+              islabeled: false,
               lastModified: null,
               lastModifiedBy: null,
             },
@@ -60,7 +60,6 @@ const handleQuickCapture = async (entityId: number): Promise<void> => {
 
 <template>
   <figure
-    v-if="!entitiesStore.hasChildren(entitiesStore.currentEntity)"
     class="container relative h-full max-w-sm min-h-40 grow flex items-center justify-center rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 bg-transparent cursor-pointer hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-colors"
     @click="handleQuickCapture(entitiesStore.currentEntity)"
   >

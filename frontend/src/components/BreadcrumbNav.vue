@@ -45,15 +45,6 @@ const navigateTo = async (entityId: number): Promise<void> => {
         </li>
       </template>
 
-      <li>
-        <button
-          @click="emit('openNewEntity')"
-          class="text-blue-600 dark:text-sky-400 dark:hover:text-sky-300 hover:text-blue-700 cursor-pointer px-1"
-          title="Create new entity"
-        >
-          +
-        </button>
-      </li>
     </ol>
   </nav>
 </template>

@@ -33,7 +33,7 @@ const entity = ref<EntityCreate>({
     quantity: null,
     owners: null,
     tags: null,
-    isLabeled: false,
+    islabeled: false,
         lastModified: null,
         lastModifiedBy: null,
   },
@@ -62,7 +62,7 @@ watch(
 );
 
 watch(
-  () => entity.value.metadata.isLabeled,
+  () => entity.value.metadata.islabeled,
   () => fetchIds()
 );
 
@@ -76,7 +76,7 @@ const resetDialog = async (): Promise<void> => {
       quantity: null,
       owners: null,
       tags: null,
-      isLabeled: false,
+      islabeled: false,
       lastModified: null,
       lastModifiedBy: null,
     },
@@ -87,7 +87,7 @@ const resetDialog = async (): Promise<void> => {
 };
 
 const fetchIds = async (): Promise<void> => {
-  if (entity.value.metadata.isLabeled) {
+  if (entity.value.metadata.islabeled) {
     availableId.value = await api.firstAvailableId();
   } else {
     freeId.value = await api.firstFreeId();
@@ -103,7 +103,7 @@ const handleSubmit = async (): Promise<void> => {
   try {
     const location = props.location || 0;
     entity.value.location = location;
-    const targetId = entity.value.metadata.isLabeled ? availableId.value : freeId.value;
+    const targetId = entity.value.metadata.islabeled ? availableId.value : freeId.value;
     const entityId = await api.createEntity({ ...entity.value, id: targetId });
     await entitiesStore.reload();
     emit('created', entityId);
@@ -145,7 +145,7 @@ onMounted(() => {
     >
       <!-- Overlay -->
       <div
-        class="fixed inset-0 bg-black bg-opacity-50 dark:bg-gray-900 dark:bg-opacity-50"
+        class="fixed inset-0 bg-black/40"
         @click="handleDialogClose"
       ></div>
 
@@ -158,33 +158,29 @@ onMounted(() => {
           class="relative w-full max-w-2xl p-8 overflow-y-auto bg-white border border-gray-300 rounded-lg dark:bg-gray-800"
         >
           <!-- Title -->
-          <div class="grid grid-cols-2 w-fit space-x-2 items-baseline mb-4">
-            <h1 class="pb-4 text-3xl font-medium">Create New Entity</h1>
-            <h2
-              class="pb-4 text-2xl font-medium text-gray-500 dark:text-white/50"
-            >
-              ({{
-                entity.metadata.isLabeled ? availableId : freeId
-              }})
-            </h2>
-          </div>
+          <h1 class="pb-4 text-3xl font-medium">Create New Entity</h1>
 
           <!-- Form -->
           <div class="grid grid-cols-[8rem_1fr] gap-x-4 gap-y-3 items-center">
             <label for="name">Name</label>
-            <input
-              id="name"
-              type="text"
-              v-model="entity.name"
-              class="bg-white rounded-sm dark:bg-gray-900 ring-1 px-2 py-1"
-              autofocus
-            />
+            <div class="flex items-center gap-2">
+              <input
+                id="name"
+                type="text"
+                v-model="entity.name"
+                class="flex-1 bg-white rounded-sm dark:bg-gray-900 ring-1 px-2 py-1"
+                autofocus
+              />
+              <span class="text-lg font-medium text-gray-400 dark:text-white/50 shrink-0">
+                ({{ entity.metadata.islabeled ? availableId : freeId }})
+              </span>
+            </div>
 
             <label for="islabeled">Is Labeled</label>
             <input
               id="islabeled"
               type="checkbox"
-              v-model="entity.metadata.isLabeled"
+              v-model="entity.metadata.islabeled"
               class="w-4 h-4 justify-self-start"
             />
 
@@ -233,7 +229,7 @@ onMounted(() => {
           </div>
 
           <!-- Buttons -->
-          <div class="flex mt-8 space-x-2">
+          <div class="flex mt-8 gap-4">
             <button
               type="button"
               @click="handleSubmit"
