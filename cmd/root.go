@@ -210,6 +210,8 @@ func server(cmd *cobra.Command, args []string) {
 
 	e.Use(middleware.Static("assets"))
 
+	e.GET("/ws", wsHandler)
+
 	r := e.Group("/api")
 
 	if viper.GetBool("authentication") {

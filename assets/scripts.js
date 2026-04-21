@@ -388,6 +388,7 @@ document.addEventListener("alpine:init", () => {
       const hashID = parseInt(window.location.hash.slice(1));
       this.setCurrentEntity(isNaN(hashID) ? 0 : hashID);
       Alpine.store("isLoading").this = false;
+      this.connectWS();
     },
 
     currentEntity: 0,
@@ -402,6 +403,13 @@ document.addEventListener("alpine:init", () => {
     async reload() {
       await this.loadFullState();
       await this.loadLocationTree();
+    },
+
+    connectWS() {
+      const url = (location.protocol === "https:" ? "wss" : "ws") + "://" + location.host + "/ws";
+      const ws = new WebSocket(url);
+      ws.onmessage = () => this.reload();
+      ws.onclose = () => setTimeout(() => this.connectWS(), 3000);
     },
 
     // Returns the children of the current entity

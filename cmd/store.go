@@ -48,6 +48,7 @@ func updateStore() {
 	store.StoreVersion += 1
 	a, _ := json.MarshalIndent(store, "", "  ")
 	d.Write("store.json", a)
+	hub.broadcast()
 }
 
 func dumpStore(c echo.Context) error {
