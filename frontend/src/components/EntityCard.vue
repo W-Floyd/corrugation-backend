@@ -6,6 +6,13 @@ import { useClipStore } from '@/stores/clip';
 import { useToastsStore } from '@/stores/toasts';
 import { api } from '@/api';
 import type { Entity } from '@/api/types';
+import TrashCanIcon from 'vue-material-design-icons/TrashCan.vue';
+import FolderMoveIcon from 'vue-material-design-icons/FolderMove.vue';
+import PencilIcon from 'vue-material-design-icons/Pencil.vue';
+import CameraIcon from 'vue-material-design-icons/Camera.vue';
+import PlusIcon from 'vue-material-design-icons/Plus.vue';
+import CheckIcon from 'vue-material-design-icons/Check.vue';
+import CloseIcon from 'vue-material-design-icons/Close.vue';
 
 const props = defineProps<{
   entity: Entity;
@@ -307,141 +314,63 @@ const handleEditArtifact = async (file: File): Promise<void> => {
       <button
         v-if="!editMode"
         @click="handleDelete"
-        class="h-10 w-10 p-0 m-0 bg-red-500 rounded-full shadow hover:bg-red-600 active:shadow-lg text-white"
+        class="h-10 w-10 p-0 m-0 flex items-center justify-center bg-red-500 rounded-full shadow hover:bg-red-600 active:shadow-lg text-white"
         title="Delete entity"
       >
-        <svg
-          class="w-5 h-5"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-          />
-        </svg>
+        <TrashCanIcon :size="20" />
       </button>
 
       <button
         v-if="!editMode"
         @click="handleMove"
-        class="h-10 w-10 p-0 m-0 bg-blue-500 rounded-full shadow hover:bg-blue-600 active:shadow-lg text-white"
+        class="h-10 w-10 p-0 m-0 flex items-center justify-center bg-blue-500 rounded-full shadow hover:bg-blue-600 active:shadow-lg text-white"
         title="Move entity"
       >
-        <svg
-          class="w-5 h-5"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4 4"
-          />
-        </svg>
+        <FolderMoveIcon :size="20" />
       </button>
 
       <button
         v-if="!editMode"
         @click="handleEditToggle"
-        class="h-10 w-10 p-0 m-0 bg-blue-500 rounded-full shadow hover:bg-blue-600 active:shadow-lg text-white"
+        class="h-10 w-10 p-0 m-0 flex items-center justify-center bg-blue-500 rounded-full shadow hover:bg-blue-600 active:shadow-lg text-white"
         title="Edit entity"
       >
-        <svg
-          class="w-5 h-5"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-          />
-        </svg>
+        <PencilIcon :size="20" />
       </button>
 
       <button
         v-if="!editMode"
         @click="handleQuickCapture"
-        class="h-10 w-10 p-0 m-0 bg-blue-500 rounded-full shadow hover:bg-blue-600 active:shadow-lg text-white"
+        class="h-10 w-10 p-0 m-0 flex items-center justify-center bg-blue-500 rounded-full shadow hover:bg-blue-600 active:shadow-lg text-white"
         title="Quick capture"
       >
-        <svg
-          class="w-5 h-5"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
-          />
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
-          />
-        </svg>
+        <CameraIcon :size="20" />
       </button>
 
       <button
         @click="handleCreateChild"
-        class="h-10 w-10 p-0 m-0 bg-blue-500 rounded-full shadow hover:bg-blue-600 active:shadow-lg text-white"
+        class="h-10 w-10 p-0 m-0 flex items-center justify-center bg-blue-500 rounded-full shadow hover:bg-blue-600 active:shadow-lg text-white"
         title="Create child entity"
       >
-        <svg
-          class="w-5 h-5"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M12 4v16m8-8H4"
-          />
-        </svg>
+        <PlusIcon :size="20" />
       </button>
 
       <!-- Edit mode controls -->
       <template v-if="editMode">
         <button
           @click="handleSave"
-          class="h-10 w-10 p-0 m-0 bg-blue-500 rounded-full shadow hover:bg-blue-600 active:shadow-lg text-white"
+          class="h-10 w-10 p-0 m-0 flex items-center justify-center bg-blue-500 rounded-full shadow hover:bg-blue-600 active:shadow-lg text-white"
           title="Save"
         >
-          <svg
-            class="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M5 13l4 4L19 7"
-            />
-          </svg>
+          <CheckIcon :size="20" />
         </button>
 
         <button
           @click="handleCancel"
-          class="h-10 w-10 p-0 m-0 bg-red-500 rounded-full shadow hover:bg-red-600 active:shadow-lg text-white"
+          class="h-10 w-10 p-0 m-0 flex items-center justify-center bg-red-500 rounded-full shadow hover:bg-red-600 active:shadow-lg text-white"
           title="Cancel"
         >
-          &times;
+          <CloseIcon :size="20" />
         </button>
       </template>
 
@@ -456,28 +385,10 @@ const handleEditArtifact = async (file: File): Promise<void> => {
             });
           });
         "
-        class="h-10 w-10 p-0 m-0 bg-blue-500 rounded-full shadow hover:bg-blue-600 active:shadow-lg text-white"
+        class="h-10 w-10 p-0 m-0 flex items-center justify-center bg-blue-500 rounded-full shadow hover:bg-blue-600 active:shadow-lg text-white"
         title="Capture artifact"
       >
-        <svg
-          class="w-5 h-5"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
-          />
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
-          />
-        </svg>
+        <CameraIcon :size="20" />
       </button>
     </div>
 
@@ -507,7 +418,7 @@ const handleEditArtifact = async (file: File): Promise<void> => {
               class="absolute top-1 right-1 w-6 h-6 flex items-center justify-center rounded-full bg-red-500 hover:bg-red-600 text-white text-sm leading-none"
               title="Remove artifact"
             >
-              &times;
+              <CloseIcon :size="16" />
             </button>
           </div>
         </template>

@@ -112,6 +112,9 @@ export const useEntitiesStore = defineStore('entities', () => {
     window.location.hash = entityId === 0 ? '' : entityId.toString();
     searchtext.value = '';
     await reload();
+    if (entityId !== 0 && !fullstate.value.entities[entityId]) {
+      await setCurrentEntity(0);
+    }
   }
 
   function debouncesearch(): void {

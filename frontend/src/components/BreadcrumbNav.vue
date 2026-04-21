@@ -7,10 +7,13 @@ import type { Entity } from '@/api/types';
 const router = useRouter();
 const entitiesStore = useEntitiesStore();
 
+const emit = defineEmits<{ openNewEntity: [] }>();
+
 const locationTree = computed(() => {
   const treeIds = entitiesStore.locationtree;
   return treeIds
     .map((id: number) => {
+      if (id === 0) return { id: 0, name: 'World' };
       const entity = entitiesStore.fullstate.entities[id];
       if (!entity) return null;
       return { id, name: entity.name || id.toString() };
@@ -25,27 +28,27 @@ const navigateTo = async (entityId: number): Promise<void> => {
 
 <template>
   <nav class="w-full">
-    <ol class="flex flex-wrap list-reset">
+    <ol class="flex flex-wrap items-center gap-x-1">
       <template v-for="(n, index) in locationTree" :key="n.id">
         <li>
           <a
             @click="navigateTo(n.id)"
-            class="text-blue-600 no-underline cursor-pointer dark:text-sky-400 dark:hover:text-sky-300 hover:text-blue-700 hover:underline"
+            class="text-blue-600 no-underline cursor-pointer dark:text-sky-400 dark:hover:text-sky-300 hover:text-blue-700 hover:underline px-1"
             :title="`Go to entity ${n.id}`"
           >
             {{ n.name }}
           </a>
         </li>
 
-        <li v-if="index < locationTree.length - 1">
-          <span class="mx-2 text-gray-500">/</span>
+        <li v-if="index < locationTree.length - 1" aria-hidden="true">
+          <span class="text-gray-400">/</span>
         </li>
       </template>
 
       <li>
         <button
-          @click="entitiesStore.setCurrentEntity(entitiesStore.currentEntity)"
-          class="text-blue-600 dark:text-sky-400 dark:hover:text-sky-300 hover:text-blue-700 cursor-pointer ml-2"
+          @click="emit('openNewEntity')"
+          class="text-blue-600 dark:text-sky-400 dark:hover:text-sky-300 hover:text-blue-700 cursor-pointer px-1"
           title="Create new entity"
         >
           +

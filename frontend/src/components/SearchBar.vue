@@ -1,5 +1,8 @@
 <script setup lang="ts" name="SearchBar">
 import { ref, onMounted, onBeforeUnmount } from 'vue';
+import MagnifyIcon from 'vue-material-design-icons/Magnify.vue';
+import LoadingIcon from 'vue-material-design-icons/Loading.vue';
+import CloseIcon from 'vue-material-design-icons/Close.vue';
 import { useEntitiesStore } from '@/stores/entities';
 import { useClipStore } from '@/stores/clip';
 import { useToastsStore } from '@/stores/toasts';
@@ -64,18 +67,7 @@ onBeforeUnmount(() => {
   <div class="flex flex-row items-center gap-2 mb-4">
     <!-- Search icon -->
     <div class="text-gray-500 dark:text-gray-400">
-      <svg
-        viewBox="0 0 24 24"
-        fill="currentColor"
-        class="w-6 h-6"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <path
-          fill-rule="evenodd"
-          d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zM6.262 6.072a8.25 8.25 0 1 0 10.562-.766 4.5 4.5 0 0 1-1.318 1.357l-.302.604a.809.809 0 0 1-1.086 1.085l-.302-.165a1.125 1.125 0 0 0-1.298.21l-.131.131a1.125 1.125 0 0 0 0 1.591l.296.296c.256.257.622.374.98.314l1.17-.195c.323-.054.654.036.905.245l1.33 1.108c.32.267.46.694.358 1.1a8.7 8.7 0 0 1-2.288 4.04l-.723.724a1.125 1.125 0 0 1-1.298.21l-.153-.076a1.125 1.125 0 0 1-.622-1.006v-1.089c0-.298-.119-.585-.33-.796l-1.347-1.347a1.125 1.125 0 0 1-.21-1.298l.494-.988a1.125 1.125 0 0 1 1.085-1.085l.33-.165z"
-          clip-rule="evenodd"
-        />
-      </svg>
+      <MagnifyIcon :size="24" />
     </div>
 
     <!-- Filter world checkbox -->
@@ -137,27 +129,11 @@ onBeforeUnmount(() => {
       "
       class="flex items-center gap-1 shrink-0 text-sm text-gray-500 dark:text-gray-400"
     >
-      <svg
+      <LoadingIcon
         v-if="clipStore.searching || clipStore.modelLoading || clipStore.encoded < clipStore.total"
-        class="animate-spin w-4 h-4 text-blue-400"
-        xmlns="http://www.w3.org/2000/svg"
-        fill="none"
-        viewBox="0 0 24 24"
-      >
-        <circle
-          class="opacity-25"
-          cx="12"
-          cy="12"
-          r="10"
-          stroke="currentColor"
-          stroke-width="4"
-        />
-        <path
-          class="opacity-75"
-          fill="currentColor"
-          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12h0c0 6.627 5.373 12 12 12h0a7.962 7.962 0 01-2.91-5.291h0a7.962 7.962 0 01-5.291-2.91h0z"
-        />
-      </svg>
+        :size="16"
+        class="animate-spin text-blue-400"
+      />
       <span
         v-if="clipStore.modelLoading"
         class="text-xs text-gray-400 whitespace-nowrap"
@@ -189,7 +165,7 @@ onBeforeUnmount(() => {
       class="h-8 w-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-300"
       title="Clear search"
     >
-      &times;
+      <CloseIcon :size="16" />
     </button>
   </div>
 </template>

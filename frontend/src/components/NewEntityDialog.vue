@@ -20,6 +20,7 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits<{
   created: [entityId: number];
+  'update:visible': [value: boolean];
 }>();
 
 const dialogVisible = ref(false);
@@ -47,6 +48,7 @@ watch(
     dialogVisible.value = visible;
     if (visible) {
       await resetDialog();
+      await fetchIds();
     }
   },
   { immediate: true }
@@ -57,6 +59,11 @@ watch(
   (location) => {
     entity.value.location = location ?? 0;
   }
+);
+
+watch(
+  () => entity.value.metadata.isLabeled,
+  () => fetchIds()
 );
 
 const resetDialog = async (): Promise<void> => {
@@ -99,6 +106,7 @@ const handleSubmit = async (): Promise<void> => {
     const entityId = await api.createEntity(entity.value);
     await entitiesStore.reload();
     emit('created', entityId);
+    emit('update:visible', false);
     dialogVisible.value = false;
     toastsStore.add('Entity created');
   } catch (error) {
@@ -109,6 +117,7 @@ const handleSubmit = async (): Promise<void> => {
 
 const handleDialogClose = (): void => {
   dialogVisible.value = false;
+  emit('update:visible', false);
 };
 
 const handleCameraOpen = async (): Promise<void> => {
@@ -160,44 +169,43 @@ onMounted(() => {
           </div>
 
           <!-- Form -->
-          <div class="grid grid-cols-4 space-y-2">
-            <label for="name" class="col-span-1">Name</label>
+          <div class="grid grid-cols-[8rem_1fr] gap-x-4 gap-y-3 items-center">
+            <label for="name">Name</label>
             <input
               id="name"
               type="text"
               v-model="entity.name"
-              class="col-span-2 bg-white rounded-sm dark:bg-gray-900 ring-1"
+              class="bg-white rounded-sm dark:bg-gray-900 ring-1 px-2 py-1"
               autofocus
             />
 
-            <label for="islabeled" class="col-span-1">Is Labeled</label>
+            <label for="islabeled">Is Labeled</label>
             <input
               id="islabeled"
               type="checkbox"
               v-model="entity.metadata.isLabeled"
-              class="col-span-2"
+              class="w-4 h-4 justify-self-start"
             />
 
-            <label for="description" class="col-span-1">Description</label>
+            <label for="description">Description</label>
             <textarea
               id="description"
-              type="text"
               v-model="entity.description"
-              class="col-span-3 bg-white rounded-sm dark:bg-gray-900 ring-1"
+              class="bg-white rounded-sm dark:bg-gray-900 ring-1 px-2 py-1"
               rows="3"
             ></textarea>
 
-            <label for="quantity" class="col-span-1">Quantity</label>
+            <label for="quantity">Quantity</label>
             <input
               id="quantity"
               type="number"
               min="0"
               v-model.number="entity.metadata.quantity"
-              class="col-span-3 bg-white rounded-sm dark:bg-gray-900 ring-1"
+              class="bg-white rounded-sm dark:bg-gray-900 ring-1 px-2 py-1"
             />
 
-            <label for="file" class="col-span-1">Image</label>
-            <div class="col-span-3">
+            <label for="file">Image</label>
+            <div class="flex flex-wrap items-center gap-2">
               <input
                 id="file"
                 type="file"
@@ -213,16 +221,13 @@ onMounted(() => {
               <button
                 type="button"
                 @click="handleCameraOpen"
-                class="ml-4 h-10 px-4 py-2 text-white bg-blue-500 rounded-full shadow hover:bg-blue-600"
+                class="h-10 px-4 py-2 text-white bg-blue-500 rounded-full shadow hover:bg-blue-600"
               >
                 Camera
               </button>
-              <div
-                v-if="files.length > 0"
-                class="mt-2 text-sm text-gray-500"
-              >
+              <span v-if="files.length > 0" class="text-sm text-gray-500">
                 {{ files.length }} file(s) selected
-              </div>
+              </span>
             </div>
           </div>
 

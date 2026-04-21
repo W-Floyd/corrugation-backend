@@ -17,7 +17,10 @@
       "mcp__firefox-devtools__click_by_uid",
       "mcp__firefox-devtools__get_network_request",
       "Bash(curl -s http://localhost:8083/api/store)",
-      "Bash(python3 -m json.tool)"
+      "Bash(python3 -m json.tool)",
+      "mcp__firefox-devtools__list_pages",
+      "Bash(docker compose *)",
+      "Bash(npm install *)"
     ]
   }
 }

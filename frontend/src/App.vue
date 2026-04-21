@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, watch } from 'vue';
+import { onMounted, watch, ref } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useEntitiesStore } from '@/stores/entities';
 import { useCameraStore } from '@/stores/camera';
@@ -20,6 +20,7 @@ const entitiesStore = useEntitiesStore();
 const cameraStore = useCameraStore();
 const clipStore = useClipStore();
 const toastsStore = useToastsStore();
+const newEntityVisible = ref(false);
 
 // Initialize router from hash on app mount
 onMounted(() => {
@@ -54,33 +55,22 @@ watch(
     <!-- Main content -->
     <div v-else>
       <!-- Header with breadcrumbs -->
-      <div class="container mx-auto pt-4 px-4">
-        <nav class="w-full">
-          <BreadcrumbNav />
-          <button
-            @click="entitiesStore.setCurrentEntity(entitiesStore.currentEntity)"
-            class="text-blue-600 dark:text-sky-400 hover:text-blue-700 dark:hover:text-sky-300 ml-2"
-            title="Create new entity"
-          >
-            +
-          </button>
-        </nav>
+      <div class="w-full pt-4 px-4">
+        <BreadcrumbNav @open-new-entity="newEntityVisible = true" />
 
         <!-- Search bar -->
         <SearchBar />
       </div>
 
       <!-- Empty state or entity list -->
-      <div class="container mx-auto px-4 mt-4">
+      <div class="w-full px-4 mt-4">
         <div v-if="!entitiesStore.hasChildren(entitiesStore.currentEntity)">
           <p class="text-2xl text-gray-500/50">Empty</p>
         </div>
 
-        <!-- Quick capture card -->
-        <QuickCaptureCard />
-
         <!-- Entity grid -->
         <div class="flex flex-wrap justify-center gap-4">
+          <QuickCaptureCard />
           <EntityCard
             v-for="entity in clipStore.merge(entitiesStore.load(entitiesStore.currentEntity, entitiesStore.searchtext), entitiesStore)"
             :key="entity.id"
@@ -94,7 +84,7 @@ watch(
     <CameraModal />
 
     <!-- Dialogs -->
-    <NewEntityDialog />
+    <NewEntityDialog :visible="newEntityVisible" :location="entitiesStore.currentEntity" @update:visible="newEntityVisible = $event" />
     <MoveEntityDialog />
 
     <!-- Toast notifications -->
