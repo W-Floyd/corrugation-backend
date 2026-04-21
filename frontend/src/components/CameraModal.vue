@@ -1,9 +1,28 @@
 <script setup lang="ts">
-import { ref, watchEffect, nextTick } from 'vue';
+import { ref, watchEffect, watch, nextTick, onUnmounted } from 'vue';
 import { useCameraStore } from '@/stores/camera';
 
 const cameraStore = useCameraStore();
 const videoEl = ref<HTMLVideoElement | null>(null);
+
+const handleKeydown = (e: KeyboardEvent): void => {
+  if (cameraStore.previewUrl) {
+    if (e.key === 'Enter') { e.preventDefault(); cameraStore.confirm(); }
+    else if (e.key === 'r' || e.key === 'R') { e.preventDefault(); cameraStore.rotate(); }
+    else if (e.key === 'c' || e.key === 'C') { e.preventDefault(); cameraStore.retake(); }
+    else if (e.key === 'Escape') { e.preventDefault(); cameraStore.close(); }
+  } else {
+    if (e.key === 'Enter') { e.preventDefault(); cameraStore.capture(); }
+    else if (e.key === 'Escape') { e.preventDefault(); cameraStore.close(); }
+  }
+};
+
+watch(() => cameraStore.opened, (val) => {
+  if (val) window.addEventListener('keydown', handleKeydown);
+  else window.removeEventListener('keydown', handleKeydown);
+});
+
+onUnmounted(() => window.removeEventListener('keydown', handleKeydown));
 
 watchEffect(async () => {
   if (cameraStore.opened && cameraStore.stream) {

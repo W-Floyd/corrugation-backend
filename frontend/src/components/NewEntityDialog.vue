@@ -1,5 +1,5 @@
 <script setup lang="ts" name="NewEntityDialog">
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, watch, nextTick } from 'vue';
 import { useEntitiesStore } from '@/stores/entities';
 import { useCameraStore } from '@/stores/camera';
 import { useToastsStore } from '@/stores/toasts';
@@ -24,6 +24,7 @@ const emit = defineEmits<{
 }>();
 
 const dialogVisible = ref(false);
+const nameInput = ref<HTMLInputElement | null>(null);
 const entity = ref<EntityCreate>({
   name: null,
   description: null,
@@ -49,6 +50,7 @@ watch(
     if (visible) {
       await resetDialog();
       await fetchIds();
+      nextTick(() => nameInput.value?.focus());
     }
   },
   { immediate: true }
@@ -166,10 +168,10 @@ onMounted(() => {
             <div class="flex items-center gap-2">
               <input
                 id="name"
+                ref="nameInput"
                 type="text"
                 v-model="entity.name"
                 class="flex-1 bg-white rounded-sm dark:bg-gray-900 ring-1 px-2 py-1"
-                autofocus
                 @keydown.enter.prevent="handleSubmit"
               />
               <span class="text-lg font-medium text-gray-400 dark:text-white/50 shrink-0">

@@ -18,6 +18,7 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits<{
   moved: [entityId: number, newLocation: number];
+  'update:visible': [value: boolean];
 }>();
 
 const dialogVisible = ref(false);
@@ -95,6 +96,7 @@ const handleMove = async (): Promise<void> => {
     await api.moveEntity(entity.value.id, targetLocation.value);
     await entitiesStore.reload();
     emit('moved', entity.value.id, targetLocation.value);
+    emit('update:visible', false);
     dialogVisible.value = false;
     toastsStore.add('Entity moved');
   } catch (error) {
@@ -105,6 +107,7 @@ const handleMove = async (): Promise<void> => {
 
 const handleDialogClose = (): void => {
   dialogVisible.value = false;
+  emit('update:visible', false);
 };
 </script>
 
@@ -118,7 +121,7 @@ const handleDialogClose = (): void => {
     >
       <!-- Overlay -->
       <div
-        class="fixed inset-0 bg-black bg-opacity-50 dark:bg-gray-900 dark:bg-opacity-50"
+        class="fixed inset-0 bg-black/40"
         @click="handleDialogClose"
       ></div>
 
