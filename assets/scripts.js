@@ -385,7 +385,8 @@ document.addEventListener("alpine:init", () => {
 
     init() {
       this.storeversion = -1;
-      this.setCurrentEntity(0);
+      const hashID = parseInt(window.location.hash.slice(1));
+      this.setCurrentEntity(isNaN(hashID) ? 0 : hashID);
       Alpine.store("isLoading").this = false;
     },
 
@@ -393,6 +394,7 @@ document.addEventListener("alpine:init", () => {
 
     async setCurrentEntity(x) {
       this.currentEntity = x;
+      window.location.hash = x === 0 ? "" : String(x);
       this.searchtext = "";
       await this.reload();
     },
