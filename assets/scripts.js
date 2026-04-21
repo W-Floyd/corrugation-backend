@@ -77,6 +77,216 @@ document.addEventListener("alpine:init", () => {
     },
   });
 
+  Alpine.store("camera", {
+    opened: false,
+    stream: null,
+    callback: null,
+    previewUrl: null,
+    pendingFile: null,
+    _originalBlob: null,
+    rotation: 0,
+    landscape: false,
+    _beta: null,
+    _gamma: null,
+
+    _onResize() {
+      Alpine.store("camera").landscape = window.innerWidth > window.innerHeight;
+    },
+
+    _onOrientation(e) {
+      const cam = Alpine.store("camera");
+      cam._beta = e.beta;
+      cam._gamma = e.gamma;
+      cam.landscape = Math.abs(e.gamma) > Math.abs(e.beta);
+    },
+
+    async _startOrientation() {
+      if (
+        typeof DeviceOrientationEvent !== "undefined" &&
+        typeof DeviceOrientationEvent.requestPermission === "function"
+      ) {
+        try {
+          const perm = await DeviceOrientationEvent.requestPermission();
+          if (perm === "granted")
+            window.addEventListener("deviceorientation", this._onOrientation);
+        } catch (e) {
+          console.warn("Device orientation permission denied:", e);
+        }
+      } else if (typeof DeviceOrientationEvent !== "undefined") {
+        window.addEventListener("deviceorientation", this._onOrientation);
+      }
+    },
+
+    async open(callback) {
+      this.landscape = window.innerWidth > window.innerHeight;
+      this._beta = null;
+      this._gamma = null;
+      window.addEventListener("resize", this._onResize);
+      await this._startOrientation();
+      this.callback = callback;
+      this.previewUrl = null;
+      this.pendingFile = null;
+      this._originalBlob = null;
+      this.rotation = 0;
+      try {
+        const portrait = window.innerHeight > window.innerWidth;
+        this.stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: "environment",
+            width: { ideal: portrait ? 2160 : 3840 },
+            height: { ideal: portrait ? 3840 : 2160 },
+          },
+          audio: false,
+        });
+        this.opened = true;
+        Alpine.nextTick(() => {
+          const video = document.getElementById("cameraVideo");
+          if (video) video.srcObject = this.stream;
+        });
+      } catch (e) {
+        console.error("Camera error:", e);
+      }
+    },
+
+    _devicePortrait() {
+      if (this._beta !== null && this._gamma !== null) {
+        return Math.abs(this._beta) > Math.abs(this._gamma);
+      }
+      return window.innerHeight > window.innerWidth;
+    },
+
+    // gamma < 0: device rotated CW (top pointing left) → stream needs CCW correction
+    // gamma >= 0: device rotated CCW (top pointing right) → stream needs CW correction
+    _rotateAngle() {
+      if (this._gamma !== null) {
+        return this._gamma < 0 ? -Math.PI / 2 : Math.PI / 2;
+      }
+      return (screen.orientation?.angle ?? 0) === 270
+        ? Math.PI / 2
+        : -Math.PI / 2;
+    },
+
+    capture() {
+      const video = document.getElementById("cameraVideo");
+      const canvas = document.getElementById("cameraCanvas");
+      const vw = video.videoWidth;
+      const vh = video.videoHeight;
+      const ctx = canvas.getContext("2d");
+
+      const streamPortrait = vh > vw;
+      const devicePortrait = this._devicePortrait();
+      if (streamPortrait !== devicePortrait) {
+        const angle = this._rotateAngle();
+        canvas.width = vh;
+        canvas.height = vw;
+        ctx.save();
+        ctx.translate(canvas.width / 2, canvas.height / 2);
+        ctx.rotate(angle);
+        ctx.drawImage(video, -vw / 2, -vh / 2);
+        ctx.restore();
+      } else {
+        canvas.width = vw;
+        canvas.height = vh;
+        ctx.drawImage(video, 0, 0);
+      }
+      if (this.stream) {
+        this.stream.getTracks().forEach((t) => t.stop());
+        this.stream = null;
+      }
+      this.rotation = 0;
+      canvas.toBlob(
+        (blob) => {
+          this._originalBlob = blob;
+          this.pendingFile = new File([blob], "photo.jpg", { type: "image/jpeg" });
+          this.previewUrl = URL.createObjectURL(blob);
+        },
+        "image/jpeg",
+        0.92
+      );
+    },
+
+    rotate() {
+      this.rotation = (this.rotation + 90) % 360;
+      const blob = this._originalBlob;
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.getElementById("cameraCanvas");
+        const swap = this.rotation % 180 !== 0;
+        canvas.width = swap ? img.height : img.width;
+        canvas.height = swap ? img.width : img.height;
+        const ctx = canvas.getContext("2d");
+        ctx.save();
+        ctx.translate(canvas.width / 2, canvas.height / 2);
+        ctx.rotate((this.rotation * Math.PI) / 180);
+        ctx.drawImage(img, -img.width / 2, -img.height / 2);
+        ctx.restore();
+        URL.revokeObjectURL(img.src);
+        if (this.previewUrl) URL.revokeObjectURL(this.previewUrl);
+        canvas.toBlob(
+          (rotatedBlob) => {
+            this.pendingFile = new File([rotatedBlob], "photo.jpg", { type: "image/jpeg" });
+            this.previewUrl = URL.createObjectURL(rotatedBlob);
+          },
+          "image/jpeg",
+          0.92
+        );
+      };
+      img.src = URL.createObjectURL(blob);
+    },
+
+    confirm() {
+      if (this.callback && this.pendingFile) this.callback([this.pendingFile]);
+      this._reset();
+    },
+
+    async retake() {
+      if (this.previewUrl) URL.revokeObjectURL(this.previewUrl);
+      this.previewUrl = null;
+      this.pendingFile = null;
+      this._originalBlob = null;
+      this.rotation = 0;
+      try {
+        const portrait = window.innerHeight > window.innerWidth;
+        this.stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: "environment",
+            width: { ideal: portrait ? 2160 : 3840 },
+            height: { ideal: portrait ? 3840 : 2160 },
+          },
+          audio: false,
+        });
+        Alpine.nextTick(() => {
+          const video = document.getElementById("cameraVideo");
+          if (video) video.srcObject = this.stream;
+        });
+      } catch (e) {
+        console.error("Camera error:", e);
+      }
+    },
+
+    close() {
+      this._reset();
+    },
+
+    _reset() {
+      window.removeEventListener("resize", this._onResize);
+      window.removeEventListener("deviceorientation", this._onOrientation);
+      this._beta = null;
+      this._gamma = null;
+      if (this.stream) {
+        this.stream.getTracks().forEach((t) => t.stop());
+        this.stream = null;
+      }
+      if (this.previewUrl) URL.revokeObjectURL(this.previewUrl);
+      this.previewUrl = null;
+      this.pendingFile = null;
+      this._originalBlob = null;
+      this.rotation = 0;
+      this.opened = false;
+      this.callback = null;
+    },
+  });
+
   Alpine.store("moveEntityDialog", {
     opened: false,
 
