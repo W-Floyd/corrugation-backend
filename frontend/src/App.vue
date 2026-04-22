@@ -84,12 +84,18 @@ const handleFabCapture = (): void => {
 };
 
 const confirmDeleteEntity = async (entityId: number): Promise<void> => {
+    const beforeList = visibleEntities.value.filter((e) => e.id !== entityId);
+    const idx = visibleEntities.value.findIndex((e) => e.id === entityId);
+    const nextId = beforeList.length > 0 ? beforeList[Math.min(idx, beforeList.length - 1)].id : null;
     deleteConfirmId.value = null;
     selectedEntityId.value = null;
     try {
         await api.deleteEntity(entityId);
         await entitiesStore.reload();
         toastsStore.add("Entity deleted");
+        if (nextId !== null) {
+            selectedEntityId.value = nextId;
+        }
     } catch {
         toastsStore.add("Failed to delete entity");
     }
@@ -294,14 +300,14 @@ const handleKeydown = (e: KeyboardEvent): void => {
         case "Delete":
         case "d":
         case "D":
-            if (
-                !e.shiftKey &&
-                !e.metaKey &&
-                !e.ctrlKey &&
-                selectedEntityId.value !== null
-            ) {
-                e.preventDefault();
-                deleteConfirmId.value = selectedEntityId.value;
+            if (!e.shiftKey && !e.metaKey && !e.ctrlKey) {
+                if (deleteConfirmId.value !== null) {
+                    e.preventDefault();
+                    confirmDeleteEntity(deleteConfirmId.value);
+                } else if (selectedEntityId.value !== null) {
+                    e.preventDefault();
+                    deleteConfirmId.value = selectedEntityId.value;
+                }
             }
             break;
 
@@ -496,6 +502,7 @@ watch(
                         "
                         @edit-started="editEntityId = null; editingCardId = entity.id"
                         @edit-ended="editingCardId = null"
+                        @request-delete="selectedEntityId = entity.id; deleteConfirmId = entity.id"
                         @delete-confirmed="confirmDeleteEntity(entity.id)"
                         @delete-cancelled="deleteConfirmId = null"
                     />

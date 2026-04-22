@@ -33,6 +33,7 @@ const emit = defineEmits<{
     editEnded: [];
     deleteConfirmed: [];
     deleteCancelled: [];
+    requestDelete: [];
 }>();
 
 const entitiesStore = useEntitiesStore();
@@ -430,7 +431,7 @@ defineExpose({ cardEl });
         <div class="p-4 flex flex-wrap gap-2 border-t dark:border-gray-700">
             <button
                 v-if="!editMode"
-                @click.stop="handleDelete"
+                @click.stop="emit('requestDelete')"
                 class="relative h-10 w-10 p-0 m-0 flex items-center justify-center bg-red-500 rounded-full shadow hover:bg-red-600 active:shadow-lg text-white"
                 title="Delete entity"
             >
