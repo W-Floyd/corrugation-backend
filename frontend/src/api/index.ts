@@ -1,4 +1,5 @@
 import type { Entity, Artifact, FullState, Metadata } from "./types";
+import router from "../router";
 
 export interface EntityCreate {
   id?: number;
@@ -38,7 +39,7 @@ export async function apiFetch(url: string, options: RequestInit = {}): Promise<
 
   if (response.status === 401) {
     localStorage.removeItem("auth_token");
-    window.location.hash = "/login";
+    router.push({ name: "login" });
     throw new Error("Unauthorized");
   }
 
