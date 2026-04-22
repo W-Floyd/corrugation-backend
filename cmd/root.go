@@ -81,6 +81,18 @@ func init() {
 	rootCmd.Flags().Int("port", 8083, "Port to run server on")
 	viper.BindPFlag("port", rootCmd.Flags().Lookup("port"))
 
+	rootCmd.Flags().Bool("auth", false, "Enable JWT authentication")
+	viper.BindPFlag("auth", rootCmd.Flags().Lookup("auth"))
+
+	rootCmd.Flags().String("username", "admin", "Username for login")
+	viper.BindPFlag("username", rootCmd.Flags().Lookup("username"))
+
+	rootCmd.Flags().String("password", "", "Password for login")
+	viper.BindPFlag("password", rootCmd.Flags().Lookup("password"))
+
+	rootCmd.Flags().String("jwt-secret", "", "JWT signing secret")
+	viper.BindPFlag("jwt-secret", rootCmd.Flags().Lookup("jwt-secret"))
+
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -159,9 +171,15 @@ func server(cmd *cobra.Command, args []string) {
 	e.Static("/assets", "dist/assets")
 	e.File("/favicon.ico", "dist/favicon.ico")
 
+	e.POST("/api/login", handleLogin)
+
 	e.GET("/ws", wsHandler)
 
 	r := e.Group("/api")
+
+	if viper.GetBool("auth") {
+		r.Use(jwtMiddleware())
+	}
 
 	// Restricted group
 

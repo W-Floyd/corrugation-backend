@@ -27,126 +27,105 @@ export interface EntityUpdate {
   };
 }
 
+export async function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
+  const token = localStorage.getItem("auth_token");
+  const headers = new Headers(options.headers as HeadersInit);
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
+  const response = await fetch(url, { ...options, headers });
+
+  if (response.status === 401) {
+    localStorage.removeItem("auth_token");
+    window.location.hash = "/login";
+    throw new Error("Unauthorized");
+  }
+
+  return response;
+}
+
 export const api = {
-  /**
-   * Fetch the complete store state from the backend
-   */
+  async login(username: string, password: string): Promise<string> {
+    const response = await fetch("/api/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+    });
+    if (!response.ok) {
+      throw new Error("Invalid credentials");
+    }
+    const data = await response.json();
+    return data.token;
+  },
+
   async getFullState(): Promise<FullState> {
-    const response = await fetch("/api/store");
+    const response = await apiFetch("/api/store");
     return response.json();
   },
 
-  /**
-   * Create a new entity and return its ID
-   */
   async createEntity(entity: Partial<Entity>): Promise<number> {
-    const response = await fetch("/api/entity", {
+    const response = await apiFetch("/api/entity", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(entity),
     });
     const id = await response.json();
     return parseInt(id, 10);
   },
 
-  /**
-   * Replace an existing entity
-   */
   async updateEntity(id: number, entity: Entity): Promise<void> {
-    await fetch(`/api/entity/${id}`, {
+    await apiFetch(`/api/entity/${id}`, {
       method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(entity),
     });
   },
 
-  /**
-   * Patch an existing entity
-   */
   async patchEntity(id: number, patch: Partial<Entity>): Promise<Entity> {
-    const response = await fetch(`/api/entity/${id}`, {
+    const response = await apiFetch(`/api/entity/${id}`, {
       method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(patch),
     });
     return response.json();
   },
 
-  /**
-   * Delete an entity
-   */
   async deleteEntity(id: number): Promise<void> {
-    await fetch(`/api/entity/${id}`, {
-      method: "DELETE",
-    });
+    await apiFetch(`/api/entity/${id}`, { method: "DELETE" });
   },
 
-  /**
-   * Move an entity to a new location
-   */
   async moveEntity(id: number, location: number): Promise<void> {
-    await fetch(`/api/entity/${id}`, {
+    await apiFetch(`/api/entity/${id}`, {
       method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ location }),
     });
   },
 
-  /**
-   * Upload an artifact and return its ID
-   */
   async uploadArtifact(file: File): Promise<number> {
     const formData = new FormData();
     formData.append("file", file);
-
-    const response = await fetch("/api/artifact", {
-      method: "POST",
-      body: formData,
-    });
+    const response = await apiFetch("/api/artifact", { method: "POST", body: formData });
     const id = await response.json();
     return parseInt(id, 10);
   },
 
-  /**
-   * Delete an artifact
-   */
   async deleteArtifact(id: number): Promise<void> {
-    await fetch(`/api/artifact/${id}`, {
-      method: "DELETE",
-    });
+    await apiFetch(`/api/artifact/${id}`, { method: "DELETE" });
   },
 
-  /**
-   * Get the first free entity ID (gap in sequence)
-   */
   async firstFreeId(): Promise<number> {
-    const response = await fetch("/api/entity/find/firstfreeid");
+    const response = await apiFetch("/api/entity/find/firstfreeid");
     return response.json();
   },
 
-  /**
-   * Get the next available ID (first unlabeled or first free)
-   */
   async firstAvailableId(): Promise<number> {
-    const response = await fetch("/api/entity/find/firstid");
+    const response = await apiFetch("/api/entity/find/firstid");
     return response.json();
   },
 
-  /**
-   * Quick capture: upload artifact and create entity in one flow
-   */
-  async quickCapture(location: number): Promise<number | null> {
-    // This is called from the camera store's open callback
-    // The camera store will have the pendingFile ready
-    // Returns the created entity ID
+  async quickCapture(_location: number): Promise<number | null> {
     return 0;
   },
 };

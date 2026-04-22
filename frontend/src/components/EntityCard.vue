@@ -7,6 +7,7 @@ import { useToastsStore } from "@/stores/toasts";
 import { api } from "@/api";
 import type { Entity } from "@/api/types";
 import KbdHint from "@/components/KbdHint.vue";
+import ArtifactImage from "@/components/ArtifactImage.vue";
 import TrashCanIcon from "vue-material-design-icons/TrashCan.vue";
 import FolderMoveIcon from "vue-material-design-icons/FolderMove.vue";
 import PencilIcon from "vue-material-design-icons/Pencil.vue";
@@ -528,9 +529,9 @@ defineExpose({ cardEl });
         <div class="flex flex-row justify-center w-full">
             <template v-if="!editMode && images.length > 0">
                 <template v-for="n in images" :key="n">
-                    <img
+                    <ArtifactImage
                         class="flex-1 object-cover w-full h-56 rounded-xl"
-                        :src="`/api/artifact/${n}`"
+                        :artifact-id="n"
                         :alt="`Artifact ${n}`"
                     />
                 </template>
@@ -539,14 +540,14 @@ defineExpose({ cardEl });
             <template v-else-if="editMode && images.length > 0">
                 <template v-for="n in images" :key="n">
                     <div class="relative flex-1">
-                        <img
+                        <ArtifactImage
                             class="object-cover w-full h-56 rounded-xl transition-opacity"
                             :class="
                                 pendingDeletions.has(n)
                                     ? 'opacity-30'
                                     : 'opacity-100'
                             "
-                            :src="`/api/artifact/${n}`"
+                            :artifact-id="n"
                             :alt="`Artifact ${n}`"
                         />
                         <button

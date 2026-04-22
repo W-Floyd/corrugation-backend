@@ -15,6 +15,7 @@ import BreadcrumbNav from "@/components/BreadcrumbNav.vue";
 import QuickCaptureCard from "@/components/QuickCaptureCard.vue";
 import ToastContainer from "@/components/ToastContainer.vue";
 import KbdHint from "@/components/KbdHint.vue";
+import LoginView from "@/views/LoginView.vue";
 import PlusIcon from "vue-material-design-icons/Plus.vue";
 import CameraIcon from "vue-material-design-icons/Camera.vue";
 import { api } from "@/api";
@@ -433,7 +434,10 @@ watch(
 </script>
 
 <template>
+    <LoginView v-if="route.name === 'login'" />
+
     <div
+        v-else
         class="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white"
     >
         <!-- Loading state -->

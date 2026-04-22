@@ -1,14 +1,25 @@
 version: "3"
 services:
-    corrugation-backend:
-        build:
-            context: .
-            dockerfile: Dockerfile
-        ports:
-            - "8083:8083"
-        restart: "no"
-        volumes:
-            - corrugation-data:/data
+  corrugation-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8083:8083"
+    restart: "no"
+    command:
+      [
+        "./main",
+        "--auth=true",
+        "--username",
+        "admin",
+        "--password",
+        "password",
+        "--jwt-secret",
+        "changeme",
+      ]
+    volumes:
+      - corrugation-data:/data
 
 volumes:
-    corrugation-data:
+  corrugation-data:

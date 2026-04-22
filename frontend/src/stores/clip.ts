@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import { ref, onActivated } from "vue";
 import type { FullState } from "@/api/types";
+import { apiFetch } from "@/api";
 
 interface EntityIdMap {
   [key: string]: string;
@@ -97,7 +98,11 @@ export const useClipStore = defineStore("clip", () => {
 
     try {
       // Load image from artifact endpoint
-      const image = await _RawImage.fromURL(`/api/artifact/${id}`);
+      const resp = await apiFetch(`/api/artifact/${id}`);
+      const blob = await resp.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const image = await _RawImage.fromURL(blobUrl);
+      URL.revokeObjectURL(blobUrl);
       const inputs = await _processor(image);
       const { image_embeds } = await _visionModel(inputs);
       const emb = _normalize(image_embeds.data);

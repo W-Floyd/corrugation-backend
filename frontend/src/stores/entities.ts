@@ -1,7 +1,7 @@
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
 import type { Entity, FullState } from "@/api/types";
-import { api } from "@/api";
+import { api, apiFetch } from "@/api";
 
 interface LocationNode {
   id: number;
@@ -32,7 +32,7 @@ export const useEntitiesStore = defineStore("entities", () => {
   // Actions
   async function loadFullState(): Promise<void> {
     try {
-      const versionResponse = await fetch("/api/store/version");
+      const versionResponse = await apiFetch("/api/store/version");
       const newVersion = await versionResponse.json();
 
       if (fullstate.value.storeversion !== newVersion) {
