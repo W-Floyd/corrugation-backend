@@ -8,7 +8,6 @@ import { useToastsStore } from "@/stores/toasts";
 import EntityCard from "@/components/EntityCard.vue";
 import CameraModal from "@/components/CameraModal.vue";
 import NewEntityDialog from "@/components/NewEntityDialog.vue";
-import MoveEntityDialog from "@/components/MoveEntityDialog.vue";
 import CommandDialog from "@/components/CommandDialog.vue";
 import SearchBar from "@/components/SearchBar.vue";
 import BreadcrumbNav from "@/components/BreadcrumbNav.vue";
@@ -29,9 +28,7 @@ const toastsStore = useToastsStore();
 
 const newEntityVisible = ref(false);
 const newEntityLocation = ref(0);
-const moveDialogVisible = ref(false);
-const moveDialogTargetId = ref(0);
-const moveNextEntityId = ref<number | null>(null);
+const confirmMoveId = ref<number | null>(null);
 const commandDialogVisible = ref(false);
 const selectedEntityId = ref<number | null>(null);
 const showShortcuts = ref(false);
@@ -54,9 +51,29 @@ const visibleEntities = computed(() =>
 const anyDialogOpen = computed(
     () =>
         newEntityVisible.value ||
-        moveDialogVisible.value ||
+        confirmMoveId.value !== null ||
         commandDialogVisible.value,
 );
+
+const handleMoveConfirmed = async (entityId: number, newLocation: number): Promise<void> => {
+    const idx = visibleEntities.value.findIndex((e) => e.id === entityId);
+    const rest = visibleEntities.value.filter((e) => e.id !== entityId);
+    const nextId = rest.length > 0 ? rest[Math.min(idx, rest.length - 1)].id : null;
+    confirmMoveId.value = null;
+    selectedEntityId.value = null;
+    try {
+        await api.moveEntity(entityId, newLocation);
+        await entitiesStore.reload();
+        toastsStore.add("Entity moved");
+        if (newLocation === entitiesStore.currentEntity) {
+            selectedEntityId.value = entityId;
+        } else if (nextId !== null) {
+            selectedEntityId.value = nextId;
+        }
+    } catch {
+        toastsStore.add("Failed to move entity");
+    }
+};
 
 const handleFabCapture = (): void => {
     cameraStore.open(async (files: File[]) => {
@@ -83,14 +100,6 @@ const handleFabCapture = (): void => {
             toastsStore.add("Failed to create entity from photo");
         }
     });
-};
-
-const openMoveDialog = (entityId: number): void => {
-    const idx = visibleEntities.value.findIndex((e) => e.id === entityId);
-    const rest = visibleEntities.value.filter((e) => e.id !== entityId);
-    moveNextEntityId.value = rest.length > 0 ? rest[Math.min(idx, rest.length - 1)].id : null;
-    moveDialogTargetId.value = entityId;
-    moveDialogVisible.value = true;
 };
 
 const confirmDeleteEntity = async (entityId: number): Promise<void> => {
@@ -224,6 +233,7 @@ const handleKeydown = (e: KeyboardEvent): void => {
     if (e.key === "Escape") {
         commandDialogVisible.value = false;
         deleteConfirmId.value = null;
+        confirmMoveId.value = null;
         selectedEntityId.value = null;
         return;
     }
@@ -383,14 +393,9 @@ const handleKeydown = (e: KeyboardEvent): void => {
 
         case "m":
         case "M":
-            if (
-                !e.shiftKey &&
-                !e.metaKey &&
-                !e.ctrlKey &&
-                selectedEntityId.value !== null
-            ) {
+            if (!e.shiftKey && !e.metaKey && !e.ctrlKey && selectedEntityId.value !== null) {
                 e.preventDefault();
-                openMoveDialog(selectedEntityId.value);
+                confirmMoveId.value = selectedEntityId.value;
             }
             break;
     }
@@ -418,6 +423,12 @@ onMounted(() => {
 onUnmounted(() => {
     window.removeEventListener("keydown", handleKeydown);
     window.removeEventListener("keyup", handleKeyup);
+});
+
+watch(selectedEntityId, (newId) => {
+    if (deleteConfirmId.value !== null && newId !== deleteConfirmId.value) {
+        deleteConfirmId.value = null;
+    }
 });
 
 // Clear selection when navigating to a new entity
@@ -496,6 +507,7 @@ watch(
                         :show-shortcuts="showShortcuts"
                         :start-edit="editEntityId === entity.id"
                         :confirm-delete="deleteConfirmId === entity.id"
+                        :confirm-move="confirmMoveId === entity.id"
                         @select="
                             selectedEntityId = entity.id;
                             deleteConfirmId = null;
@@ -506,12 +518,14 @@ watch(
                                 newEntityVisible = true;
                             }
                         "
-                        @request-move="(id) => openMoveDialog(id)"
+                        @request-move="(id) => { confirmMoveId = id; }"
                         @edit-started="editEntityId = null; editingCardId = entity.id"
                         @edit-ended="editingCardId = null"
                         @request-delete="selectedEntityId = entity.id; deleteConfirmId = entity.id"
                         @delete-confirmed="confirmDeleteEntity(entity.id)"
                         @delete-cancelled="deleteConfirmId = null"
+                        @move-confirmed="(newLocation) => handleMoveConfirmed(entity.id, newLocation)"
+                        @move-cancelled="confirmMoveId = null"
                     />
                 </div>
             </div>
@@ -550,14 +564,6 @@ watch(
             :show-shortcuts="showShortcuts"
             @update:visible="newEntityVisible = $event"
             @created="(id) => { if (newEntityLocation === entitiesStore.currentEntity) selectedEntityId = id; }"
-        />
-        <MoveEntityDialog
-            :visible="moveDialogVisible"
-            :target-entity-id="moveDialogTargetId"
-            @update:visible="moveDialogVisible = $event"
-            @moved="(entityId, newLocation) => {
-                selectedEntityId = newLocation === entitiesStore.currentEntity ? entityId : moveNextEntityId;
-            }"
         />
         <CommandDialog
             :visible="commandDialogVisible"

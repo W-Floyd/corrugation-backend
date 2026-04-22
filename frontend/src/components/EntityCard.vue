@@ -23,6 +23,7 @@ const props = defineProps<{
     showShortcuts?: boolean;
     startEdit?: boolean;
     confirmDelete?: boolean;
+    confirmMove?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -35,6 +36,8 @@ const emit = defineEmits<{
     deleteConfirmed: [];
     deleteCancelled: [];
     requestDelete: [];
+    moveConfirmed: [newLocation: number];
+    moveCancelled: [];
 }>();
 
 const entitiesStore = useEntitiesStore();
@@ -50,6 +53,91 @@ const localEntity = ref<Entity>({
     metadata: { ...props.entity.metadata },
 });
 const pendingDeletions = ref<Set<number>>(new Set());
+
+const moveTargetLocation = ref<number>(0);
+const moveSearchInputRef = ref<HTMLInputElement | null>(null);
+
+const isDescendantOf = (entityId: number, ancestorId: number): boolean => {
+    let current = entityId;
+    while (current !== 0) {
+        if (current === ancestorId) return true;
+        const parent = entitiesStore.fullstate.entities[current];
+        if (!parent) break;
+        current = parent.location;
+    }
+    return false;
+};
+
+const filteredMoveEntities = computed(() => {
+    const term = entitiesStore.moveSearchtext.toLowerCase().trim();
+    const world: Entity = { id: 0, name: "World", description: "", artifacts: [], location: 0, metadata: { quantity: null, owners: null, tags: null, lastModified: null, lastModifiedBy: null, islabeled: false } };
+    const candidates: Entity[] = [
+        ...Object.values(entitiesStore.fullstate.entities).filter(
+            (e) => e.id !== props.entity.id && !isDescendantOf(e.id, props.entity.id)
+        ),
+        world,
+    ];
+    if (!term) return candidates;
+    return candidates.filter(
+        (e) =>
+            (e.name?.toLowerCase().includes(term)) ||
+            (e.description?.toLowerCase().includes(term)) ||
+            e.id.toString().includes(term)
+    );
+});
+
+const currentLocationName = computed(() => {
+    if (entitiesStore.currentEntity === 0) return "World";
+    const e = entitiesStore.fullstate.entities[entitiesStore.currentEntity];
+    return e?.name || entitiesStore.currentEntity.toString();
+});
+
+const handleMoveKeydown = (e: KeyboardEvent): void => {
+    if (!props.confirmMove) return;
+    const target = e.target as HTMLElement;
+    if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        if (target.matches("input, select")) {
+            (target as HTMLElement).blur();
+        } else {
+            emit("moveCancelled");
+        }
+    } else if (e.key === "Enter") {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        emit("moveConfirmed", moveTargetLocation.value);
+    } else if ((e.key === "h" || e.key === "H") && !target.matches("input")) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        emit("moveConfirmed", entitiesStore.currentEntity);
+    }
+};
+
+watch(
+    () => props.confirmMove,
+    (val) => {
+        if (val) {
+            const results = filteredMoveEntities.value;
+            const hasSearch = entitiesStore.moveSearchtext.trim() !== "";
+            moveTargetLocation.value =
+                hasSearch && results.length > 0
+                    ? (results[0]?.id ?? 0)
+                    : entitiesStore.currentEntity;
+            window.addEventListener("keydown", handleMoveKeydown, true);
+            nextTick(() => moveSearchInputRef.value?.focus());
+        } else {
+            window.removeEventListener("keydown", handleMoveKeydown, true);
+        }
+    }
+);
+
+watch(filteredMoveEntities, (results) => {
+    if (!props.confirmMove) return;
+    if (!results.some((r) => r.id === moveTargetLocation.value)) {
+        moveTargetLocation.value = results[0]?.id ?? 0;
+    }
+});
 
 const formatOption = (entityId: number): string => {
     const tree: string[] = [];
@@ -132,9 +220,10 @@ watch(editMode, (val) => {
     }
 });
 
-onUnmounted(() =>
-    window.removeEventListener("keydown", handleEditKeydown, true),
-);
+onUnmounted(() => {
+    window.removeEventListener("keydown", handleEditKeydown, true);
+    window.removeEventListener("keydown", handleMoveKeydown, true);
+});
 
 const handleUpdate = async (): Promise<void> => {
     try {
@@ -295,7 +384,7 @@ defineExpose({ cardEl });
 <template>
     <figure
         ref="cardEl"
-        class="relative h-full max-w-sm bg-white shadow-md dark:bg-gray-800 rounded-xl flex flex-col cursor-default"
+        class="relative h-full min-h-64 min-w-48 max-w-sm bg-white shadow-md dark:bg-gray-800 rounded-xl flex flex-col cursor-default"
         :class="
             isSelected
                 ? 'ring-2 ring-blue-500 shadow-blue-200 dark:shadow-blue-900'
@@ -332,6 +421,59 @@ defineExpose({ cardEl });
                         shortcut="Esc"
                         :show="showShortcuts && isSelected"
                     />
+                </button>
+            </div>
+        </div>
+        <!-- Move confirmation overlay -->
+        <div
+            v-if="confirmMove"
+            class="absolute inset-0 z-10 flex flex-col gap-2 rounded-xl bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm p-4"
+            @click.stop
+        >
+            <p class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                Move "{{ entity.name || entity.id }}" to:
+            </p>
+            <input
+                ref="moveSearchInputRef"
+                v-model="entitiesStore.moveSearchtext"
+                type="search"
+                placeholder="Search locations..."
+                class="w-full px-3 py-1.5 rounded-full bg-white ring-1 dark:bg-gray-900 text-sm"
+                @click.stop
+            />
+            <select
+                v-model="moveTargetLocation"
+                class="w-full px-2 py-1 rounded-lg bg-white ring-1 dark:bg-gray-900 text-sm flex-1 min-h-0"
+                size="4"
+                @click.stop
+            >
+                <option v-for="loc in filteredMoveEntities" :key="loc.id" :value="loc.id">
+                    {{ formatOption(loc.id) }}
+                </option>
+            </select>
+            <div class="flex gap-2 flex-wrap items-center">
+                <button
+                    @click.stop="emit('moveConfirmed', moveTargetLocation)"
+                    class="relative h-10 w-10 p-0 m-0 flex items-center justify-center bg-blue-500 rounded-full shadow hover:bg-blue-600 active:shadow-lg text-white"
+                    title="Move"
+                >
+                    <CheckIcon :size="20" />
+                    <KbdHint shortcut="Enter" :show="showShortcuts && isSelected" />
+                </button>
+                <button
+                    @click.stop="emit('moveConfirmed', entitiesStore.currentEntity)"
+                    class="h-8 px-3 rounded-full bg-purple-500 hover:bg-purple-600 text-white text-sm shadow relative"
+                >
+                    To {{ currentLocationName }}
+                    <KbdHint shortcut="H" :show="showShortcuts && isSelected" />
+                </button>
+                <button
+                    @click.stop="emit('moveCancelled')"
+                    class="relative h-10 w-10 p-0 m-0 flex items-center justify-center bg-red-500 rounded-full shadow hover:bg-red-600 active:shadow-lg text-white"
+                    title="Cancel"
+                >
+                    <CloseIcon :size="20" />
+                    <KbdHint shortcut="Esc" :show="showShortcuts && isSelected" />
                 </button>
             </div>
         </div>

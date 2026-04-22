@@ -18,6 +18,7 @@ export const useEntitiesStore = defineStore("entities", () => {
 
   const searchtextpredebounce = ref("");
   const searchtext = ref("");
+  const moveSearchtext = ref("");
   const filterToMissingImage = ref(false);
   const filterToOnlyImage = ref(false);
   const searching = ref(false);
@@ -246,6 +247,7 @@ export const useEntitiesStore = defineStore("entities", () => {
     fullstate,
     searchtextpredebounce,
     searchtext,
+    moveSearchtext,
     filterToMissingImage,
     filterToOnlyImage,
     searching,
