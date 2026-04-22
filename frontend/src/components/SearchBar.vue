@@ -39,21 +39,12 @@ const handleSearchInput = (): void => {
     }, 500);
 };
 
-const toggleClip = (): void => {
-    clipStore.enabled = !clipStore.enabled;
+const onClipChange = (): void => {
     if (!clipStore.enabled) {
         clipStore.results = [];
         clipStore.scores = {};
         clipStore.searching = false;
     }
-};
-
-const toggleFilterWorld = (): void => {
-    entitiesStore.filterworld = !entitiesStore.filterworld;
-};
-
-const toggleSearchDescription = (): void => {
-    entitiesStore.searchdescription = !entitiesStore.searchdescription;
 };
 
 const resetSearch = (): void => {
@@ -92,7 +83,6 @@ onBeforeUnmount(() => {
                     type="checkbox"
                     v-model="entitiesStore.filterworld"
                     class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    @change="toggleFilterWorld"
                 />
                 <span class="ml-1 text-sm text-gray-600 dark:text-gray-400"
                     >World</span
@@ -110,7 +100,6 @@ onBeforeUnmount(() => {
                     type="checkbox"
                     v-model="entitiesStore.searchdescription"
                     class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    @change="toggleSearchDescription"
                 />
                 <span class="ml-1 text-sm text-gray-600 dark:text-gray-400"
                     >Desc</span
@@ -125,7 +114,7 @@ onBeforeUnmount(() => {
                     type="checkbox"
                     v-model="clipStore.enabled"
                     class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    @change="toggleClip"
+                    @change="onClipChange"
                 />
                 <span class="ml-1 text-sm text-gray-600 dark:text-gray-400"
                     >Visual</span

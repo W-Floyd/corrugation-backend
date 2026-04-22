@@ -347,8 +347,8 @@ defineExpose({ cardEl });
                         {{
                             entity.metadata.quantity !== null &&
                             entity.metadata.quantity !== 0
-                                ? `${entity.name || "Entity"} (x${entity.metadata.quantity})`
-                                : entity.name || "Entity"
+                                ? `${entity.name || ""} (x${entity.metadata.quantity})`
+                                : entity.name || ""
                         }}
                     </div>
                 </div>

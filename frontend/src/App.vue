@@ -225,6 +225,29 @@ const handleKeydown = (e: KeyboardEvent): void => {
             commandDialogVisible.value = true;
             break;
 
+        case "v":
+        case "V":
+            e.preventDefault();
+            clipStore.enabled = !clipStore.enabled;
+            if (!clipStore.enabled) {
+                clipStore.results = [];
+                clipStore.scores = {};
+                clipStore.searching = false;
+            }
+            break;
+
+        case "t":
+        case "T":
+            e.preventDefault();
+            entitiesStore.searchdescription = !entitiesStore.searchdescription;
+            break;
+
+        case "w":
+        case "W":
+            e.preventDefault();
+            entitiesStore.filterworld = !entitiesStore.filterworld;
+            break;
+
         case "ArrowDown":
             e.preventDefault();
             navigateGrid("down");

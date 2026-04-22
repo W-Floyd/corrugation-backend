@@ -20,6 +20,9 @@ const commands = [
     { label: "New entity in location", shortcut: "N" },
     { label: "New entity under selected", shortcut: "⇧N" },
     { label: "Move selected entity", shortcut: "M" },
+    { label: "Toggle visual search", shortcut: "V" },
+    { label: "Toggle description search", shortcut: "T" },
+    { label: "Toggle world search", shortcut: "W" },
     { label: "Search", shortcut: "/" },
     { label: "Command palette", shortcut: "?" },
 ];
