@@ -125,6 +125,7 @@ export const useClipStore = defineStore("clip", () => {
     fullstate: FullState,
     currentEntityId: number,
   ): Promise<void> {
+    _indexArtifacts(fullstate);
     const descendants = new Set(
       _listChildLocationsDeep(fullstate, currentEntityId),
     );
