@@ -79,31 +79,36 @@ const handleMoveConfirmed = async (
     }
 };
 
-const handleFabCapture = (): void => {
-    cameraStore.open(async (files: File[]) => {
-        if (!files[0]) return;
-        try {
-            const artifactId = await api.uploadArtifact(files[0]);
-            await api.createEntity({
-                name: null,
-                description: null,
-                artifacts: [artifactId],
-                location: entitiesStore.currentEntity,
-                metadata: {
-                    quantity: null,
-                    owners: null,
-                    tags: null,
-                    islabeled: false,
-                    lastModified: null,
-                    lastModifiedBy: null,
-                },
-            });
-            await entitiesStore.reload();
-            toastsStore.add("Entity created from photo");
-        } catch {
-            toastsStore.add("Failed to create entity from photo");
-        }
+const handleFabCapture = async (): Promise<void> => {
+    const capturedFiles: File[] = [];
+    await new Promise<void>((resolve) => {
+        cameraStore.open((files: File[]) => {
+            capturedFiles.push(...files);
+            resolve();
+        });
     });
+    if (!capturedFiles[0]) return;
+    try {
+        const artifactId = await api.uploadArtifact(capturedFiles[0]);
+        await api.createEntity({
+            name: null,
+            description: null,
+            artifacts: [artifactId],
+            location: entitiesStore.currentEntity,
+            metadata: {
+                quantity: null,
+                owners: null,
+                tags: null,
+                islabeled: false,
+                lastModified: null,
+                lastModifiedBy: null,
+            },
+        });
+        await entitiesStore.reload();
+        toastsStore.add("Entity created from photo");
+    } catch {
+        toastsStore.add("Failed to create entity from photo");
+    }
 };
 
 const confirmDeleteEntity = async (entityId: number): Promise<void> => {
@@ -127,47 +132,57 @@ const confirmDeleteEntity = async (entityId: number): Promise<void> => {
     }
 };
 
-const handleQuickCaptureOnEntity = (entityId: number): void => {
-    cameraStore.open(async (files: File[]) => {
-        if (!files[0]) return;
-        try {
-            const artifactId = await api.uploadArtifact(files[0]);
-            const entity = entitiesStore.fullstate.entities[entityId];
-            const artifacts = [...(entity?.artifacts ?? []), artifactId];
-            await api.patchEntity(entityId, { artifacts });
-            await entitiesStore.reload();
-            toastsStore.add("Artifact captured and added");
-        } catch {
-            toastsStore.add("Failed to capture artifact");
-        }
+const handleQuickCaptureOnEntity = async (entityId: number): Promise<void> => {
+    const capturedFiles: File[] = [];
+    await new Promise<void>((resolve) => {
+        cameraStore.open((files: File[]) => {
+            capturedFiles.push(...files);
+            resolve();
+        });
     });
+    if (!capturedFiles[0]) return;
+    try {
+        const artifactId = await api.uploadArtifact(capturedFiles[0]);
+        const entity = entitiesStore.fullstate.entities[entityId];
+        const artifacts = [...(entity?.artifacts ?? []), artifactId];
+        await api.patchEntity(entityId, { artifacts });
+        await entitiesStore.reload();
+        toastsStore.add("Artifact captured and added");
+    } catch {
+        toastsStore.add("Failed to capture artifact");
+    }
 };
 
-const handleQuickCaptureNewChild = (parentId: number): void => {
-    cameraStore.open(async (files: File[]) => {
-        if (!files[0]) return;
-        try {
-            const artifactId = await api.uploadArtifact(files[0]);
-            await api.createEntity({
-                name: null,
-                description: null,
-                artifacts: [artifactId],
-                location: parentId,
-                metadata: {
-                    quantity: null,
-                    owners: null,
-                    tags: null,
-                    islabeled: false,
-                    lastModified: null,
-                    lastModifiedBy: null,
-                },
-            });
-            await entitiesStore.reload();
-            toastsStore.add("Entity created from photo");
-        } catch {
-            toastsStore.add("Failed to create entity from photo");
-        }
+const handleQuickCaptureNewChild = async (parentId: number): Promise<void> => {
+    const capturedFiles: File[] = [];
+    await new Promise<void>((resolve) => {
+        cameraStore.open((files: File[]) => {
+            capturedFiles.push(...files);
+            resolve();
+        });
     });
+    if (!capturedFiles[0]) return;
+    try {
+        const artifactId = await api.uploadArtifact(capturedFiles[0]);
+        await api.createEntity({
+            name: null,
+            description: null,
+            artifacts: [artifactId],
+            location: parentId,
+            metadata: {
+                quantity: null,
+                owners: null,
+                tags: null,
+                islabeled: false,
+                lastModified: null,
+                lastModifiedBy: null,
+            },
+        });
+        await entitiesStore.reload();
+        toastsStore.add("Entity created from photo");
+    } catch {
+        toastsStore.add("Failed to create entity from photo");
+    }
 };
 
 const navigateGrid = (direction: "up" | "down" | "left" | "right"): void => {

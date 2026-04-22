@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { ref, watchEffect, watch, nextTick, onUnmounted } from "vue";
 import { useCameraStore } from "@/stores/camera";
+import RefreshIcon from "vue-material-design-icons/Refresh.vue";
 
 const cameraStore = useCameraStore();
 const videoEl = ref<HTMLVideoElement | null>(null);
+const lastDeviceId = ref<string | null>(null);
+const isReopening = ref(false);
 
 const handleKeydown = (e: KeyboardEvent): void => {
     if (cameraStore.previewUrl) {
@@ -39,9 +42,59 @@ const handleKeydown = (e: KeyboardEvent): void => {
 
 watch(
     () => cameraStore.opened,
-    (val) => {
-        if (val) window.addEventListener("keydown", handleKeydown);
-        else window.removeEventListener("keydown", handleKeydown);
+    async (val) => {
+        if (val) {
+            window.addEventListener("keydown", handleKeydown);
+            await cameraStore.loadDevices();
+            // Set default device if none selected
+            if (
+                !cameraStore.selectedDeviceId &&
+                cameraStore.devices.length > 0
+            ) {
+                const firstDevice = cameraStore.devices[0];
+                if (firstDevice && firstDevice.deviceId) {
+                    cameraStore.selectedDeviceId = firstDevice.deviceId;
+                }
+            }
+        } else {
+            window.removeEventListener("keydown", handleKeydown);
+        }
+    },
+);
+
+watch(
+    () => cameraStore.selectedDeviceId,
+    async (newId) => {
+        if (
+            newId &&
+            newId !== lastDeviceId.value &&
+            cameraStore.opened &&
+            cameraStore.stream &&
+            cameraStore.callback
+        ) {
+            lastDeviceId.value = newId;
+            // Switch to new device directly without closing
+            // Stop all tracks from the old stream
+            cameraStore.stream?.getTracks().forEach((track) => track.stop());
+            // Request new stream immediately with new device
+            const constraints = {
+                deviceId: newId,
+                width: { ideal: 1920 },
+                height: { ideal: 1080 },
+                aspectRatio: { ideal: 16 / 9 },
+            } as MediaTrackConstraints;
+            navigator.mediaDevices
+                .getUserMedia({
+                    video: constraints,
+                    audio: false,
+                })
+                .then((newStream) => {
+                    cameraStore.stream = newStream;
+                })
+                .catch((e) => {
+                    console.error("Failed to switch camera:", e);
+                });
+        }
     },
 );
 
@@ -82,6 +135,37 @@ watchEffect(async () => {
             />
 
             <canvas id="cameraCanvas" class="hidden"></canvas>
+
+            <!-- Camera selector -->
+            <div
+                v-if="cameraStore.devices.length > 0 && !cameraStore.previewUrl"
+                class="absolute top-4 left-0 w-full px-4 flex justify-center gap-2 z-10"
+            >
+                <select
+                    v-model="cameraStore.selectedDeviceId"
+                    class="px-4 py-2 h-10 bg-gray-800 text-white rounded-full shadow-lg ring-1 ring-gray-600"
+                >
+                    <option
+                        v-for="device in cameraStore.devices"
+                        :key="device.deviceId"
+                        :value="device.deviceId"
+                    >
+                        {{
+                            device.label ||
+                            `Camera ${device.deviceId.slice(0, 8)}...`
+                        }}
+                    </option>
+                </select>
+                <button
+                    type="button"
+                    @click="cameraStore.loadDevices()"
+                    class="h-10 w-10 flex items-center justify-center bg-blue-600 rounded-full text-white shadow hover:bg-blue-700 text-sm leading-none"
+                    title="Reload cameras"
+                    aria-label="Reload cameras"
+                >
+                    <RefreshIcon :size="20" />
+                </button>
+            </div>
 
             <!-- Shooting controls -->
             <div

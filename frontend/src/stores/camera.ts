@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { ref, shallowRef } from "vue";
+import { ref, shallowRef, watch } from "vue";
 
 export const useCameraStore = defineStore("camera", () => {
   const opened = ref(false);
@@ -8,7 +8,15 @@ export const useCameraStore = defineStore("camera", () => {
   const previewUrl = ref<string | null>(null);
   const pendingFile = shallowRef<File | null>(null);
   const _originalBlob = shallowRef<Blob | null>(null);
+  const devices = ref<MediaDeviceInfo[]>([]);
+  const selectedDeviceId = ref<string | null>(null);
   let rotation = 0;
+
+  // Load saved camera device from localStorage
+  selectedDeviceId.value = localStorage.getItem("camera_device_id");
+  watch(selectedDeviceId, (newId) => {
+    localStorage.setItem("camera_device_id", newId ?? "");
+  });
   let landscape = false;
   let buttonRotation = 0;
   let _beta: number | null = null;
@@ -66,7 +74,19 @@ export const useCameraStore = defineStore("camera", () => {
     }
   };
 
-  async function open(cb: (files: File[]) => void): Promise<void> {
+  async function loadDevices(): Promise<void> {
+    try {
+      const allDevices = await navigator.mediaDevices.enumerateDevices();
+      devices.value = allDevices.filter((d) => d.kind === "videoinput");
+    } catch (e) {
+      console.warn("Failed to enumerate devices:", e);
+    }
+  }
+
+  async function open(
+    cb: (files: File[]) => void,
+    deviceId?: string,
+  ): Promise<void> {
     landscape = window.innerWidth > window.innerHeight;
     _beta = null;
     _gamma = null;
@@ -81,21 +101,19 @@ export const useCameraStore = defineStore("camera", () => {
     try {
       const mobile = navigator.maxTouchPoints > 0;
       const portrait = mobile && window.innerHeight > window.innerWidth;
-      const videoConstraints = (
-        mobile
-          ? {
-              facingMode: "environment" as const,
-              width: { ideal: portrait ? 2160 : 3840 },
-              height: { ideal: portrait ? 3840 : 2160 },
-            }
-          : {
-              width: { ideal: 3840 },
-              aspectRatio: { ideal: 16 / 9 },
-              resizeMode: "none" as const,
-            }
-      ) as MediaTrackConstraints;
+      const constraints: MediaTrackConstraints = {};
+      // Use saved device ID if no deviceId provided
+      const actualDeviceId = deviceId ?? selectedDeviceId.value;
+      if (actualDeviceId) {
+        constraints.deviceId = { exact: actualDeviceId };
+      } else {
+        constraints.facingMode = mobile ? "environment" : "user";
+      }
+      constraints.width = { ideal: portrait ? 2160 : 3840 };
+      constraints.height = { ideal: portrait ? 3840 : 2160 };
+      constraints.aspectRatio = { ideal: 16 / 9 };
       stream.value = await navigator.mediaDevices.getUserMedia({
-        video: videoConstraints,
+        video: constraints,
         audio: false,
       });
       opened.value = true;
@@ -227,19 +245,13 @@ export const useCameraStore = defineStore("camera", () => {
     try {
       const mobile = navigator.maxTouchPoints > 0;
       const portrait = mobile && window.innerHeight > window.innerWidth;
-      const videoConstraints = (
-        mobile
-          ? {
-              facingMode: "environment" as const,
-              width: { ideal: portrait ? 2160 : 3840 },
-              height: { ideal: portrait ? 3840 : 2160 },
-            }
-          : {
-              width: { ideal: 3840 },
-              aspectRatio: { ideal: 16 / 9 },
-              resizeMode: "none" as const,
-            }
-      ) as MediaTrackConstraints;
+      const videoConstraints: MediaTrackConstraints = {};
+      if (mobile) {
+        videoConstraints.facingMode = "environment";
+      }
+      videoConstraints.width = { ideal: portrait ? 2160 : 3840 };
+      videoConstraints.height = { ideal: portrait ? 3840 : 2160 };
+      videoConstraints.aspectRatio = { ideal: 16 / 9 };
       stream.value = await navigator.mediaDevices.getUserMedia({
         video: videoConstraints,
         audio: false,
@@ -268,6 +280,7 @@ export const useCameraStore = defineStore("camera", () => {
     pendingFile.value = null;
     _originalBlob.value = null;
     rotation = 0;
+    // Keep selectedDeviceId to remember last camera
     opened.value = false;
   }
 
@@ -277,6 +290,9 @@ export const useCameraStore = defineStore("camera", () => {
     callback,
     previewUrl,
     pendingFile,
+    devices,
+    selectedDeviceId,
+    loadDevices,
     rotation,
     open,
     capture,
