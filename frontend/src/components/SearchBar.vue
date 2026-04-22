@@ -1,5 +1,6 @@
 <script setup lang="ts" name="SearchBar">
 import { ref, onMounted, onBeforeUnmount } from "vue";
+import KbdHint from "@/components/KbdHint.vue";
 import MagnifyIcon from "vue-material-design-icons/Magnify.vue";
 import LoadingIcon from "vue-material-design-icons/Loading.vue";
 import CloseIcon from "vue-material-design-icons/Close.vue";
@@ -188,11 +189,7 @@ onBeforeUnmount(() => {
         </span>
 
         <!-- Command palette shortcut hint -->
-        <kbd
-            v-if="props.showShortcuts"
-            class="text-[9px] font-sans bg-gray-800 text-white rounded px-1 leading-[14px] pointer-events-none shadow shrink-0"
-            >?</kbd
-        >
+        <KbdHint shortcut="?" :show="props.showShortcuts" :inline="true" />
 
         <!-- Clear button -->
         <button

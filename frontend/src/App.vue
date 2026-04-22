@@ -14,6 +14,7 @@ import SearchBar from "@/components/SearchBar.vue";
 import BreadcrumbNav from "@/components/BreadcrumbNav.vue";
 import QuickCaptureCard from "@/components/QuickCaptureCard.vue";
 import ToastContainer from "@/components/ToastContainer.vue";
+import KbdHint from "@/components/KbdHint.vue";
 import PlusIcon from "vue-material-design-icons/Plus.vue";
 import CameraIcon from "vue-material-design-icons/Camera.vue";
 import { api } from "@/api";
@@ -36,6 +37,7 @@ const editEntityId = ref<number | null>(null);
 const cardRefs = ref<Record<number, { cardEl: HTMLElement | null }>>({});
 const deleteConfirmId = ref<number | null>(null);
 const searchBarRef = ref<{ focusSearch: () => void } | null>(null);
+const editingCardId = ref<number | null>(null);
 
 const visibleEntities = computed(() =>
     clipStore.merge(
@@ -241,7 +243,7 @@ const handleKeydown = (e: KeyboardEvent): void => {
             break;
 
         case "Enter":
-            if (cameraStore.opened) break;
+            if (cameraStore.opened || editingCardId.value !== null) break;
             e.preventDefault();
             if (deleteConfirmId.value !== null) {
                 confirmDeleteEntity(deleteConfirmId.value);
@@ -469,7 +471,8 @@ watch(
                                 moveDialogVisible = true;
                             }
                         "
-                        @edit-started="editEntityId = null"
+                        @edit-started="editEntityId = null; editingCardId = entity.id"
+                        @edit-ended="editingCardId = null"
                         @delete-confirmed="confirmDeleteEntity(entity.id)"
                         @delete-cancelled="deleteConfirmId = null"
                     />
@@ -488,11 +491,7 @@ watch(
                 title="Create new entity (N)"
             >
                 <PlusIcon :size="28" />
-                <kbd
-                    v-if="showShortcuts"
-                    class="absolute -top-2 -right-1 text-[9px] font-sans bg-gray-800 text-white rounded px-1 leading-[14px] pointer-events-none shadow"
-                    >N</kbd
-                >
+                <KbdHint shortcut="N" :show="showShortcuts" />
             </button>
             <button
                 @click="handleFabCapture"
@@ -500,11 +499,7 @@ watch(
                 title="Quick capture (C)"
             >
                 <CameraIcon :size="28" />
-                <kbd
-                    v-if="showShortcuts"
-                    class="absolute -top-2 -right-1 text-[9px] font-sans bg-gray-800 text-white rounded px-1 leading-[14px] pointer-events-none shadow"
-                    >C</kbd
-                >
+                <KbdHint shortcut="C" :show="showShortcuts" />
             </button>
         </div>
 

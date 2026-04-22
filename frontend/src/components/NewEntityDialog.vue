@@ -1,5 +1,6 @@
 <script setup lang="ts" name="NewEntityDialog">
 import { ref, onMounted, watch, nextTick } from "vue";
+import KbdHint from "@/components/KbdHint.vue";
 import { useEntitiesStore } from "@/stores/entities";
 import { useCameraStore } from "@/stores/camera";
 import { useToastsStore } from "@/stores/toasts";
@@ -264,11 +265,7 @@ onMounted(() => {
                             class="relative h-10 px-4 py-2 text-white bg-blue-500 rounded-full shadow hover:bg-blue-600"
                         >
                             Submit
-                            <kbd
-                                v-if="props.showShortcuts"
-                                class="absolute -top-2 -right-1 text-[9px] font-sans bg-gray-800 text-white rounded px-1 leading-[14px] pointer-events-none shadow"
-                                >Enter</kbd
-                            >
+                            <KbdHint shortcut="Enter" :show="props.showShortcuts" />
                         </button>
                         <button
                             type="button"
@@ -276,11 +273,7 @@ onMounted(() => {
                             class="relative h-10 px-4 py-2 text-white bg-red-500 rounded-full shadow hover:bg-red-600"
                         >
                             Cancel
-                            <kbd
-                                v-if="props.showShortcuts"
-                                class="absolute -top-2 -right-1 text-[9px] font-sans bg-gray-800 text-white rounded px-1 leading-[14px] pointer-events-none shadow"
-                                >Esc</kbd
-                            >
+                            <KbdHint shortcut="Esc" :show="props.showShortcuts" />
                         </button>
                     </div>
                 </div>

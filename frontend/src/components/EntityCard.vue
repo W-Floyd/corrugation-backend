@@ -6,6 +6,7 @@ import { useClipStore } from "@/stores/clip";
 import { useToastsStore } from "@/stores/toasts";
 import { api } from "@/api";
 import type { Entity } from "@/api/types";
+import KbdHint from "@/components/KbdHint.vue";
 import TrashCanIcon from "vue-material-design-icons/TrashCan.vue";
 import FolderMoveIcon from "vue-material-design-icons/FolderMove.vue";
 import PencilIcon from "vue-material-design-icons/Pencil.vue";
@@ -29,6 +30,7 @@ const emit = defineEmits<{
     requestMove: [entityId: number];
     select: [];
     editStarted: [];
+    editEnded: [];
     deleteConfirmed: [];
     deleteCancelled: [];
 }>();
@@ -91,7 +93,9 @@ const handleEditKeydown = (e: KeyboardEvent): void => {
     ) {
         e.preventDefault();
         e.stopImmediatePropagation();
-        handleQuickCapture();
+        cameraStore.open((files: File[]) =>
+            files.forEach((f) => handleEditArtifact(f)),
+        );
     }
 };
 
@@ -101,6 +105,7 @@ watch(editMode, (val) => {
         nextTick(() => nameInputEl.value?.focus());
     } else {
         window.removeEventListener("keydown", handleEditKeydown, true);
+        emit("editEnded");
     }
 });
 
@@ -288,22 +293,14 @@ defineExpose({ cardEl });
                     class="h-9 px-4 rounded-full bg-red-500 hover:bg-red-600 text-white text-sm shadow relative"
                 >
                     Delete
-                    <kbd
-                        v-if="showShortcuts && isSelected"
-                        class="absolute -top-2 -right-1 text-[9px] font-sans bg-gray-800 text-white rounded px-1 leading-3.5 pointer-events-none shadow"
-                        >Enter</kbd
-                    >
+                    <KbdHint shortcut="Enter" :show="showShortcuts && isSelected" />
                 </button>
                 <button
                     @click.stop="emit('deleteCancelled')"
                     class="h-9 px-4 rounded-full bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-sm shadow relative"
                 >
                     Cancel
-                    <kbd
-                        v-if="showShortcuts && isSelected"
-                        class="absolute -top-2 -right-1 text-[9px] font-sans bg-gray-800 text-white rounded px-1 leading-3.5 pointer-events-none shadow"
-                        >Esc</kbd
-                    >
+                    <KbdHint shortcut="Esc" :show="showShortcuts && isSelected" />
                 </button>
             </div>
         </div>
@@ -438,11 +435,7 @@ defineExpose({ cardEl });
                 title="Delete entity"
             >
                 <TrashCanIcon :size="20" />
-                <kbd
-                    v-if="showShortcuts && isSelected"
-                    class="absolute -top-2 -right-1 text-[9px] font-sans bg-gray-800 text-white rounded px-1 leading-[14px] pointer-events-none shadow"
-                    >Del</kbd
-                >
+                <KbdHint shortcut="Del" :show="showShortcuts && isSelected" />
             </button>
 
             <button
@@ -452,11 +445,7 @@ defineExpose({ cardEl });
                 title="Move entity"
             >
                 <FolderMoveIcon :size="20" />
-                <kbd
-                    v-if="showShortcuts && isSelected"
-                    class="absolute -top-2 -right-1 text-[9px] font-sans bg-gray-800 text-white rounded px-1 leading-[14px] pointer-events-none shadow"
-                    >M</kbd
-                >
+                <KbdHint shortcut="M" :show="showShortcuts && isSelected" />
             </button>
 
             <button
@@ -466,11 +455,7 @@ defineExpose({ cardEl });
                 title="Edit entity"
             >
                 <PencilIcon :size="20" />
-                <kbd
-                    v-if="showShortcuts && isSelected"
-                    class="absolute -top-2 -right-1 text-[9px] font-sans bg-gray-800 text-white rounded px-1 leading-[14px] pointer-events-none shadow"
-                    >↩</kbd
-                >
+                <KbdHint shortcut="↩" :show="showShortcuts && isSelected" />
             </button>
 
             <button
@@ -480,11 +465,7 @@ defineExpose({ cardEl });
                 title="Quick capture (add photo to this entity)"
             >
                 <CameraIcon :size="20" />
-                <kbd
-                    v-if="showShortcuts && isSelected"
-                    class="absolute -top-2 -right-1 text-[9px] font-sans bg-gray-800 text-white rounded px-1 leading-[14px] pointer-events-none shadow"
-                    >P</kbd
-                >
+                <KbdHint shortcut="P" :show="showShortcuts && isSelected" />
             </button>
 
             <button
@@ -494,11 +475,7 @@ defineExpose({ cardEl });
                 title="Quick capture new child entity"
             >
                 <CameraPlusIcon :size="20" />
-                <kbd
-                    v-if="showShortcuts && isSelected"
-                    class="absolute -top-2 -right-1 text-[9px] font-sans bg-gray-800 text-white rounded px-1 leading-[14px] pointer-events-none shadow"
-                    >⇧C</kbd
-                >
+                <KbdHint shortcut="⇧C" :show="showShortcuts && isSelected" />
             </button>
 
             <button
@@ -508,29 +485,27 @@ defineExpose({ cardEl });
                 title="New entity as child"
             >
                 <PlusIcon :size="20" />
-                <kbd
-                    v-if="showShortcuts && isSelected"
-                    class="absolute -top-2 -right-1 text-[9px] font-sans bg-gray-800 text-white rounded px-1 leading-[14px] pointer-events-none shadow"
-                    >⇧N</kbd
-                >
+                <KbdHint shortcut="⇧N" :show="showShortcuts && isSelected" />
             </button>
 
             <!-- Edit mode controls -->
             <template v-if="editMode">
                 <button
                     @click.stop="handleSave"
-                    class="h-10 w-10 p-0 m-0 flex items-center justify-center bg-blue-500 rounded-full shadow hover:bg-blue-600 active:shadow-lg text-white"
+                    class="relative h-10 w-10 p-0 m-0 flex items-center justify-center bg-blue-500 rounded-full shadow hover:bg-blue-600 active:shadow-lg text-white"
                     title="Save"
                 >
                     <CheckIcon :size="20" />
+                    <KbdHint shortcut="Enter" :show="showShortcuts" />
                 </button>
 
                 <button
                     @click.stop="handleCancel"
-                    class="h-10 w-10 p-0 m-0 flex items-center justify-center bg-red-500 rounded-full shadow hover:bg-red-600 active:shadow-lg text-white"
+                    class="relative h-10 w-10 p-0 m-0 flex items-center justify-center bg-red-500 rounded-full shadow hover:bg-red-600 active:shadow-lg text-white"
                     title="Cancel"
                 >
                     <CloseIcon :size="20" />
+                    <KbdHint shortcut="Esc" :show="showShortcuts" />
                 </button>
 
                 <button
@@ -539,10 +514,11 @@ defineExpose({ cardEl });
                             files.forEach((f) => handleEditArtifact(f)),
                         )
                     "
-                    class="h-10 w-10 p-0 m-0 flex items-center justify-center bg-blue-500 rounded-full shadow hover:bg-blue-600 active:shadow-lg text-white"
+                    class="relative h-10 w-10 p-0 m-0 flex items-center justify-center bg-blue-500 rounded-full shadow hover:bg-blue-600 active:shadow-lg text-white"
                     title="Capture artifact"
                 >
                     <CameraIcon :size="20" />
+                    <KbdHint shortcut="P" :show="showShortcuts" />
                 </button>
             </template>
         </div>

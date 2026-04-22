@@ -21,7 +21,8 @@
       "mcp__firefox-devtools__list_pages",
       "Bash(docker compose *)",
       "Bash(npm install *)",
-      "Bash(./test.sh)"
+      "Bash(./test.sh)",
+      "mcp__firefox-devtools__fill_by_uid"
     ]
   }
 }
