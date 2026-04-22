@@ -55,10 +55,14 @@ const anyDialogOpen = computed(
         commandDialogVisible.value,
 );
 
-const handleMoveConfirmed = async (entityId: number, newLocation: number): Promise<void> => {
+const handleMoveConfirmed = async (
+    entityId: number,
+    newLocation: number,
+): Promise<void> => {
     const idx = visibleEntities.value.findIndex((e) => e.id === entityId);
     const rest = visibleEntities.value.filter((e) => e.id !== entityId);
-    const nextId = rest.length > 0 ? rest[Math.min(idx, rest.length - 1)].id : null;
+    const nextId =
+        rest.length > 0 ? rest[Math.min(idx, rest.length - 1)].id : null;
     confirmMoveId.value = null;
     selectedEntityId.value = null;
     try {
@@ -105,7 +109,10 @@ const handleFabCapture = (): void => {
 const confirmDeleteEntity = async (entityId: number): Promise<void> => {
     const beforeList = visibleEntities.value.filter((e) => e.id !== entityId);
     const idx = visibleEntities.value.findIndex((e) => e.id === entityId);
-    const nextId = beforeList.length > 0 ? beforeList[Math.min(idx, beforeList.length - 1)].id : null;
+    const nextId =
+        beforeList.length > 0
+            ? beforeList[Math.min(idx, beforeList.length - 1)].id
+            : null;
     deleteConfirmId.value = null;
     selectedEntityId.value = null;
     try {
@@ -298,7 +305,9 @@ const handleKeydown = (e: KeyboardEvent): void => {
                 confirmDeleteEntity(deleteConfirmId.value);
             } else if (selectedEntityId.value !== null) {
                 entitiesStore.setCurrentEntity(selectedEntityId.value);
-                selectedEntityId.value = null;
+                if (visibleEntities.value.length > 0) {
+                    selectedEntityId.value = visibleEntities.value[0].id;
+                }
             }
             break;
 
@@ -393,7 +402,12 @@ const handleKeydown = (e: KeyboardEvent): void => {
 
         case "m":
         case "M":
-            if (!e.shiftKey && !e.metaKey && !e.ctrlKey && selectedEntityId.value !== null) {
+            if (
+                !e.shiftKey &&
+                !e.metaKey &&
+                !e.ctrlKey &&
+                selectedEntityId.value !== null
+            ) {
                 e.preventDefault();
                 confirmMoveId.value = selectedEntityId.value;
             }
@@ -483,9 +497,7 @@ watch(
             <!-- Empty state or entity list -->
             <div class="w-full px-4 mt-8">
                 <div
-                    v-if="
-                        !entitiesStore.hasChildren(entitiesStore.currentEntity)
-                    "
+                    v-if="visibleEntities.length === 0"
                     class="flex items-center justify-center h-64"
                 >
                     <p class="text-2xl text-gray-500/50">Empty</p>
@@ -518,13 +530,26 @@ watch(
                                 newEntityVisible = true;
                             }
                         "
-                        @request-move="(id) => { confirmMoveId = id; }"
-                        @edit-started="editEntityId = null; editingCardId = entity.id"
+                        @request-move="
+                            (id) => {
+                                confirmMoveId = id;
+                            }
+                        "
+                        @edit-started="
+                            editEntityId = null;
+                            editingCardId = entity.id;
+                        "
                         @edit-ended="editingCardId = null"
-                        @request-delete="selectedEntityId = entity.id; deleteConfirmId = entity.id"
+                        @request-delete="
+                            selectedEntityId = entity.id;
+                            deleteConfirmId = entity.id;
+                        "
                         @delete-confirmed="confirmDeleteEntity(entity.id)"
                         @delete-cancelled="deleteConfirmId = null"
-                        @move-confirmed="(newLocation) => handleMoveConfirmed(entity.id, newLocation)"
+                        @move-confirmed="
+                            (newLocation) =>
+                                handleMoveConfirmed(entity.id, newLocation)
+                        "
                         @move-cancelled="confirmMoveId = null"
                     />
                 </div>
@@ -563,7 +588,12 @@ watch(
             :location="newEntityLocation"
             :show-shortcuts="showShortcuts"
             @update:visible="newEntityVisible = $event"
-            @created="(id) => { if (newEntityLocation === entitiesStore.currentEntity) selectedEntityId = id; }"
+            @created="
+                (id) => {
+                    if (newEntityLocation === entitiesStore.currentEntity)
+                        selectedEntityId = id;
+                }
+            "
         />
         <CommandDialog
             :visible="commandDialogVisible"

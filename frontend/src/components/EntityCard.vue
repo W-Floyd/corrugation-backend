@@ -16,6 +16,7 @@ import CameraPlusIcon from "vue-material-design-icons/CameraPlus.vue";
 import PlusIcon from "vue-material-design-icons/Plus.vue";
 import CheckIcon from "vue-material-design-icons/Check.vue";
 import CloseIcon from "vue-material-design-icons/Close.vue";
+import ArrowUpIcon from "vue-material-design-icons/ArrowUp.vue";
 
 const props = defineProps<{
     entity: Entity;
@@ -68,6 +69,16 @@ const isDescendantOf = (entityId: number, ancestorId: number): boolean => {
     return false;
 };
 
+const moveUp = (): void => {
+    if (entitiesStore.currentEntity !== 0) {
+        const currentEntity =
+            entitiesStore.fullstate.entities[entitiesStore.currentEntity];
+        if (currentEntity?.location !== undefined) {
+            emit("moveConfirmed", currentEntity.location);
+        }
+    }
+};
+
 const filteredMoveEntities = computed(() => {
     const term = entitiesStore.moveSearchtext.toLowerCase().trim();
     const world: Entity = {
@@ -108,6 +119,11 @@ const currentLocationName = computed(() => {
     return e?.name || entitiesStore.currentEntity.toString();
 });
 
+const isAtCurrentLocation = computed((): boolean => {
+    if (props.entity.location === undefined) return false;
+    return props.entity.location === entitiesStore.currentEntity;
+});
+
 const handleMoveKeydown = (e: KeyboardEvent): void => {
     if (!props.confirmMove) return;
     const target = e.target as HTMLElement;
@@ -127,6 +143,10 @@ const handleMoveKeydown = (e: KeyboardEvent): void => {
         e.preventDefault();
         e.stopImmediatePropagation();
         emit("moveConfirmed", entitiesStore.currentEntity);
+    } else if (e.key === "u" || e.key === "U") {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        moveUp();
     }
 };
 
@@ -484,13 +504,23 @@ defineExpose({ cardEl });
                     />
                 </button>
                 <button
+                    v-if="!isAtCurrentLocation"
                     @click.stop="
                         emit('moveConfirmed', entitiesStore.currentEntity)
                     "
-                    class="h-8 px-3 rounded-full bg-purple-500 hover:bg-purple-600 text-white text-sm shadow relative"
+                    class="h-10 px-3 rounded-full bg-purple-500 hover:bg-purple-600 text-white text-sm shadow relative"
                 >
                     To {{ currentLocationName }}
                     <KbdHint shortcut="H" :show="showShortcuts && isSelected" />
+                </button>
+                <button
+                    v-if="entity.id !== 0 && entitiesStore.currentEntity !== 0"
+                    @click.stop="moveUp()"
+                    class="relative h-10 w-10 p-0 m-0 flex items-center justify-center bg-orange-500 rounded-full shadow hover:bg-orange-600 active:shadow-lg text-white"
+                    title="Move to parent"
+                >
+                    <ArrowUpIcon :size="20" />
+                    <KbdHint shortcut="U" :show="showShortcuts && isSelected" />
                 </button>
                 <button
                     @click.stop="emit('moveCancelled')"
