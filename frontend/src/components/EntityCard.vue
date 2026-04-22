@@ -644,6 +644,7 @@ defineExpose({ cardEl });
                 <p class="mb-2 font-semibold">Contains:</p>
                 <div
                     class="flex flex-wrap gap-2 overflow-hidden hover:overflow-y-auto max-h-32 shadow-md p-2 ring-1 ring-gray-500/10 hover:ring-gray-500/25 hover:shadow-lg rounded-md"
+                    style="scrollbar-gutter: stable"
                 >
                     <div
                         v-for="childId in entitiesStore.listChildLocations(
