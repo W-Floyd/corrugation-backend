@@ -70,19 +70,35 @@ const isDescendantOf = (entityId: number, ancestorId: number): boolean => {
 
 const filteredMoveEntities = computed(() => {
     const term = entitiesStore.moveSearchtext.toLowerCase().trim();
-    const world: Entity = { id: 0, name: "World", description: "", artifacts: [], location: 0, metadata: { quantity: null, owners: null, tags: null, lastModified: null, lastModifiedBy: null, islabeled: false } };
+    const world: Entity = {
+        id: 0,
+        name: "World",
+        description: "",
+        artifacts: [],
+        location: 0,
+        metadata: {
+            quantity: null,
+            owners: null,
+            tags: null,
+            lastModified: null,
+            lastModifiedBy: null,
+            islabeled: false,
+        },
+    };
     const candidates: Entity[] = [
         ...Object.values(entitiesStore.fullstate.entities).filter(
-            (e) => e.id !== props.entity.id && !isDescendantOf(e.id, props.entity.id)
+            (e) =>
+                e.id !== props.entity.id &&
+                !isDescendantOf(e.id, props.entity.id),
         ),
         world,
     ];
     if (!term) return candidates;
     return candidates.filter(
         (e) =>
-            (e.name?.toLowerCase().includes(term)) ||
-            (e.description?.toLowerCase().includes(term)) ||
-            e.id.toString().includes(term)
+            e.name?.toLowerCase().includes(term) ||
+            e.description?.toLowerCase().includes(term) ||
+            e.id.toString().includes(term),
     );
 });
 
@@ -129,7 +145,7 @@ watch(
         } else {
             window.removeEventListener("keydown", handleMoveKeydown, true);
         }
-    }
+    },
 );
 
 watch(filteredMoveEntities, (results) => {
@@ -447,7 +463,11 @@ defineExpose({ cardEl });
                 size="4"
                 @click.stop
             >
-                <option v-for="loc in filteredMoveEntities" :key="loc.id" :value="loc.id">
+                <option
+                    v-for="loc in filteredMoveEntities"
+                    :key="loc.id"
+                    :value="loc.id"
+                >
                     {{ formatOption(loc.id) }}
                 </option>
             </select>
@@ -458,10 +478,15 @@ defineExpose({ cardEl });
                     title="Move"
                 >
                     <CheckIcon :size="20" />
-                    <KbdHint shortcut="Enter" :show="showShortcuts && isSelected" />
+                    <KbdHint
+                        shortcut="Enter"
+                        :show="showShortcuts && isSelected"
+                    />
                 </button>
                 <button
-                    @click.stop="emit('moveConfirmed', entitiesStore.currentEntity)"
+                    @click.stop="
+                        emit('moveConfirmed', entitiesStore.currentEntity)
+                    "
                     class="h-8 px-3 rounded-full bg-purple-500 hover:bg-purple-600 text-white text-sm shadow relative"
                 >
                     To {{ currentLocationName }}
@@ -473,7 +498,10 @@ defineExpose({ cardEl });
                     title="Cancel"
                 >
                     <CloseIcon :size="20" />
-                    <KbdHint shortcut="Esc" :show="showShortcuts && isSelected" />
+                    <KbdHint
+                        shortcut="Esc"
+                        :show="showShortcuts && isSelected"
+                    />
                 </button>
             </div>
         </div>
@@ -592,7 +620,7 @@ defineExpose({ cardEl });
                             entity.id,
                         )"
                         :key="childId"
-                        class="p-2 rounded cursor-pointer bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 hover:bg-gray-100 hover:shadow-sm ring-gray-200 dark:ring-slate-500 ring-1 hover:ring-blue-500/75 active:shadow-md"
+                        class="p-1 rounded cursor-pointer bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 hover:bg-gray-100 hover:shadow-sm ring-gray-200 dark:ring-slate-500 ring-1 hover:ring-blue-500/75 active:shadow-md"
                         @click.stop="entitiesStore.setCurrentEntity(childId)"
                     >
                         {{ entitiesStore.readname(childId) }}
@@ -602,7 +630,7 @@ defineExpose({ cardEl });
         </div>
 
         <!-- Action buttons -->
-        <div class="p-4 flex flex-wrap gap-2 border-t dark:border-gray-700">
+        <div class="p-4 flex flex-wrap gap-2">
             <button
                 v-if="!editMode"
                 @click.stop="emit('requestDelete')"
@@ -630,7 +658,7 @@ defineExpose({ cardEl });
                 title="Edit entity"
             >
                 <PencilIcon :size="20" />
-                <KbdHint shortcut="↩" :show="showShortcuts && isSelected" />
+                <KbdHint shortcut="Enter" :show="showShortcuts && isSelected" />
             </button>
 
             <button

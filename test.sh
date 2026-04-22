@@ -3,7 +3,15 @@
 __username="$(yq -r '.username' <"${HOME}/.corrugation-backend.yaml")"
 __password="$(yq -r '.password' <"${HOME}/.corrugation-backend.yaml")"
 
-__jwt=$(curl -sS -X POST -d "username=${__username}" -d "password=${__password}" localhost:8083/login | jq -r '.token')
+if [ -z "${__username}" ]; then
+    __username='admin'
+fi
+
+if [ -z "${__password}" ]; then
+    __password='password'
+fi
+
+__jwt=$(curl -sS -X POST -d "username=${__username}" -d "password=${__password}" localhost:8083/#/login | jq -r '.token')
 
 __curl() {
     __path="${1}"

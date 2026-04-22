@@ -1,5 +1,5 @@
 <script setup lang="ts" name="SearchBar">
-import { ref, onMounted, onBeforeUnmount } from "vue";
+import { ref, onBeforeUnmount } from "vue";
 import KbdHint from "@/components/KbdHint.vue";
 import MagnifyIcon from "vue-material-design-icons/Magnify.vue";
 import LoadingIcon from "vue-material-design-icons/Loading.vue";
@@ -29,6 +29,7 @@ const handleSearchInput = (): void => {
 
     debounceTimer.value = setTimeout(() => {
         entitiesStore.debouncesearch();
+        entitiesStore.searching = true;
         if (clipStore.enabled) {
             clipStore.search(
                 entitiesStore.searchtext,
@@ -50,6 +51,7 @@ const onClipChange = (): void => {
 const resetSearch = (): void => {
     entitiesStore.searchtext = "";
     entitiesStore.searchtextpredebounce = "";
+    entitiesStore.searching = false;
     clipStore.results = [];
     clipStore.scores = {};
     clipStore.textMatchIds = new Set();
@@ -135,7 +137,7 @@ onBeforeUnmount(() => {
             />
             <kbd
                 v-if="props.showShortcuts"
-                class="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-sans bg-gray-800 text-white rounded px-1 leading-[14px] pointer-events-none shadow"
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-sans bg-gray-800 text-white rounded px-1 leading-3.5 pointer-events-none shadow"
                 >/</kbd
             >
         </div>

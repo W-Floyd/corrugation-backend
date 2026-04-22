@@ -265,7 +265,10 @@ onMounted(() => {
                             class="relative h-10 px-4 py-2 text-white bg-blue-500 rounded-full shadow hover:bg-blue-600"
                         >
                             Submit
-                            <KbdHint shortcut="Enter" :show="props.showShortcuts" />
+                            <KbdHint
+                                shortcut="Enter"
+                                :show="props.showShortcuts"
+                            />
                         </button>
                         <button
                             type="button"
@@ -273,7 +276,10 @@ onMounted(() => {
                             class="relative h-10 px-4 py-2 text-white bg-red-500 rounded-full shadow hover:bg-red-600"
                         >
                             Cancel
-                            <KbdHint shortcut="Esc" :show="props.showShortcuts" />
+                            <KbdHint
+                                shortcut="Esc"
+                                :show="props.showShortcuts"
+                            />
                         </button>
                     </div>
                 </div>
