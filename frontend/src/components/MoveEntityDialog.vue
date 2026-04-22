@@ -29,6 +29,15 @@ const entity = ref<Entity | null>(null);
 const searchtext = ref("");
 const targetLocation = ref<number>(0);
 
+const currentLocationName = computed(() => {
+    if (entitiesStore.currentEntity === 0) {
+        return "World";
+    }
+    const entity =
+        entitiesStore.fullstate.entities[entitiesStore.currentEntity];
+    return entity?.name || entitiesStore.currentEntity.toString();
+});
+
 watch(
     () => props.visible,
     (visible) => {
@@ -339,7 +348,7 @@ const handleDialogClose = (): void => {
                             @click="moveToCurrentLocation"
                             class="h-10 px-4 py-2 text-white bg-purple-500 rounded-full shadow hover:bg-purple-600"
                         >
-                            Move Here
+                            Move Here ({{ currentLocationName }})
                         </button>
                         <button
                             type="button"
