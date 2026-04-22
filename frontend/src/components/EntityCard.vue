@@ -337,7 +337,7 @@ defineExpose({ cardEl });
             <!-- Title -->
             <div v-if="!editMode">
                 <div
-                    class="flex list-reset space-x-2 items-baseline mb-2 cursor-pointer"
+                    class="flex list-reset space-x-3 items-baseline mb-2 cursor-pointer"
                     @click.stop="entitiesStore.setCurrentEntity(entity.id)"
                 >
                     <div

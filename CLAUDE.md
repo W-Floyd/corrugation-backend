@@ -47,7 +47,7 @@ Using the Firefox MCP, run the docker command and connect to `http://localhost:8
 
 **Storage:** A single `Store` struct (entities + artifacts + version counter) is serialized to disk via diskv. There is no database — reads and writes go through `loadStore()` / `updateStore()` in `cmd/store.go`. `StoreVersion` is incremented on every write; `updateStore()` also calls `hub.broadcast()` to push change notifications to all connected WebSocket clients.
 
-**Frontend:** Vue 3 + TypeScript SPA built with Vite, located in `frontend/`. State management via Pinia. Routing via Vue Router (hash mode, preserving `#42` URL format). Styled with Tailwind CSS v4 via PostCSS. Built output goes to `../dist/`.
+**Frontend:** Vue 3 + TypeScript SPA built with Vite, located in `frontend/`. State management via Pinia. Routing via Vue Router (hash mode, URL format `/#/<entityId>`). Styled with Tailwind CSS v4 via PostCSS. Built output goes to `../dist/`.
 
 **Frontend structure:**
 - `frontend/src/api/types.ts` — shared TypeScript types (`Entity`, `Artifact`, `FullState`, etc.)
@@ -59,7 +59,7 @@ Using the Firefox MCP, run the docker command and connect to `http://localhost:8
 
 **Entity hierarchy:** Everything is an `Entity` with an integer `ID` and a `location` field pointing to its parent entity ID. Entity `0` ("World") is the implicit root. Navigation uses Vue Router hash mode: `router.push({ params: { entityId: id } })`. On mount, `route.params.entityId` sets the initial entity.
 
-**URL persistence:** The current entity ID is stored in the URL hash (`#42`). Vue Router hash mode preserves this format.
+**URL persistence:** The current entity ID is stored in the URL hash as `/#/<entityId>` (e.g. `/#/42`). Vue Router hash mode preserves this format.
 
 **Real-time updates:** The frontend opens a WebSocket to `/ws` (in `useEntitiesStore`). The server broadcasts `"update"` to all clients via `wsHub` (`cmd/ws.go`) whenever `updateStore()` is called. On receiving a message the client calls `reload()`, which re-fetches the store only if `StoreVersion` changed. The client reconnects automatically after 3 s on disconnect.
 

@@ -54,9 +54,11 @@ export const useClipStore = defineStore("clip", () => {
       [_textModel, _visionModel, _processor, _tokenizer] = await Promise.all([
         CLIPTextModelWithProjection.from_pretrained(
           "Xenova/clip-vit-base-patch32",
+          { dtype: "fp32" },
         ),
         CLIPVisionModelWithProjection.from_pretrained(
           "Xenova/clip-vit-base-patch32",
+          { dtype: "fp32" },
         ),
         AutoProcessor.from_pretrained("Xenova/clip-vit-base-patch32"),
         AutoTokenizer.from_pretrained("Xenova/clip-vit-base-patch32"),

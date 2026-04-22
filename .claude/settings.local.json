@@ -22,7 +22,8 @@
       "Bash(docker compose *)",
       "Bash(npm install *)",
       "Bash(./test.sh)",
-      "mcp__firefox-devtools__fill_by_uid"
+      "mcp__firefox-devtools__fill_by_uid",
+      "mcp__firefox-devtools__navigate_history"
     ]
   }
 }
