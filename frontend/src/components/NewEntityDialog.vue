@@ -14,10 +14,12 @@ const props = withDefaults(
     defineProps<{
         visible?: boolean;
         location?: number;
+        showShortcuts?: boolean;
     }>(),
     {
         visible: false,
         location: 0,
+        showShortcuts: false,
     },
 );
 
@@ -163,6 +165,7 @@ onMounted(() => {
             <div
                 class="relative flex items-center justify-center min-h-screen p-4"
                 @click.stop
+                @keydown.esc.stop="handleDialogClose"
             >
                 <div
                     class="relative w-full max-w-2xl p-8 overflow-y-auto bg-white border border-gray-300 rounded-lg dark:bg-gray-800"
@@ -258,16 +261,26 @@ onMounted(() => {
                         <button
                             type="button"
                             @click="handleSubmit"
-                            class="h-10 px-4 py-2 text-white bg-blue-500 rounded-full shadow hover:bg-blue-600"
+                            class="relative h-10 px-4 py-2 text-white bg-blue-500 rounded-full shadow hover:bg-blue-600"
                         >
                             Submit
+                            <kbd
+                                v-if="props.showShortcuts"
+                                class="absolute -top-2 -right-1 text-[9px] font-sans bg-gray-800 text-white rounded px-1 leading-[14px] pointer-events-none shadow"
+                                >Enter</kbd
+                            >
                         </button>
                         <button
                             type="button"
                             @click="handleDialogClose"
-                            class="h-10 px-4 py-2 text-white bg-red-500 rounded-full shadow hover:bg-red-600"
+                            class="relative h-10 px-4 py-2 text-white bg-red-500 rounded-full shadow hover:bg-red-600"
                         >
                             Cancel
+                            <kbd
+                                v-if="props.showShortcuts"
+                                class="absolute -top-2 -right-1 text-[9px] font-sans bg-gray-800 text-white rounded px-1 leading-[14px] pointer-events-none shadow"
+                                >Esc</kbd
+                            >
                         </button>
                     </div>
                 </div>

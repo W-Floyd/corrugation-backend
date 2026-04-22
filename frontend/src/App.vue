@@ -35,6 +35,7 @@ const showShortcuts = ref(false);
 const editEntityId = ref<number | null>(null);
 const cardRefs = ref<Record<number, { cardEl: HTMLElement | null }>>({});
 const deleteConfirmId = ref<number | null>(null);
+const searchBarRef = ref<{ focusSearch: () => void } | null>(null);
 
 const visibleEntities = computed(() =>
     clipStore.merge(
@@ -214,6 +215,11 @@ const handleKeydown = (e: KeyboardEvent): void => {
     switch (e.key) {
         case "/":
             e.preventDefault();
+            searchBarRef.value?.focusSearch();
+            break;
+
+        case "?":
+            e.preventDefault();
             commandDialogVisible.value = true;
             break;
 
@@ -235,6 +241,7 @@ const handleKeydown = (e: KeyboardEvent): void => {
             break;
 
         case "Enter":
+            if (cameraStore.opened) break;
             e.preventDefault();
             if (deleteConfirmId.value !== null) {
                 confirmDeleteEntity(deleteConfirmId.value);
@@ -416,7 +423,7 @@ watch(
                         newEntityVisible = true;
                     "
                 />
-                <SearchBar />
+                <SearchBar ref="searchBarRef" :show-shortcuts="showShortcuts" />
             </div>
 
             <!-- Empty state or entity list -->
@@ -508,7 +515,9 @@ watch(
         <NewEntityDialog
             :visible="newEntityVisible"
             :location="newEntityLocation"
+            :show-shortcuts="showShortcuts"
             @update:visible="newEntityVisible = $event"
+            @created="(id) => selectedEntityId = id"
         />
         <MoveEntityDialog
             :visible="moveDialogVisible"

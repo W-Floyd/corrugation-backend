@@ -7,11 +7,19 @@ import { useEntitiesStore } from "@/stores/entities";
 import { useClipStore } from "@/stores/clip";
 import { useToastsStore } from "@/stores/toasts";
 
+const props = defineProps<{ showShortcuts?: boolean }>();
+
 const entitiesStore = useEntitiesStore();
 const clipStore = useClipStore();
 const toastsStore = useToastsStore();
 
 const debounceTimer = ref<ReturnType<typeof setTimeout> | null>(null);
+const searchInputEl = ref<HTMLInputElement | null>(null);
+
+const focusSearch = (): void => {
+    searchInputEl.value?.focus();
+    searchInputEl.value?.select();
+};
 
 const handleSearchInput = (): void => {
     if (debounceTimer.value) {
@@ -54,7 +62,10 @@ const resetSearch = (): void => {
     clipStore.scores = {};
     clipStore.textMatchIds = new Set();
     clipStore.searching = false;
+    searchInputEl.value?.blur();
 };
+
+defineExpose({ focusSearch });
 
 onBeforeUnmount(() => {
     if (debounceTimer.value) {
@@ -122,14 +133,22 @@ onBeforeUnmount(() => {
         </div>
 
         <!-- Search input -->
-        <input
-            v-model="entitiesStore.searchtextpredebounce"
-            @input="handleSearchInput"
-            @keydown.esc="resetSearch"
-            placeholder="Search for an entity..."
-            type="search"
-            class="w-full px-4 py-2 rounded-full bg-white ring-1 ring-gray-300 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:ring-gray-600 dark:text-white"
-        />
+        <div class="relative flex-1">
+            <input
+                ref="searchInputEl"
+                v-model="entitiesStore.searchtextpredebounce"
+                @input="handleSearchInput"
+                @keydown.esc="resetSearch"
+                placeholder="Search for an entity..."
+                type="search"
+                class="w-full px-4 py-2 rounded-full bg-white ring-1 ring-gray-300 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:ring-gray-600 dark:text-white"
+            />
+            <kbd
+                v-if="props.showShortcuts"
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-sans bg-gray-800 text-white rounded px-1 leading-[14px] pointer-events-none shadow"
+                >/</kbd
+            >
+        </div>
 
         <!-- CLIP loading indicator -->
         <span
@@ -167,6 +186,13 @@ onBeforeUnmount(() => {
                 {{ clipStore.encoded }}/{{ clipStore.total }}
             </span>
         </span>
+
+        <!-- Command palette shortcut hint -->
+        <kbd
+            v-if="props.showShortcuts"
+            class="text-[9px] font-sans bg-gray-800 text-white rounded px-1 leading-[14px] pointer-events-none shadow shrink-0"
+            >?</kbd
+        >
 
         <!-- Clear button -->
         <button

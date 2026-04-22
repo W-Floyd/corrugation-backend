@@ -71,28 +71,40 @@ watch(
 );
 
 const handleEditKeydown = (e: KeyboardEvent): void => {
+    if (cameraStore.opened) return;
+    const target = e.target as HTMLElement;
     if (e.key === "Escape") {
         e.preventDefault();
-        handleCancel();
+        e.stopImmediatePropagation();
+        if (target.matches("input, textarea")) {
+            (target as HTMLElement).blur();
+        } else {
+            handleCancel();
+        }
+    } else if (e.key === "Enter" && !target.matches("textarea")) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        handleSave();
     } else if (
-        e.key === "Enter" &&
-        !(e.target as HTMLElement).matches("textarea")
+        (e.key === "p" || e.key === "P") &&
+        !target.matches("input, textarea")
     ) {
         e.preventDefault();
-        handleSave();
+        e.stopImmediatePropagation();
+        handleQuickCapture();
     }
 };
 
 watch(editMode, (val) => {
     if (val) {
-        window.addEventListener("keydown", handleEditKeydown);
+        window.addEventListener("keydown", handleEditKeydown, true);
         nextTick(() => nameInputEl.value?.focus());
     } else {
-        window.removeEventListener("keydown", handleEditKeydown);
+        window.removeEventListener("keydown", handleEditKeydown, true);
     }
 });
 
-onUnmounted(() => window.removeEventListener("keydown", handleEditKeydown));
+onUnmounted(() => window.removeEventListener("keydown", handleEditKeydown, true));
 
 const handleUpdate = async (): Promise<void> => {
     try {

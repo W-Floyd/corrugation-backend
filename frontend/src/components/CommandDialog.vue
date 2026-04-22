@@ -10,7 +10,7 @@ const search = ref("");
 const commands = [
     { label: "Select next tile", shortcut: "↓ / →" },
     { label: "Select previous tile", shortcut: "↑ / ←" },
-    { label: "Descend into selected entity", shortcut: "↩" },
+    { label: "Descend into selected entity", shortcut: "Enter" },
     { label: "Ascend to parent", shortcut: "⌫" },
     { label: "Edit selected entity", shortcut: "E" },
     { label: "Delete selected entity", shortcut: "D" },
@@ -20,7 +20,8 @@ const commands = [
     { label: "New entity in location", shortcut: "N" },
     { label: "New entity under selected", shortcut: "⇧N" },
     { label: "Move selected entity", shortcut: "M" },
-    { label: "Command palette", shortcut: "/" },
+    { label: "Search", shortcut: "/" },
+    { label: "Command palette", shortcut: "?" },
 ];
 
 const filtered = computed(() => {

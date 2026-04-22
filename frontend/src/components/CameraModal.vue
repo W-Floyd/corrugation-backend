@@ -9,23 +9,29 @@ const handleKeydown = (e: KeyboardEvent): void => {
     if (cameraStore.previewUrl) {
         if (e.key === "Enter") {
             e.preventDefault();
+            e.stopPropagation();
             cameraStore.confirm();
         } else if (e.key === "r" || e.key === "R") {
             e.preventDefault();
+            e.stopPropagation();
             cameraStore.rotate();
         } else if (e.key === "c" || e.key === "C") {
             e.preventDefault();
+            e.stopPropagation();
             cameraStore.retake();
         } else if (e.key === "Escape") {
             e.preventDefault();
+            e.stopPropagation();
             cameraStore.close();
         }
     } else {
         if (e.key === "Enter") {
             e.preventDefault();
+            e.stopPropagation();
             cameraStore.capture();
         } else if (e.key === "Escape") {
             e.preventDefault();
+            e.stopPropagation();
             cameraStore.close();
         }
     }
