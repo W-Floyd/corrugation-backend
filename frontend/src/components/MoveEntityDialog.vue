@@ -1,5 +1,5 @@
 <script setup lang="ts" name="MoveEntityDialog">
-import { ref, watch, computed, nextTick } from "vue";
+import { ref, watch, computed, nextTick, onMounted, onUnmounted } from "vue";
 import { useEntitiesStore } from "@/stores/entities";
 import { useToastsStore } from "@/stores/toasts";
 import { api } from "@/api";
@@ -243,6 +243,34 @@ const formatOption = (entityId: number): string => {
 const handleDialogClose = (): void => {
     dialogVisible.value = false;
     emit("update:visible", false);
+};
+
+onMounted(() => window.addEventListener("keydown", handleKeydown));
+onUnmounted(() => window.removeEventListener("keydown", handleKeydown));
+
+const handleKeydown = (e: KeyboardEvent): void => {
+    if (!dialogVisible.value) return;
+    if (e.key === "Escape") {
+        const active = document.activeElement as HTMLElement | null;
+        if (active && (active.tagName === "INPUT" || active.tagName === "SELECT")) {
+            active.blur();
+        } else {
+            handleDialogClose();
+        }
+        e.preventDefault();
+    } else if (e.key === "Enter") {
+        const active = document.activeElement as HTMLElement | null;
+        if (active && (active.tagName === "INPUT" || active.tagName === "SELECT")) {
+            active.blur();
+        }
+        handleMove();
+        e.preventDefault();
+    } else if (e.key === "h" || e.key === "H") {
+        const active = document.activeElement as HTMLElement | null;
+        if (active && active.tagName === "INPUT") return;
+        moveToCurrentLocation();
+        e.preventDefault();
+    }
 };
 </script>
 

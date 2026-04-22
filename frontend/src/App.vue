@@ -31,6 +31,7 @@ const newEntityVisible = ref(false);
 const newEntityLocation = ref(0);
 const moveDialogVisible = ref(false);
 const moveDialogTargetId = ref(0);
+const moveNextEntityId = ref<number | null>(null);
 const commandDialogVisible = ref(false);
 const selectedEntityId = ref<number | null>(null);
 const showShortcuts = ref(false);
@@ -82,6 +83,14 @@ const handleFabCapture = (): void => {
             toastsStore.add("Failed to create entity from photo");
         }
     });
+};
+
+const openMoveDialog = (entityId: number): void => {
+    const idx = visibleEntities.value.findIndex((e) => e.id === entityId);
+    const rest = visibleEntities.value.filter((e) => e.id !== entityId);
+    moveNextEntityId.value = rest.length > 0 ? rest[Math.min(idx, rest.length - 1)].id : null;
+    moveDialogTargetId.value = entityId;
+    moveDialogVisible.value = true;
 };
 
 const confirmDeleteEntity = async (entityId: number): Promise<void> => {
@@ -381,8 +390,7 @@ const handleKeydown = (e: KeyboardEvent): void => {
                 selectedEntityId.value !== null
             ) {
                 e.preventDefault();
-                moveDialogTargetId.value = selectedEntityId.value;
-                moveDialogVisible.value = true;
+                openMoveDialog(selectedEntityId.value);
             }
             break;
     }
@@ -498,12 +506,7 @@ watch(
                                 newEntityVisible = true;
                             }
                         "
-                        @request-move="
-                            (id) => {
-                                moveDialogTargetId = id;
-                                moveDialogVisible = true;
-                            }
-                        "
+                        @request-move="(id) => openMoveDialog(id)"
                         @edit-started="editEntityId = null; editingCardId = entity.id"
                         @edit-ended="editingCardId = null"
                         @request-delete="selectedEntityId = entity.id; deleteConfirmId = entity.id"
@@ -552,6 +555,9 @@ watch(
             :visible="moveDialogVisible"
             :target-entity-id="moveDialogTargetId"
             @update:visible="moveDialogVisible = $event"
+            @moved="(entityId, newLocation) => {
+                selectedEntityId = newLocation === entitiesStore.currentEntity ? entityId : moveNextEntityId;
+            }"
         />
         <CommandDialog
             :visible="commandDialogVisible"
