@@ -304,10 +304,16 @@ const handleKeydown = (e: KeyboardEvent): void => {
             if (deleteConfirmId.value !== null) {
                 confirmDeleteEntity(deleteConfirmId.value);
             } else if (selectedEntityId.value !== null) {
-                entitiesStore.setCurrentEntity(selectedEntityId.value);
-                if (visibleEntities.value.length > 0) {
-                    selectedEntityId.value = visibleEntities.value[0].id;
-                }
+                entitiesStore
+                    .setCurrentEntity(selectedEntityId.value)
+                    .then(() => {
+                        nextTick(() => {
+                            if (visibleEntities.value.length > 0) {
+                                selectedEntityId.value =
+                                    visibleEntities.value[0].id;
+                            }
+                        });
+                    });
             }
             break;
 
