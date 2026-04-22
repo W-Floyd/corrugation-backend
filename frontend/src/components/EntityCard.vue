@@ -51,6 +51,27 @@ const localEntity = ref<Entity>({
 });
 const pendingDeletions = ref<Set<number>>(new Set());
 
+const formatOption = (entityId: number): string => {
+    const tree: string[] = [];
+    let target = entityId;
+    while (target !== 0) {
+        const elem = entitiesStore.fullstate.entities[target];
+        if (!elem) {
+            tree.push(target.toString());
+            break;
+        }
+        if (!elem.name) {
+            tree.push(target.toString());
+        } else {
+            tree.push(elem.name);
+        }
+        target = elem.location;
+    }
+    tree.push("World");
+    tree.reverse();
+    return tree.join("/");
+};
+
 watch(
     () => props.isSelected,
     (val) => {
@@ -111,7 +132,9 @@ watch(editMode, (val) => {
     }
 });
 
-onUnmounted(() => window.removeEventListener("keydown", handleEditKeydown, true));
+onUnmounted(() =>
+    window.removeEventListener("keydown", handleEditKeydown, true),
+);
 
 const handleUpdate = async (): Promise<void> => {
     try {
@@ -295,14 +318,20 @@ defineExpose({ cardEl });
                     class="h-9 px-4 rounded-full bg-red-500 hover:bg-red-600 text-white text-sm shadow relative"
                 >
                     Delete
-                    <KbdHint shortcut="Enter" :show="showShortcuts && isSelected" />
+                    <KbdHint
+                        shortcut="Enter"
+                        :show="showShortcuts && isSelected"
+                    />
                 </button>
                 <button
                     @click.stop="emit('deleteCancelled')"
                     class="h-9 px-4 rounded-full bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-sm shadow relative"
                 >
                     Cancel
-                    <KbdHint shortcut="Esc" :show="showShortcuts && isSelected" />
+                    <KbdHint
+                        shortcut="Esc"
+                        :show="showShortcuts && isSelected"
+                    />
                 </button>
             </div>
         </div>
@@ -347,10 +376,12 @@ defineExpose({ cardEl });
                     </div>
                     <div class="text-xl font-bold">
                         {{
-                            entity.metadata.quantity !== null &&
-                            entity.metadata.quantity !== 0
-                                ? `${entity.name || ""} (x${entity.metadata.quantity})`
-                                : entity.name || ""
+                            entitiesStore.searchtext.trim()
+                                ? formatOption(entity.id)
+                                : entity.metadata.quantity !== null &&
+                                    entity.metadata.quantity !== 0
+                                  ? `${entity.name || ""} (x${entity.metadata.quantity})`
+                                  : entity.name || ""
                         }}
                     </div>
                 </div>
