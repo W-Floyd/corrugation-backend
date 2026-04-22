@@ -1,5 +1,5 @@
 <script setup lang="ts" name="MoveEntityDialog">
-import { ref, watch } from "vue";
+import { ref, watch, computed } from "vue";
 import { useEntitiesStore } from "@/stores/entities";
 import { useToastsStore } from "@/stores/toasts";
 import { api } from "@/api";
@@ -51,9 +51,20 @@ watch(
 );
 
 const filteredEntities = () => {
+    const isDescendant = (entityId: number): boolean => {
+        let current = entityId;
+        while (current !== 0) {
+            if (current === entity.value?.id) return true;
+            const parent = entitiesStore.fullstate.entities[current];
+            if (!parent) break;
+            current = parent.location;
+        }
+        return false;
+    };
+
     if (!searchtext.value.trim()) {
         return Object.values(entitiesStore.fullstate.entities).filter(
-            (e) => e.id !== entity.value?.id && e.location !== 0,
+            (e) => e.id !== entity.value?.id && !isDescendant(e.id),
         );
     }
 
@@ -61,12 +72,39 @@ const filteredEntities = () => {
     return Object.values(entitiesStore.fullstate.entities).filter(
         (e) =>
             e.id !== entity.value?.id &&
-            e.location !== 0 &&
+            !isDescendant(e.id) &&
             (e.name?.toLowerCase().includes(term) ||
                 e.description?.toLowerCase().includes(term) ||
                 e.id.toString().includes(term)),
     );
 };
+
+const searchResults = computed(() => filteredEntities());
+
+watch(searchResults, (results) => {
+    if (
+        searchtext.value.trim() &&
+        results.length > 0 &&
+        targetLocation.value !== 0
+    ) {
+        const hasSelected = results.some((r) => r.id === targetLocation.value);
+        if (!hasSelected) {
+            const first = results[0];
+            if (first) {
+                targetLocation.value = first.id;
+            }
+        }
+    } else if (
+        searchtext.value.trim() &&
+        results.length > 0 &&
+        targetLocation.value === 0
+    ) {
+        const first = results[0];
+        if (first) {
+            targetLocation.value = first.id;
+        }
+    }
+});
 
 const hasChildren = (entityId: number): boolean => {
     return entitiesStore.hasChildren(entityId);
@@ -172,10 +210,7 @@ const handleDialogClose = (): void => {
                                     v-for="loc in filteredEntities()"
                                     :key="loc.id"
                                 >
-                                    <option
-                                        v-if="!hasChildren(loc.id)"
-                                        :value="loc.id"
-                                    >
+                                    <option :value="loc.id">
                                         {{ formatOption(loc.id) }}
                                     </option>
                                 </template>
