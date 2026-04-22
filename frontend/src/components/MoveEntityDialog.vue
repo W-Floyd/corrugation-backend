@@ -62,14 +62,37 @@ const filteredEntities = () => {
         return false;
     };
 
-    if (!searchtext.value.trim()) {
-        return Object.values(entitiesStore.fullstate.entities).filter(
+    const getFilteredEntities = (): Entity[] => {
+        const result = Object.values(entitiesStore.fullstate.entities).filter(
             (e) => e.id !== entity.value?.id && !isDescendant(e.id),
         );
+        // Add World (0) to the results if it's not being moved
+        if (entity.value?.id !== 0) {
+            result.push({
+                id: 0,
+                name: "World",
+                description: "",
+                artifacts: [],
+                location: 0,
+                metadata: {
+                    quantity: null,
+                    owners: null,
+                    tags: null,
+                    lastModified: null,
+                    lastModifiedBy: null,
+                    islabeled: false,
+                },
+            });
+        }
+        return result;
+    };
+
+    if (!searchtext.value.trim()) {
+        return getFilteredEntities();
     }
 
     const term = searchtext.value.toLowerCase();
-    return Object.values(entitiesStore.fullstate.entities).filter(
+    const results = Object.values(entitiesStore.fullstate.entities).filter(
         (e) =>
             e.id !== entity.value?.id &&
             !isDescendant(e.id) &&
@@ -77,6 +100,30 @@ const filteredEntities = () => {
                 e.description?.toLowerCase().includes(term) ||
                 e.id.toString().includes(term)),
     );
+
+    if (term && entity.value?.id !== 0) {
+        const worldMatch =
+            "World".toLowerCase().includes(term) || "0".includes(term);
+        if (worldMatch) {
+            results.push({
+                id: 0,
+                name: "World",
+                description: "",
+                artifacts: [],
+                location: 0,
+                metadata: {
+                    quantity: null,
+                    owners: null,
+                    tags: null,
+                    lastModified: null,
+                    lastModifiedBy: null,
+                    islabeled: false,
+                },
+            });
+        }
+    }
+
+    return results;
 };
 
 const searchResults = computed(() => filteredEntities());
@@ -106,8 +153,57 @@ watch(searchResults, (results) => {
     }
 });
 
-const hasChildren = (entityId: number): boolean => {
-    return entitiesStore.hasChildren(entityId);
+const handleMove = async (): Promise<void> => {
+    if (!entity.value) {
+        console.log("MoveEntityDialog: entity.value is null");
+        return;
+    }
+    console.log(
+        "MoveEntityDialog: Moving entity",
+        entity.value.id,
+        "to location",
+        targetLocation.value,
+    );
+
+    try {
+        await api.moveEntity(entity.value.id, targetLocation.value);
+        console.log("MoveEntityDialog: moveEntity succeeded");
+        await entitiesStore.reload();
+        console.log("MoveEntityDialog: reload succeeded");
+        emit("moved", entity.value.id, targetLocation.value);
+        emit("update:visible", false);
+        dialogVisible.value = false;
+        toastsStore.add("Entity moved");
+    } catch (error) {
+        console.error("Failed to move entity:", error);
+        toastsStore.add("Failed to move entity");
+    }
+};
+
+const moveToCurrentLocation = async (): Promise<void> => {
+    if (!entity.value) {
+        console.log("MoveEntityDialog: entity.value is null");
+        return;
+    }
+    console.log(
+        "MoveEntityDialog: Moving entity",
+        entity.value.id,
+        "to current location",
+        entitiesStore.currentEntity,
+    );
+    try {
+        await api.moveEntity(entity.value.id, entitiesStore.currentEntity);
+        console.log("MoveEntityDialog: moveEntity succeeded");
+        await entitiesStore.reload();
+        console.log("MoveEntityDialog: reload succeeded");
+        emit("moved", entity.value.id, entitiesStore.currentEntity);
+        emit("update:visible", false);
+        dialogVisible.value = false;
+        toastsStore.add("Entity moved to current location");
+    } catch (error) {
+        console.error("Failed to move entity:", error);
+        toastsStore.add("Failed to move entity");
+    }
 };
 
 const formatOption = (entityId: number): string => {
@@ -129,22 +225,6 @@ const formatOption = (entityId: number): string => {
     tree.push("World");
     tree.reverse();
     return `(${entityId}) ${tree.join("/")}`;
-};
-
-const handleMove = async (): Promise<void> => {
-    if (!entity.value) return;
-
-    try {
-        await api.moveEntity(entity.value.id, targetLocation.value);
-        await entitiesStore.reload();
-        emit("moved", entity.value.id, targetLocation.value);
-        emit("update:visible", false);
-        dialogVisible.value = false;
-        toastsStore.add("Entity moved");
-    } catch (error) {
-        console.error("Failed to move entity:", error);
-        toastsStore.add("Failed to move entity");
-    }
 };
 
 const handleDialogClose = (): void => {
@@ -218,7 +298,12 @@ const handleDialogClose = (): void => {
                         </div>
 
                         <!-- Info about current entity -->
-                        <div v-if="hasChildren(entity.id)" class="mb-4">
+                        <div
+                            v-if="
+                                entity && entitiesStore.hasChildren(entity.id)
+                            "
+                            class="mb-4"
+                        >
                             <p class="text-gray-600 dark:text-gray-400 mb-2">
                                 This entity has children:
                             </p>
@@ -246,6 +331,13 @@ const handleDialogClose = (): void => {
                             type="button"
                             @click="handleMove"
                             class="h-10 px-4 py-2 text-white bg-blue-500 rounded-full shadow hover:bg-blue-600"
+                        >
+                            Move
+                        </button>
+                        <button
+                            type="button"
+                            @click="moveToCurrentLocation"
+                            class="h-10 px-4 py-2 text-white bg-purple-500 rounded-full shadow hover:bg-purple-600"
                         >
                             Move Here
                         </button>
