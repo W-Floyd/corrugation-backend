@@ -286,8 +286,11 @@ const handleKeydown = (e: KeyboardEvent): void => {
 
         case "t":
         case "T":
-            e.preventDefault();
-            entitiesStore.searchdescription = !entitiesStore.searchdescription;
+            if (!e.shiftKey && !e.metaKey && !e.ctrlKey) {
+                e.preventDefault();
+                entitiesStore.searchdescription =
+                    !entitiesStore.searchdescription;
+            }
             break;
 
         case "w":

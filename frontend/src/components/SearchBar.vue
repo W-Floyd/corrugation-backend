@@ -1,5 +1,5 @@
 <script setup lang="ts" name="SearchBar">
-import { ref, onBeforeUnmount } from "vue";
+import { ref, onBeforeUnmount, watch } from "vue";
 import KbdHint from "@/components/KbdHint.vue";
 import MagnifyIcon from "vue-material-design-icons/Magnify.vue";
 import LoadingIcon from "vue-material-design-icons/Loading.vue";
@@ -48,6 +48,19 @@ const onClipChange = (): void => {
     }
 };
 
+const onWorldChange = (): void => {
+    if (entitiesStore.searchtext.trim() !== "") {
+        entitiesStore.searching = true;
+        if (clipStore.enabled) {
+            clipStore.search(
+                entitiesStore.searchtext,
+                entitiesStore.fullstate,
+                entitiesStore.currentEntity,
+            );
+        }
+    }
+};
+
 const resetSearch = (): void => {
     entitiesStore.searchtext = "";
     entitiesStore.searchtextpredebounce = "";
@@ -58,6 +71,24 @@ const resetSearch = (): void => {
     clipStore.searching = false;
     searchInputEl.value?.blur();
 };
+
+// Select first entity when search completes
+watch(
+    () => entitiesStore.searchtext,
+    (newVal, oldVal) => {
+        if (oldVal !== undefined && oldVal !== "" && newVal === "") {
+            // Search cleared, deselect
+            entitiesStore.selectedEntityId = null;
+            return;
+        }
+        if (newVal.trim() !== "") {
+            entitiesStore.searching = true;
+            if (clipStore.results.length > 0) {
+                entitiesStore.selectedEntityId = clipStore.results[0].id;
+            }
+        }
+    },
+);
 
 defineExpose({ focusSearch });
 
@@ -85,6 +116,7 @@ onBeforeUnmount(() => {
                     type="checkbox"
                     v-model="entitiesStore.filterworld"
                     class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    @change="onWorldChange"
                 />
                 <span class="ml-1 text-sm text-gray-600 dark:text-gray-400"
                     >World</span
@@ -130,7 +162,20 @@ onBeforeUnmount(() => {
                 ref="searchInputEl"
                 v-model="entitiesStore.searchtextpredebounce"
                 @input="handleSearchInput"
-                @keydown.esc="resetSearch"
+                @keydown.enter.stop="
+                    searchInputEl?.blur();
+                    if (clipStore.results.length > 0) {
+                        entitiesStore.selectedEntityId =
+                            clipStore.results[0].id;
+                    }
+                "
+                @keydown.esc.stop="
+                    searchInputEl?.blur();
+                    if (clipStore.results.length > 0) {
+                        entitiesStore.selectedEntityId =
+                            clipStore.results[0].id;
+                    }
+                "
                 placeholder="Search for an entity..."
                 type="search"
                 class="w-full px-4 py-2 rounded-full bg-white ring-1 ring-gray-300 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:ring-gray-600 dark:text-white"
