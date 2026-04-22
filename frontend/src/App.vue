@@ -535,7 +535,7 @@ watch(
             :location="newEntityLocation"
             :show-shortcuts="showShortcuts"
             @update:visible="newEntityVisible = $event"
-            @created="(id) => selectedEntityId = id"
+            @created="(id) => { if (newEntityLocation === entitiesStore.currentEntity) selectedEntityId = id; }"
         />
         <MoveEntityDialog
             :visible="moveDialogVisible"
