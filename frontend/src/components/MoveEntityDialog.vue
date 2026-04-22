@@ -1,5 +1,5 @@
 <script setup lang="ts" name="MoveEntityDialog">
-import { ref, watch, computed } from "vue";
+import { ref, watch, computed, nextTick } from "vue";
 import { useEntitiesStore } from "@/stores/entities";
 import { useToastsStore } from "@/stores/toasts";
 import { api } from "@/api";
@@ -28,6 +28,7 @@ const dialogVisible = ref(false);
 const entity = ref<Entity | null>(null);
 const searchtext = ref("");
 const targetLocation = ref<number>(0);
+const searchInputRef = ref<HTMLInputElement | null>(null);
 
 const currentLocationName = computed(() => {
     if (entitiesStore.currentEntity === 0) {
@@ -45,6 +46,9 @@ watch(
         if (visible && props.targetEntityId) {
             entity.value =
                 entitiesStore.fullstate.entities[props.targetEntityId] || null;
+            nextTick(() => {
+                searchInputRef.value?.focus();
+            });
         }
     },
     { immediate: true },
@@ -275,6 +279,7 @@ const handleDialogClose = (): void => {
                         <!-- Search -->
                         <div class="mb-4">
                             <input
+                                ref="searchInputRef"
                                 v-model="searchtext"
                                 type="search"
                                 placeholder="Search for a location..."
