@@ -1,19 +1,19 @@
-version: "3"
 services:
-    corrugation-backend:
-        build:
-            context: .
-            dockerfile: Dockerfile
-        ports:
-            - "8083:8083"
-        restart: "no"
-    infinity:
-        stdin_open: true
-        tty: true
-        volumes:
-            - ./infinity/:/app/.cache
-        ports:
-            - 8002:8002
-        image: michaelf34/infinity:latest-cpu
-        command: v2 --engine torch --device cpu --model-id wkcn/TinyCLIP-ViT-8M-16-Text-3M-YFCC15M --port 8002 --log-level debug
-
+  corrugation:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - 8001:8001
+    restart: "no"
+    volumes:
+      - ./corrugation:/data
+  infinity:
+    stdin_open: true
+    tty: true
+    volumes:
+      - ./infinity/:/app/.cache
+    ports:
+      - 8002:8002
+    image: michaelf34/infinity:latest
+    command: v2 --engine torch --device cpu --model-id wkcn/TinyCLIP-ViT-8M-16-Text-3M-YFCC15M --port 8002 --log-level debug

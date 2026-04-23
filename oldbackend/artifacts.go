@@ -1,7 +1,8 @@
-package frontend
+package oldbackend
 
 import (
 	"bytes"
+	"io"
 	"math"
 
 	"io/ioutil"
@@ -127,7 +128,7 @@ func uploadArtifact(c echo.Context) error {
 
 		webp.Encode(buf, img, &webp.Options{Quality: 70})
 
-		fullFile, err = ioutil.ReadAll(buf)
+		fullFile, err = io.ReadAll(buf)
 		if err != nil {
 			log.Println(err)
 			return err
@@ -142,10 +143,6 @@ func uploadArtifact(c echo.Context) error {
 		Path:  location,
 		ID:    store.LastArtifactID,
 		Image: isImage,
-	}
-
-	if err != nil {
-		return err
 	}
 
 	err = d.Write(location, fullFile)

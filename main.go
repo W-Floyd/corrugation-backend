@@ -2,16 +2,15 @@ package main
 
 import (
 	"context"
-	"embed"
 	"fmt"
-	"html/template"
+	"io/fs"
 	"log"
 	"net/http"
+	"os"
 	"path/filepath"
-	"time"
+	"strings"
 
-	"github.com/W-Floyd/corrugation-backend/backend"
-	"github.com/W-Floyd/corrugation-backend/frontend"
+	"github.com/W-Floyd/corrugation/backend"
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humago"
 	"github.com/danielgtaylor/huma/v2/autopatch"
@@ -20,24 +19,51 @@ import (
 )
 
 type Options struct {
-	Port int `help:"Port to listen on" short:"p" default:"8001"`
+	Address string `help:"Address to listen on" default:"0.0.0.0"`
+	Port    int    `help:"Port to listen on" default:"8001"`
+	Dist    string `help:"Dist path" default:"./dist"`
+	Data    string `help:"Data path" default:"./data"`
 }
 
 func init() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 }
 
-//go:embed assets
-var assets embed.FS
-
 func main() {
 
-	embedListing, err := assets.ReadDir("assets")
-	if err != nil {
-		log.Fatalln(err)
-	}
-
 	cli := humacli.New(func(hooks humacli.Hooks, options *Options) {
+
+		log.Println("init backend")
+		if _, err := os.Stat(options.Data); os.IsNotExist(err) {
+			err := os.Mkdir(options.Data, 0755)
+			if err != nil {
+				log.Fatalln(err)
+			}
+		}
+		err := backend.ConnectDB(filepath.Join(options.Data, "db.sqlite"))
+		if err != nil {
+			log.Fatalln(err)
+		}
+		err = backend.InitAndMigrateDB()
+		if err != nil {
+			log.Fatalln(err)
+		}
+
+		assets := []string{}
+
+		err = filepath.WalkDir(options.Dist, func(path string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if !d.IsDir() {
+				assets = append(assets, path)
+			}
+			return nil
+		})
+
+		if err != nil {
+			log.Fatalln(err)
+		}
 
 		// Create a new router & API
 		router := http.NewServeMux()
@@ -48,25 +74,13 @@ func main() {
 		c := goview.DefaultConfig
 		c.DisableCache = true
 
-		c.Funcs = template.FuncMap{
-			"unescapeHTML": func(s string) any {
-				return template.HTML(s)
-			},
-			"copy": func() string {
-				return time.Now().Format("2006")
-			},
-			"componentButtonRound": frontend.ComponentButtonRound,
-		}
-
-		e := goview.New(c)
-
-		for _, asset := range embedListing {
-			contents, err := assets.ReadFile("assets/" + asset.Name())
+		for _, asset := range assets {
+			contents, err := os.ReadFile(asset)
 			if err != nil {
 				log.Fatalln(err)
 			}
 			var contentType string
-			switch filepath.Ext(asset.Name()) {
+			switch filepath.Ext(asset) {
 			case ".js":
 				contentType = "text/javascript"
 			case ".css":
@@ -75,9 +89,15 @@ func main() {
 				contentType = http.DetectContentType(contents)
 			}
 
+			path := strings.TrimPrefix(filepath.Clean(asset), filepath.Clean(options.Dist))
+
+			if path == "/index.html" {
+				path = "/{$}"
+			}
+
 			huma.Register(api,
 				huma.Operation{
-					Path:   "/" + asset.Name(),
+					Path:   path,
 					Method: http.MethodGet,
 					Hidden: true,
 				}, func(ctx context.Context, i *struct{}) (output *backend.BytesOutput, err error) {
@@ -89,32 +109,14 @@ func main() {
 				})
 		}
 
-		huma.Register(api, huma.Operation{
-			Path:   "/{$}",
-			Method: http.MethodGet,
-			Hidden: true,
-		}, func(ctx context.Context, input *struct {
-		}) (output *backend.BytesOutput, err error) {
-
-			v := NewCustomResponseWriter()
-
-			err = e.Render(v, http.StatusOK, "index", goview.M{
-				"title": "Corrugation",
-			})
-
-			output = &backend.BytesOutput{
-				Body:        v.body,
-				ContentType: "text/html",
-			}
-
-			return
-		})
-
 		backend.RegisterHandlers(api)
 
 		// Tell the CLI how to start your router.
 		hooks.OnStart(func() {
-			http.ListenAndServe(fmt.Sprintf(":%d", options.Port), router)
+			err := http.ListenAndServe(fmt.Sprintf("%s:%d", options.Address, options.Port), router)
+			if err != nil {
+				log.Fatalln(err)
+			}
 		})
 
 	})

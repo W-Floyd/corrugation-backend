@@ -19,7 +19,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
-package frontend
+package oldbackend
 
 import (
 	"encoding/json"
@@ -285,4 +285,3 @@ func checkFormFiles(requires []string, c echo.Context) error {
 func hasForm(formKey string, c echo.Context) bool {
 	return c.FormValue(formKey) != ""
 }
-

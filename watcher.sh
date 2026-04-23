@@ -7,7 +7,7 @@ while true; do
         echo 'Failed to build...'
         inotifywait -q -r -e modify --include '.*\.go' .
     else
-        CORRUGATION_AUTHENTICATION=false ./corrugation-backend &
+        CORRUGATION_AUTHENTICATION=false ./corrugation &
         PID="${!}"
         inotifywait -q -r -e modify --include '.*\.go' .
         kill "${PID}"

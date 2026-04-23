@@ -1,7 +1,7 @@
 #!/bin/bash
 
-__username="$(yq -r '.username' <"${HOME}/.corrugation-backend.yaml")"
-__password="$(yq -r '.password' <"${HOME}/.corrugation-backend.yaml")"
+__username="$(yq -r '.username' <"${HOME}/.corrugation.yaml")"
+__password="$(yq -r '.password' <"${HOME}/.corrugation.yaml")"
 
 if [ -z "${__username}" ]; then
     __username='admin'

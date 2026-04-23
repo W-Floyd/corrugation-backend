@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/W-Floyd/corrugation-backend/frontend"
+	"github.com/W-Floyd/corrugation/oldbackend"
 	"github.com/danielgtaylor/huma/v2"
 	"gorm.io/gorm"
 )
@@ -24,36 +24,36 @@ type EntityOutput struct {
 	Body EntityInput
 }
 type EntityPatch struct {
-	ID          frontend.EntityID  `json:"id" required:"false"`
-	Name        *string            `json:"name" required:"false"`
-	Description *string            `json:"description" required:"false"`
-	Artifacts   []*uint            `json:"artifacts" required:"false"`
-	Location    *frontend.EntityID `json:"location" required:"false"`
-	Metadata    *Metadata          `json:"metadata" required:"false"`
+	ID          oldbackend.EntityID  `json:"id" required:"false"`
+	Name        *string              `json:"name" required:"false"`
+	Description *string              `json:"description" required:"false"`
+	Artifacts   []*uint              `json:"artifacts" required:"false"`
+	Location    *oldbackend.EntityID `json:"location" required:"false"`
+	Metadata    *Metadata            `json:"metadata" required:"false"`
 }
 
 type EntityInput struct {
-	ID          frontend.EntityID  `json:"id"`
-	Name        *string            `json:"name" required:"false"`
-	Description *string            `json:"description" required:"false"`
-	Artifacts   []*uint            `json:"artifacts" required:"false"`
-	Location    *frontend.EntityID `json:"location" required:"false"`
-	Metadata    *Metadata          `json:"metadata" required:"false"`
+	ID          oldbackend.EntityID  `json:"id"`
+	Name        *string              `json:"name" required:"false"`
+	Description *string              `json:"description" required:"false"`
+	Artifacts   []*uint              `json:"artifacts" required:"false"`
+	Location    *oldbackend.EntityID `json:"location" required:"false"`
+	Metadata    *Metadata            `json:"metadata" required:"false"`
 }
 
 type StoreOutput struct {
 	Body struct {
-		Entities       map[frontend.EntityID]*EntityInput `json:"entities"`
-		Artifacts      map[uint]frontend.FrontendArtifact `json:"artifacts"`
-		LastArtifactID uint                               `json:"lastartifactid"`
-		StoreVersion   int                                `json:"storeversion"`
+		Entities       map[oldbackend.EntityID]*EntityInput `json:"entities"`
+		Artifacts      map[uint]oldbackend.FrontendArtifact `json:"artifacts"`
+		LastArtifactID uint                                 `json:"lastartifactid"`
+		StoreVersion   int                                  `json:"storeversion"`
 	}
 }
 
 func (record *Record) ToEntity() (output *EntityInput, err error) {
 	output =
 		&EntityInput{
-			ID: frontend.EntityID(record.ID),
+			ID: oldbackend.EntityID(record.ID),
 			Name: func() *string {
 				if record.Label != nil {
 					return record.Label
@@ -71,12 +71,12 @@ func (record *Record) ToEntity() (output *EntityInput, err error) {
 				}
 				return record.Description
 			}(),
-			Location: func() (output *frontend.EntityID) {
-				var v frontend.EntityID
+			Location: func() (output *oldbackend.EntityID) {
+				var v oldbackend.EntityID
 				if record.ParentID == nil {
 					v = 0
 				} else {
-					v = frontend.EntityID(*record.ParentID)
+					v = oldbackend.EntityID(*record.ParentID)
 				}
 				return &v
 			}(),
@@ -129,7 +129,7 @@ func GetStore(ctx context.Context, input *struct{}) (output *StoreOutput, err er
 
 	output = &StoreOutput{}
 
-	output.Body.Entities = make(map[frontend.EntityID]*EntityInput)
+	output.Body.Entities = make(map[oldbackend.EntityID]*EntityInput)
 
 	records, err := GetRecords(nil, nil, nil, nil, []struct {
 		q string
@@ -164,7 +164,7 @@ func GetStore(ctx context.Context, input *struct{}) (output *StoreOutput, err er
 		if err != nil {
 			return output, err
 		}
-		output.Body.Entities[frontend.EntityID(record.ID)] = e
+		output.Body.Entities[oldbackend.EntityID(record.ID)] = e
 	}
 
 	output.Body.StoreVersion = int(newest.Unix())
@@ -180,11 +180,11 @@ func GetStore(ctx context.Context, input *struct{}) (output *StoreOutput, err er
 		return
 	}
 
-	output.Body.Artifacts = map[uint]frontend.FrontendArtifact{}
+	output.Body.Artifacts = map[uint]oldbackend.FrontendArtifact{}
 
 	for _, a := range as {
-		output.Body.Artifacts[a.ID] = frontend.FrontendArtifact{
-			ID:   frontend.ArtifactID(a.ID),
+		output.Body.Artifacts[a.ID] = oldbackend.FrontendArtifact{
+			ID:   oldbackend.ArtifactID(a.ID),
 			Path: "/api/artifact/" + strconv.FormatUint(uint64(a.ID), 10),
 			Image: func() bool {
 				i, _ := a.GetInterface()
@@ -353,7 +353,7 @@ func GetEntity(ctx context.Context, input *struct {
 	}
 
 	if entity.Location == nil {
-		v := frontend.EntityID(0)
+		v := oldbackend.EntityID(0)
 		entity.Location = &v
 	}
 
