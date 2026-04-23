@@ -7,7 +7,6 @@ import (
 	"io"
 	"slices"
 	"strconv"
-	"strings"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-echarts/go-echarts/v2/charts"
@@ -159,45 +158,66 @@ func GetRecords(ID *uint, childrenDepth *int, parentDepth *int, search *string, 
 			id    uint
 			score float64
 		}
-		artifactSearch, err = SearchByArtifact(*search, 0.3)
+		artifactSearch, err = SearchByArtifact(*search, minimumImageSearchConfidence)
 		if err != nil {
 			return
 		}
 
-		recordSearch, err = SearchByRecord(*search, 0.3)
+		recordSearch, err = SearchByRecord(*search, minimumTextSearchConfidence)
 		if err != nil {
 			return
 		}
 
-		searchResults := append(artifactSearch, recordSearch...)
+		// searchResults := append(artifactSearch, recordSearch...)
+
+		textScore := map[uint]float64{}
+
+		bestImageScore := map[uint]float64{}
 
 		bestScore := map[uint]float64{}
 
-		for _, r := range searchResults {
-			score, ok := bestScore[r.id]
-			if !ok || r.score > score {
-				bestScore[r.id] = r.score
+		for _, r := range artifactSearch {
+			score, ok := bestImageScore[r.id]
+			if !ok || normalizeImageSearchScore(r.score) > normalizeImageSearchScore(score) {
+				bestImageScore[r.id] = normalizeImageSearchScore(r.score)
+				if bestImageScore[r.id] > bestScore[r.id] {
+					bestScore[r.id] = bestImageScore[r.id]
+				}
+			}
+		}
+
+		for _, r := range recordSearch {
+			textScore[r.id] = normalizeTextSearchScore(r.score)
+			if textScore[r.id] > bestScore[r.id] {
+				bestScore[r.id] = textScore[r.id]
 			}
 		}
 
 		var recordMap = map[uint]*Record{}
 		for _, r := range records {
-			if (r.Title != nil && strings.Contains(strings.ToLower(*r.Title), strings.ToLower(*search))) ||
-				(r.Label != nil && strings.Contains(strings.ToLower(*r.Label), strings.ToLower(*search))) ||
-				(r.Description != nil && strings.Contains(strings.ToLower(*r.Description), strings.ToLower(*search))) {
+			// if (r.Title != nil && strings.Contains(strings.ToLower(*r.Title), strings.ToLower(*search))) ||
+			// 	(r.Label != nil && strings.Contains(strings.ToLower(*r.Label), strings.ToLower(*search))) ||
+			// 	(r.Description != nil && strings.Contains(strings.ToLower(*r.Description), strings.ToLower(*search))) {
 
-				bestScore[r.ID] = 1
-			}
+			// 	textScore[r.ID] = 1
+			// }
 			recordMap[r.ID] = &r
 		}
 
 		recordIDs := []uint{}
 
-		for id := range bestScore {
+		for id := range textScore {
+			recordIDs = append(recordIDs, id)
+		}
+		for id := range bestImageScore {
 			recordIDs = append(recordIDs, id)
 		}
 
+		slices.Sort(recordIDs)
+		slices.Compact(recordIDs)
+
 		slices.SortFunc(recordIDs, func(a uint, b uint) int {
+
 			if bestScore[a] > bestScore[b] {
 				return -1
 			} else if bestScore[a] < bestScore[b] {
@@ -212,6 +232,10 @@ func GetRecords(ID *uint, childrenDepth *int, parentDepth *int, search *string, 
 		for _, rid := range recordIDs {
 			r, ok := recordMap[rid]
 			if ok && r != nil {
+				is := textScore[rid]
+				ts := bestImageScore[rid]
+				r.SearchConfidenceImage = &is
+				r.SearchConfidenceText = &ts
 				filteredSortedRecords = append(filteredSortedRecords, *r)
 			}
 		}

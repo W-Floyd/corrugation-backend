@@ -2,6 +2,7 @@ package backend
 
 import (
 	"context"
+	"log"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -38,6 +39,7 @@ func CreateArtifact(ctx context.Context, input *struct {
 
 	err = a.Store(f)
 	if err != nil {
+		log.Println(err)
 		return
 	}
 

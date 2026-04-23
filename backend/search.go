@@ -4,12 +4,25 @@ import (
 	"errors"
 )
 
+const (
+	minimumImageSearchConfidence float64 = 0.2
+	minimumTextSearchConfidence  float64 = 0.9
+)
+
+func normalizeImageSearchScore(s float64) float64 {
+	return (s - minimumImageSearchConfidence) * (1 / minimumImageSearchConfidence)
+}
+
+func normalizeTextSearchScore(s float64) float64 {
+	return (s - minimumTextSearchConfidence) * (1 / (1 - minimumTextSearchConfidence))
+}
+
 func dotProduct(v1 []float64, v2 []float64) (dotProduct float64, err error) {
 	if len(v1) != len(v2) {
 		err = errors.New("vectors should have same lenghth")
 		return
 	}
-	for i := 0; i < len(v1); i++ {
+	for i := range len(v1) {
 		dotProduct += v1[i] * v2[i]
 	}
 	return

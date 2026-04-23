@@ -2,6 +2,7 @@ package backend
 
 import (
 	"context"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -33,7 +34,7 @@ type EntityPatch struct {
 }
 
 type EntityInput struct {
-	ID          oldbackend.EntityID  `json:"id"`
+	ID          oldbackend.EntityID  `json:"id" required:"false"`
 	Name        *string              `json:"name" required:"false"`
 	Description *string              `json:"description" required:"false"`
 	Artifacts   []*uint              `json:"artifacts" required:"false"`
@@ -169,10 +170,14 @@ func GetStore(ctx context.Context, input *struct{}) (output *StoreOutput, err er
 
 	output.Body.StoreVersion = int(newest.Unix())
 
-	tx := db.Model(&Record{}).Unscoped().Select("MAX(id)").Find(&output.Body.LastArtifactID)
+	var lastID *uint
+	tx := db.Model(&Record{}).Unscoped().Select("MAX(id)").Scan(&lastID)
 	if tx.Error != nil {
 		err = tx.Error
 		return
+	}
+	if lastID != nil {
+		output.Body.LastArtifactID = *lastID
 	}
 
 	as, err := gorm.G[Artifact](db).Select("id", "content_type", "original_filename").Find(dbCtx)
@@ -207,6 +212,10 @@ type IntOutput struct {
 
 type UIntOutput struct {
 	Body uint
+}
+
+type StringOutput struct {
+	Body string
 }
 
 var GetStoreVersionOperation = huma.Operation{
@@ -244,14 +253,25 @@ var GetFirstFreeIDOperation = huma.Operation{
 	Path:   "/api/entity/find/firstfreeid",
 }
 
-func GetFirstFreeID(ctx context.Context, input *struct{}) (output *UIntOutput, err error) {
-	output = &UIntOutput{}
-	tx := db.Model(&Record{}).Unscoped().Select("MAX(id)").Find(&output.Body)
+func getFirstFreeID() (id *uint, err error) {
+	tx := db.Model(&Record{}).Unscoped().Select("MAX(id)").Scan(&id)
 	if tx.Error != nil {
 		err = tx.Error
 		return
 	}
-	output.Body += 1
+	if id == nil {
+		var v uint = 1
+		id = &v
+	} else {
+		*id++
+	}
+	return
+}
+
+func GetFirstFreeID(ctx context.Context, input *struct{}) (output *UIntOutput, err error) {
+	output = &UIntOutput{}
+	maxID, err := getFirstFreeID()
+	output.Body = *maxID
 	return
 }
 
@@ -262,14 +282,21 @@ var CreateEntityOperation = huma.Operation{
 
 func CreateEntity(ctx context.Context, input *struct {
 	Body EntityInput
-}) (output *EntityInput, err error) {
-	if input.Body.ID == 0 {
-		err = huma.Error500InternalServerError("id must not be 0")
-	}
+}) (output *EntityOutput, err error) {
 
 	record := &Record{}
 
-	record.ID = uint(input.Body.ID)
+	if input.Body.ID == 0 {
+		var maxID *uint
+		maxID, err = getFirstFreeID()
+		if err != nil {
+			return
+		}
+		record.ID = *maxID
+	} else {
+		record.ID = uint(input.Body.ID)
+	}
+
 	if input.Body.Metadata.IsLabeled != nil && *input.Body.Metadata.IsLabeled {
 		record.Label = input.Body.Name
 	} else {
@@ -285,6 +312,10 @@ func CreateEntity(ctx context.Context, input *struct {
 	}
 
 	for _, a := range input.Body.Artifacts {
+		if a == nil {
+			log.Println("empty artifact!")
+			continue
+		}
 		var artifact Artifact
 		artifact, err = GetArtifactFromDB(*a)
 		if err != nil {
@@ -322,9 +353,13 @@ func CreateEntity(ctx context.Context, input *struct {
 		return
 	}
 
-	output, err = record.ToEntity()
+	entity, err := record.ToEntity()
 	if err != nil {
 		return
+	}
+
+	output = &EntityOutput{
+		Body: *entity,
 	}
 
 	return
@@ -377,7 +412,7 @@ var PatchEntityOperation = huma.Operation{
 func PatchEntity(ctx context.Context, input *struct {
 	ID   uint `path:"id" example:"1" doc:"ID to update"`
 	Body EntityPatch
-}) (output *EntityInput, err error) {
+}) (output *EntityOutput, err error) {
 
 	records, err := GetRecords(&input.ID, nil, nil, nil, nil, nil)
 	if err != nil {
@@ -404,12 +439,28 @@ func PatchEntity(ctx context.Context, input *struct {
 		r.ParentID = &v
 	}
 
+	var artifact Artifact
+	for _, a := range i.Artifacts {
+		artifact, err = GetArtifactFromDB(*a)
+		if err != nil {
+			return
+		}
+		r.Artifacts = append(r.Artifacts, &artifact)
+	}
+
 	_, err = gorm.G[Record](db).Where("id = ?", r.ID).Updates(dbCtx, r)
 	if err != nil {
 		return
 	}
 
-	output, err = r.ToEntity()
+	entity, err := r.ToEntity()
+	if err != nil {
+		return
+	}
+
+	output = &EntityOutput{
+		Body: *entity,
+	}
 
 	return
 }

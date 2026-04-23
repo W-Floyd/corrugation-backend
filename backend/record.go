@@ -39,6 +39,8 @@ type Record struct {
 	Embedding     *[]byte `json:"-"` // JSON of embedding data
 	EmbeddingHash *string `json:"-"` // Hash of JSON of embedding data (to allow caching)
 
+	SearchConfidenceImage *float64 `gorm:"-" json:",omitempty"`
+	SearchConfidenceText  *float64 `gorm:"-" json:",omitempty"`
 }
 
 func (i *RecordInput) Convert() (o Record, err error) {

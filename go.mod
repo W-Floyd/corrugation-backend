@@ -5,6 +5,7 @@ go 1.25.0
 require (
 	github.com/chai2010/webp v1.4.0
 	github.com/danielgtaylor/huma/v2 v2.37.3
+	github.com/davecgh/go-spew v1.1.1
 	github.com/disintegration/imaging v1.6.2
 	github.com/foolin/goview v0.3.0
 	github.com/gabriel-vasile/mimetype v1.4.13
@@ -19,7 +20,7 @@ require (
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
 	gorm.io/driver/sqlite v1.6.0
-	gorm.io/gorm v1.31.1
+	gorm.io/gorm v1.31.0
 )
 
 require (

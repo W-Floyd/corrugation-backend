@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log"
 	"math"
 	"net/http"
 	"path/filepath"
@@ -89,16 +90,15 @@ func (i *Image) Store(file huma.FormFile) (err error) {
 
 	b, err := io.ReadAll(file)
 	if err != nil {
+		log.Println(err)
 		return
 	}
-
-	c := http.Client{}
-	c.Get(infinityAddress + "")
 
 	i.Data = &b
 
 	err = i.GenerateEmbeddings()
 	if err != nil {
+		log.Println(err)
 		return
 	}
 
@@ -107,6 +107,7 @@ func (i *Image) Store(file huma.FormFile) (err error) {
 
 	err = i.ComputePreviews()
 	if err != nil {
+		log.Println(err)
 		return
 	}
 
@@ -114,6 +115,7 @@ func (i *Image) Store(file huma.FormFile) (err error) {
 
 	err = gorm.G[Artifact](db).Create(dbCtx, &a)
 	if err != nil {
+		log.Println(err)
 		return
 	}
 
