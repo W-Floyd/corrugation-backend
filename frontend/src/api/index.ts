@@ -1,5 +1,6 @@
 import type { Entity, Artifact, FullState, Metadata } from "./types";
 import router from "../router";
+import { useAuthStore } from "../stores/auth";
 
 export interface EntityCreate {
   id?: number;
@@ -41,7 +42,7 @@ export async function apiFetch(url: string, options: RequestInit = {}): Promise<
     const currentRoute = router.currentRoute.value.name;
     DEBUG && console.warn("[apiFetch] 401 on", url, "current route:", currentRoute, new Error().stack?.split("\n")[2]?.trim());
     if (currentRoute !== "callback") {
-      localStorage.removeItem("auth_token");
+      useAuthStore().clearToken();
       router.push({ name: "login" });
       throw new Error("Unauthorized");
     }
