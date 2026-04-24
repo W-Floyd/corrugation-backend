@@ -951,17 +951,44 @@ var ResetStoreOperation = huma.Operation{
 }
 
 func ResetStore(ctx context.Context, input *struct{}) (output *EmptyOutput, err error) {
-	if err = db.Unscoped().Where("1 = 1").Delete(&Record{}).Error; err != nil {
-		return
-	}
-	if err = db.Unscoped().Where("1 = 1").Delete(&Artifact{}).Error; err != nil {
-		return
-	}
-	if err = db.Unscoped().Where("1 = 1").Delete(&Tag{}).Error; err != nil {
-		return
+	tables := []string{"record_tags", "artifacts", "records", "tags"}
+	for _, table := range tables {
+		if err = db.Exec("DELETE FROM " + table).Error; err != nil {
+			return
+		}
+		db.Exec("DELETE FROM sqlite_sequence WHERE name = ?", table)
 	}
 	Broadcast()
 	output = &EmptyOutput{}
+	return
+}
+
+var ListArtifactsOperation = huma.Operation{
+	Method: http.MethodGet,
+	Path:   "/api/artifact/list",
+}
+
+func ListArtifacts(ctx context.Context, _ *struct{}) (output *struct{ Body []string }, err error) {
+	artifacts, err := gorm.G[Artifact](db).Select("id", "content_type").Find(dbCtx)
+	if err != nil {
+		return
+	}
+	names := []string{}
+	for _, a := range artifacts {
+		ext := ".bin"
+		if a.ContentType != nil {
+			switch *a.ContentType {
+			case "image/webp":
+				ext = ".webp"
+			case "image/png":
+				ext = ".png"
+			case "image/jpeg":
+				ext = ".jpg"
+			}
+		}
+		names = append(names, strconv.FormatUint(uint64(a.ID), 10)+ext)
+	}
+	output = &struct{ Body []string }{Body: names}
 	return
 }
 
