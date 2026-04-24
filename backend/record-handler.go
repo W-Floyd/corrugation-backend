@@ -160,13 +160,13 @@ func FlushStaleEmbeddings(ctx context.Context, _ *struct{}) (output *struct {
 		ArtifactsFlushed int64 `json:"artifactsFlushed"`
 	}
 }, err error) {
-	stale := "embed_model != ?"
+	stale := "embed_model != ? AND embed_model != ?"
 
-	recordsFlushed, err := gorm.G[Embedding](db).Where("record_id IS NOT NULL AND "+stale, infinityModel).Delete(dbCtx)
+	recordsFlushed, err := gorm.G[Embedding](db).Where("record_id IS NOT NULL AND "+stale, infinityTextModel, infinityImageModel).Delete(dbCtx)
 	if err != nil {
 		return
 	}
-	artifactsFlushed, err := gorm.G[Embedding](db).Where("artifact_id IS NOT NULL AND "+stale, infinityModel).Delete(dbCtx)
+	artifactsFlushed, err := gorm.G[Embedding](db).Where("artifact_id IS NOT NULL AND "+stale, infinityTextModel, infinityImageModel).Delete(dbCtx)
 	if err != nil {
 		return
 	}

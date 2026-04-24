@@ -15,14 +15,15 @@ services:
       - SERVICE_OIDC_CLIENT_ID=
       - SERVICE_OIDC_INSECURE_SKIP_VERIFY=true
       - SERVICE_INFINITY_ADDRESS=http://infinity:8002
-      - SERVICE_INFINITY_MODEL=wkcn/TinyCLIP-ViT-8M-16-Text-3M-YFCC15M
+      - SERVICE_INFINITY_IMAGE_MODEL=wkcn/TinyCLIP-ViT-8M-16-Text-3M-YFCC15M
+      - SERVICE_INFINITY_TEXT_MODEL=mixedbread-ai/mxbai-embed-large-v1
     volumes:
       - ./data/corrugation:/data
     depends_on:
       - infinity
   infinity:
     image: michaelf34/infinity:latest
-    command: v2 --engine torch --device cpu --model-id wkcn/TinyCLIP-ViT-8M-16-Text-3M-YFCC15M --port 8002 --log-level warning
+    command: v2 --engine torch --device cpu --model-id wkcn/TinyCLIP-ViT-8M-16-Text-3M-YFCC15M --model-id mixedbread-ai/mxbai-embed-large-v1 --port 8002 --log-level warning
     restart: unless-stopped
     volumes:
       - ./data/infinity/:/app/.cache

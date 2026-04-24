@@ -8,15 +8,16 @@ const (
 	errorArtifactNotFound          = "artifact not found"
 	errorMoreArtifactsThanExpected = "more artifacts than expected"
 	topLevelName                   = "World"
-
 )
 
 var (
-	infinityAddress = "http://localhost:8002"
-	infinityModel   = "wkcn/TinyCLIP-ViT-8M-16-Text-3M-YFCC15M"
+	infinityAddress    = "http://localhost:8002"
+	infinityImageModel = "mixedbread-ai/mxbai-embed-large-v1"
+	infinityTextModel  = "wkcn/TinyCLIP-ViT-8M-16-Text-3M-YFCC15M"
 )
 
-func SetInfinityConfig(address, model string) {
+func SetInfinityConfig(address, textModel string, imageModel string) {
 	infinityAddress = address
-	infinityModel = model
+	infinityImageModel = imageModel
+	infinityTextModel = textModel
 }

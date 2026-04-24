@@ -9,3 +9,4 @@ corrugation
 **/node_modules/
 /infinity/
 *.sqlite
+__debug_bin*

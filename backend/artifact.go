@@ -291,7 +291,7 @@ type artifactEmbedding struct {
 }
 
 func GetArtifactEmbeddings() (e map[uint]*artifactEmbedding, err error) {
-	embeddings, err := gorm.G[Embedding](db).Where("artifact_id IS NOT NULL AND embed_model = ?", infinityModel).Find(dbCtx)
+	embeddings, err := gorm.G[Embedding](db).Where("artifact_id IS NOT NULL AND embed_model = ?", infinityImageModel).Find(dbCtx)
 	if err != nil {
 		return
 	}

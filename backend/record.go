@@ -39,7 +39,6 @@ type Record struct {
 
 	LastModifiedBy *string `json:",omitempty"`
 
-
 	SearchConfidenceImage *float64 `gorm:"-" json:",omitempty"`
 	SearchConfidenceText  *float64 `gorm:"-" json:",omitempty"`
 }
@@ -114,7 +113,7 @@ func (record *Record) PrettyString() (output string) {
 }
 
 func GetRecordEmbeddings() (e map[uint][]float64, err error) {
-	embeddings, err := gorm.G[Embedding](db).Where("record_id IS NOT NULL AND embed_model = ?", infinityModel).Find(dbCtx)
+	embeddings, err := gorm.G[Embedding](db).Where("record_id IS NOT NULL AND embed_model = ?", infinityTextModel).Find(dbCtx)
 	if err != nil {
 		return
 	}
@@ -163,19 +162,19 @@ func GetRecordEmbeddings() (e map[uint][]float64, err error) {
 }
 
 type RecordResponse struct {
-	ID          uint     `json:"ID"`
-	CreatedAt   *time.Time `json:"CreatedAt,omitempty"`
-	UpdatedAt   *time.Time `json:"UpdatedAt,omitempty"`
-	Quantity    *uint    `json:",omitempty"`
-	Label       *string  `json:",omitempty"`
-	Title       *string  `json:",omitempty"`
-	Description *string  `json:",omitempty"`
-	Tags        []*Tag   `json:",omitempty"`
-	Artifacts   []*Artifact `json:",omitempty"`
-	ParentID    *uint    `json:",omitempty"`
-	LastModifiedBy        *string  `json:",omitempty"`
-	SearchConfidenceImage *float64 `json:",omitempty"`
-	SearchConfidenceText  *float64 `json:",omitempty"`
+	ID                    uint        `json:"ID"`
+	CreatedAt             *time.Time  `json:"CreatedAt,omitempty"`
+	UpdatedAt             *time.Time  `json:"UpdatedAt,omitempty"`
+	Quantity              *uint       `json:",omitempty"`
+	Label                 *string     `json:",omitempty"`
+	Title                 *string     `json:",omitempty"`
+	Description           *string     `json:",omitempty"`
+	Tags                  []*Tag      `json:",omitempty"`
+	Artifacts             []*Artifact `json:",omitempty"`
+	ParentID              *uint       `json:",omitempty"`
+	LastModifiedBy        *string     `json:",omitempty"`
+	SearchConfidenceImage *float64    `json:",omitempty"`
+	SearchConfidenceText  *float64    `json:",omitempty"`
 }
 
 func toRecordResponse(r Record, timestamps bool) RecordResponse {
@@ -221,6 +220,6 @@ func (r *Record) GenerateEmbeddings() (vec Embeddings, err error) {
 	}
 
 	id := r.ID
-	err = saveEmbedding(&id, nil, vec)
+	err = saveEmbedding(&id, nil, vec, infinityTextModel)
 	return
 }

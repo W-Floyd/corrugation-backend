@@ -80,7 +80,7 @@ func (i *infinityEmbeddingsRequest) GenerateEmbeddings() (e Embeddings, err erro
 func GenerateEmbeddings(input string) (e Embeddings, err error) {
 
 	infinityRequest := infinityEmbeddingsRequest{
-		Model:          infinityModel,
+		Model:          infinityTextModel,
 		EncodingFormat: "float",
 		Input: []string{
 			input,
@@ -107,7 +107,7 @@ func (i *Image) GenerateEmbeddings() (err error) {
 	base64Image = "data:" + http.DetectContentType(*i.Data) + ";base64," + base64Image
 
 	infinityRequest := infinityEmbeddingsRequest{
-		Model:          infinityModel,
+		Model:          infinityImageModel,
 		EncodingFormat: "float",
 		Input:          []string{base64Image},
 		Modality:       "image",
@@ -119,7 +119,7 @@ func (i *Image) GenerateEmbeddings() (err error) {
 	}
 
 	id := i.ID
-	err = saveEmbedding(nil, &id, e)
+	err = saveEmbedding(nil, &id, e, infinityImageModel)
 	return
 }
 
