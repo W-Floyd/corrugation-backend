@@ -17,11 +17,14 @@ runtime:
   scripts:
     - type: tests
       code: |-
+        const ids = res.body.map(String);
+
         test("Returns 200", function() {
           expect(res.status).to.equal(200);
         });
-        test("Parent and child appear as locations", function() {
-          const ids = res.body.map(String);
+        test("Parent appears as a location", function() {
           expect(ids).to.include(bru.getVar("parentId"));
+        });
+        test("Child appears as a location", function() {
           expect(ids).to.include(bru.getVar("childId"));
         });

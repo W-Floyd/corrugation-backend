@@ -31,7 +31,9 @@ runtime:
         test("Login succeeds", function() {
           expect(res.status).to.equal(200);
         });
-        test("Token is returned", function() {
+        test("Token property exists", function() {
           expect(res.body).to.have.property("token");
+        });
+        test("Token is a non-empty string", function() {
           expect(res.body.token).to.be.a("string").and.not.empty;
         });

@@ -17,14 +17,17 @@ runtime:
   scripts:
     - type: tests
       code: |-
+        const child = res.body[0];
+
         test("Returns 200", function() {
           expect(res.status).to.equal(200);
         });
         test("Returns exactly one direct child", function() {
           expect(res.body).to.be.an("array").with.lengthOf(1);
         });
-        test("Child has correct name and location", function() {
-          const child = res.body[0];
+        test("Child name is correct", function() {
           expect(child.name).to.equal("Child Box");
+        });
+        test("Child location is correct", function() {
           expect(String(child.location)).to.equal(bru.getVar("parentId"));
         });
