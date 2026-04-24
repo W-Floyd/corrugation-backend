@@ -258,7 +258,10 @@ func GetChildrenRecurse(parentID uint, searchDepth int, currentDepth int) (recor
 
 	var children []Record
 
-	children, err = gorm.G[Record](db).Where("parent_id = ?", parentID).Find(dbCtx)
+	children, err = gorm.G[Record](db).Where("parent_id = ?", parentID).Preload("Artifacts", func(db gorm.PreloadBuilder) error {
+		db.Select("id", "record_id")
+		return nil
+	}).Find(dbCtx)
 	if err != nil {
 		return
 	}
