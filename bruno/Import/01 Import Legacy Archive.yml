@@ -1,0 +1,35 @@
+info:
+  name: 01 Import Legacy Archive
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/import?reset=true"
+  headers:
+    - name: accept
+      value: application/json
+  body:
+    type: multipart-form
+    data:
+      - name: file
+        value:
+          - /Users/william/Documents/Personal/git/corrugation-backend/bruno/fixtures/corrugation.tar.gz
+        type: file
+  auth:
+    type: bearer
+    token: "{{authToken}}"
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("Returns 200", function() {
+          expect(res.status).to.equal(200);
+        });
+        test("Entities imported", function() {
+          expect(res.body.entitiesImported).to.be.a("number").and.greaterThan(0);
+        });
+        test("Artifacts imported", function() {
+          expect(res.body.artifactsImported).to.be.a("number").and.greaterThan(0);
+        });
