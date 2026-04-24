@@ -50,8 +50,7 @@ func main() {
 		}
 
 		dbPath := filepath.Join(options.Data, "db.sqlite")
-		_, dbStatErr := os.Stat(dbPath)
-		dbExists := dbStatErr == nil
+		dbExists := fileExists(dbPath)
 
 		err := backend.ConnectDB(dbPath)
 		if err != nil {
@@ -185,16 +184,19 @@ func main() {
 }
 
 func runLegacyMigration(dataPath string) error {
-	storeJSON := filepath.Join(dataPath, "store.json")
-	if _, err := os.Stat(storeJSON); os.IsNotExist(err) {
-		return nil
-	}
-
-	log.Println("legacy data found, running migration")
-
 	tarPath := filepath.Join(dataPath, "legacy.tar.gz")
-	if err := buildLegacyTarGz(dataPath, tarPath); err != nil {
-		return fmt.Errorf("build tar.gz: %w", err)
+	storeJSON := filepath.Join(dataPath, "store.json")
+
+	switch {
+	case fileExists(storeJSON):
+		log.Println("legacy store.json found, running migration")
+		if err := buildLegacyTarGz(dataPath, tarPath); err != nil {
+			return fmt.Errorf("build tar.gz: %w", err)
+		}
+	case fileExists(tarPath):
+		log.Println("legacy.tar.gz found, running migration")
+	default:
+		return nil
 	}
 
 	f, err := os.Open(tarPath)
@@ -210,6 +212,11 @@ func runLegacyMigration(dataPath string) error {
 
 	log.Printf("legacy migration complete: %d entities, %d artifacts imported", result.EntitiesImported, result.ArtifactsImported)
 	return nil
+}
+
+func fileExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
 }
 
 func buildLegacyTarGz(dataPath, tarPath string) error {
