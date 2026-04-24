@@ -27,5 +27,5 @@ runtime:
           expect(res.headers["content-type"]).to.include("image/png");
         });
         test("QR code decodes to artifact ID", function() {
-          expect(qrData).to.equal(bru.getVar("artifactId"));
+          expect(qrData).to.equal(String(bru.getVar("artifactId")));
         });

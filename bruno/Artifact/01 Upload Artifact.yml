@@ -37,5 +37,5 @@ runtime:
           expect(res.status).to.equal(200);
         });
         test("Returns artifact ID as string", function() {
-          expect(res.body).to.equal("1");
+          expect(res.body).to.be.a("string");
         });

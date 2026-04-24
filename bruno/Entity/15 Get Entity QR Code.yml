@@ -27,5 +27,5 @@ runtime:
           expect(res.headers["content-type"]).to.include("image/png");
         });
         test("QR code decodes to entity ID", function() {
-          expect(qrData).to.equal(bru.getVar("entityId"));
+          expect(qrData).to.equal(String(bru.getVar("entityId")));
         });
