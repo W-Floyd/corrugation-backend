@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { ref, computed } from "vue";
+import { ref, computed, watch } from "vue";
 import type { Entity, FullState } from "@/api/types";
 import { api, apiFetch } from "@/api";
 
@@ -24,6 +24,7 @@ export const useEntitiesStore = defineStore("entities", () => {
   const filterToOnlyImage = ref(false);
   const searching = ref(false);
   const filterworld = ref(false);
+  const apiSearchResults = ref<Entity[]>([]);
   const searchdescription = ref(true);
   const currentEntity = ref<number>(0);
   const locationtree = ref<number[]>([]);
@@ -132,6 +133,43 @@ export const useEntitiesStore = defineStore("entities", () => {
     searchtext.value = searchtextpredebounce.value;
   }
 
+  watch([searchtext, filterworld, currentEntity], async ([text]) => {
+    if (!text.trim()) {
+      searching.value = false;
+      apiSearchResults.value = [];
+      filterToMissingImage.value = false;
+      filterToOnlyImage.value = false;
+      return;
+    }
+
+    let query = text;
+    filterToMissingImage.value = query.includes("filter:missing-image");
+    filterToOnlyImage.value = !filterToMissingImage.value && query.includes("filter:only-image");
+    query = query.replace("filter:missing-image", "").replace("filter:only-image", "").trim();
+
+    searching.value = true;
+    try {
+      if (query) {
+        const scopeId = !filterworld.value && currentEntity.value !== 0
+          ? currentEntity.value
+          : undefined;
+        apiSearchResults.value = await api.searchEntities(query, scopeId);
+      } else {
+        const childIds = filterworld.value
+          ? listChildLocationsDeep(0)
+          : listChildLocationsDeep(currentEntity.value);
+        apiSearchResults.value = childIds
+          .map((id) => fullstate.value.entities[id])
+          .filter((e): e is Entity => e != null);
+      }
+    } catch (e) {
+      console.error("Search failed:", e);
+      apiSearchResults.value = [];
+    } finally {
+      searching.value = false;
+    }
+  });
+
   function selectImages(entityId: number): number[] {
     const entity = fullstate.value.entities[entityId];
     if (!entity || !entity.artifacts || entity.artifacts.length === 0) {
@@ -166,70 +204,12 @@ export const useEntitiesStore = defineStore("entities", () => {
 
   function load(matchId: number, searchText: string): Entity[] {
     if (searchText !== "") {
-      searching.value = true;
-      const children: number[] = [];
-
-      if (filterworld.value) {
-        const childIds = listChildLocationsDeep(0);
-        childIds.forEach((id) => children.push(id));
-      } else {
-        const childIds = listChildLocationsDeep(currentEntity.value);
-        childIds.forEach((id) => children.push(id));
+      let results = [...apiSearchResults.value];
+      if (filterToMissingImage.value) {
+        results = results.filter((e) => !e.artifacts || e.artifacts.length === 0);
+      } else if (filterToOnlyImage.value) {
+        results = results.filter((e) => e.artifacts && e.artifacts.length > 0);
       }
-
-      if (searchText.includes("filter:missing-image")) {
-        filterToMissingImage.value = true;
-        filterToOnlyImage.value = false;
-        searchText = searchText.replace("filter:missing-image", "");
-      } else {
-        filterToMissingImage.value = false;
-      }
-
-      if (searchText.includes("filter:only-image")) {
-        filterToMissingImage.value = false;
-        filterToOnlyImage.value = true;
-        searchText = searchText.replace("filter:only-image", "");
-      } else {
-        filterToOnlyImage.value = false;
-      }
-
-      const results: Entity[] = [];
-      for (const cid of children) {
-        const id = cid.toString();
-        const entity = fullstate.value.entities[parseInt(id, 10)];
-        if (!entity) continue;
-
-        const nameMatch = entity.name
-          ?.toLowerCase()
-          .includes(searchText.toLowerCase());
-        const descMatch = entity.description
-          ?.toLowerCase()
-          .includes(searchText.toLowerCase());
-        const idMatch = id === searchText.toLowerCase();
-
-        if (nameMatch || descMatch || idMatch) {
-          const hasImages = entity.artifacts && entity.artifacts.length > 0;
-          const hasNoImages =
-            !entity.artifacts || entity.artifacts.length === 0;
-
-          if (
-            filterToMissingImage.value &&
-            !(hasNoImages || (filterToOnlyImage.value && hasImages))
-          ) {
-            continue;
-          }
-
-          if (
-            id === searchText ||
-            entity.name?.toLowerCase() === searchText.toLowerCase()
-          ) {
-            results.unshift(entity);
-          } else {
-            results.push(entity);
-          }
-        }
-      }
-
       return results;
     } else {
       searching.value = false;

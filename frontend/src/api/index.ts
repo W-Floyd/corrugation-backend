@@ -1,4 +1,5 @@
-import type { Entity, Artifact, FullState, Metadata } from "./types";
+import type { Entity, Artifact, FullState, Metadata, BackendRecord } from "./types";
+import { recordToEntity } from "./types";
 import router from "../router";
 import { useAuthStore } from "../stores/auth";
 
@@ -107,6 +108,17 @@ export const api = {
 
   async deleteArtifact(id: number): Promise<void> {
     await apiFetch(`/api/artifact/${id}`, { method: "DELETE" });
+  },
+
+  async searchEntities(query: string, parentId?: number): Promise<Entity[]> {
+    const params = new URLSearchParams({ search: query });
+    if (parentId != null) {
+      params.set("id", String(parentId));
+      params.set("childrenDepth", "-1");
+    }
+    const response = await apiFetch(`/api/v2/records?${params}`);
+    const records: BackendRecord[] = await response.json();
+    return records.map(recordToEntity);
   },
 
   async firstFreeId(): Promise<number> {

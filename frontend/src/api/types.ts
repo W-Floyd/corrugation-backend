@@ -29,3 +29,43 @@ export interface FullState {
   artifacts: Record<number, Artifact>;
   storeversion: number;
 }
+
+export interface BackendArtifactRef {
+  ID: number;
+}
+
+export interface BackendTag {
+  Title: string;
+  Color?: string;
+}
+
+export interface BackendRecord {
+  ID: number;
+  UpdatedAt?: string;
+  Label?: string;
+  Title?: string;
+  Description?: string;
+  Quantity?: number;
+  Tags?: BackendTag[];
+  Artifacts?: BackendArtifactRef[];
+  ParentID?: number;
+  LastModifiedBy?: string;
+}
+
+export function recordToEntity(r: BackendRecord): Entity {
+  return {
+    id: r.ID,
+    name: r.Label ?? r.Title ?? null,
+    description: r.Description ?? null,
+    artifacts: r.Artifacts?.map((a) => a.ID) ?? null,
+    location: r.ParentID ?? 0,
+    metadata: {
+      quantity: r.Quantity ?? null,
+      owners: null,
+      tags: r.Tags?.map((t) => t.Title) ?? null,
+      islabeled: r.Label != null,
+      lastModified: r.UpdatedAt ?? null,
+      lastModifiedBy: r.LastModifiedBy ?? null,
+    },
+  };
+}
