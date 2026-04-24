@@ -20,7 +20,7 @@ import (
 
 type Options struct {
 	Address string `help:"Address to listen on" default:"0.0.0.0"`
-	Port    int    `help:"Port to listen on" default:"8001"`
+	Port    int    `help:"Port to listen on" default:"8083"`
 	Dist    string `help:"Dist path" default:"./dist"`
 	Data    string `help:"Data path" default:"./data"`
 }

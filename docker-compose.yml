@@ -4,7 +4,7 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - 8001:8001
+      - 8083:8083
     restart: "no"
     volumes:
       - ./corrugation:/data

@@ -465,6 +465,25 @@ func PatchEntity(ctx context.Context, input *struct {
 	return
 }
 
+var ResetStoreOperation = huma.Operation{
+	Method: http.MethodPost,
+	Path:   "/api/reset",
+}
+
+func ResetStore(ctx context.Context, input *struct{}) (output *EmptyOutput, err error) {
+	if err = db.Unscoped().Where("1 = 1").Delete(&Record{}).Error; err != nil {
+		return
+	}
+	if err = db.Unscoped().Where("1 = 1").Delete(&Artifact{}).Error; err != nil {
+		return
+	}
+	if err = db.Unscoped().Where("1 = 1").Delete(&Tag{}).Error; err != nil {
+		return
+	}
+	output = &EmptyOutput{}
+	return
+}
+
 var CreateArtifactStoreOperation = huma.Operation{
 	Method: http.MethodPost,
 	Path:   "/api/artifact",
