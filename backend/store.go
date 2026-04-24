@@ -1003,18 +1003,28 @@ var DeleteArtifactOperation = huma.Operation{
 func DeleteArtifact(ctx context.Context, input *struct {
 	ID uint `path:"id"`
 }) (output *DeleteOutput, err error) {
+	var a Artifact
+	if tx := db.Select("id", "small_preview_id", "large_preview_id").First(&a, input.ID); tx.Error != nil {
+		output = &DeleteOutput{Status: http.StatusNoContent}
+		return
+	}
+	previewIDs := []uint{}
+	if a.SmallPreviewID != nil {
+		previewIDs = append(previewIDs, *a.SmallPreviewID)
+	}
+	if a.LargePreviewID != nil {
+		previewIDs = append(previewIDs, *a.LargePreviewID)
+	}
 	result := db.Unscoped().Where("id = ?", input.ID).Delete(&Artifact{})
 	if result.Error != nil {
 		err = result.Error
 		return
 	}
-	output = &DeleteOutput{}
-	if result.RowsAffected == 0 {
-		output.Status = http.StatusNoContent
-	} else {
-		output.Status = http.StatusOK
-		Broadcast()
+	if len(previewIDs) > 0 {
+		db.Unscoped().Where("id IN ?", previewIDs).Delete(&Artifact{})
 	}
+	output = &DeleteOutput{Status: http.StatusOK}
+	Broadcast()
 	return
 }
 
@@ -1050,6 +1060,19 @@ func ListArtifacts(ctx context.Context, _ *struct{}) (output *struct{ Body []str
 var CreateArtifactStoreOperation = huma.Operation{
 	Method: http.MethodPost,
 	Path:   "/api/artifact",
+}
+
+func CreateArtifactStore(ctx context.Context, input *struct {
+	RawBody huma.MultipartFormFiles[struct {
+		File huma.FormFile `form:"file" required:"true"`
+	}]
+}) (output *StringOutput, err error) {
+	result, err := CreateArtifact(ctx, input)
+	if err != nil {
+		return
+	}
+	output = &StringOutput{Body: strconv.FormatUint(uint64(result.Body), 10)}
+	return
 }
 
 var GetArtifactStoreOperation = huma.Operation{

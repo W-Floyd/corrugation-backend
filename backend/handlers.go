@@ -45,7 +45,7 @@ func RegisterHandlers(api huma.API) {
 	huma.Register(api, GetArtifactQRCodeOperation, GetArtifactQRCode)
 	huma.Register(api, DeleteArtifactOperation, DeleteArtifact)
 	huma.Register(api, ListArtifactsOperation, ListArtifacts)
-	huma.Register(api, CreateArtifactStoreOperation, CreateArtifact)
+	huma.Register(api, CreateArtifactStoreOperation, CreateArtifactStore)
 	huma.Register(api, GetArtifactStoreOperation, GetArtifact)
 
 	huma.Register(api, ListRecordsOperation, ListRecords)
