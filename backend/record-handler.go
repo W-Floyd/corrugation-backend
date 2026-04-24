@@ -14,14 +14,15 @@ type ListRecordsInput struct {
 	ChildrenDepth int    `query:"childrenDepth" example:"2" doc:"Depth to search for children, negative values mean unlimited search" required:"false" dependentRequired:"id"`
 	ParentDepth   int    `query:"parentDepth" example:"2" doc:"Depth to search for parents, negative values mean unlimited search" required:"false" dependentRequired:"id"`
 	Search        string `query:"search" example:"Lamp" doc:"String to search embeddings with" required:"false"`
+	Timestamps    bool   `query:"timestamps" doc:"Include CreatedAt and UpdatedAt in response" required:"false"`
 }
 
 type RecordOutput struct {
-	Body Record
+	Body RecordResponse
 }
 
 type RecordsOutput struct {
-	Body []Record
+	Body []RecordResponse
 }
 
 var GetRecordOperation = huma.Operation{
@@ -30,7 +31,8 @@ var GetRecordOperation = huma.Operation{
 }
 
 func GetRecord(ctx context.Context, input *struct {
-	ID uint `path:"id" example:"1" doc:"ID to delete"`
+	ID         uint `path:"id" example:"1" doc:"ID to delete"`
+	Timestamps bool `query:"timestamps" doc:"Include CreatedAt and UpdatedAt in response" required:"false"`
 }) (output *RecordOutput, err error) {
 	var records []Record
 	records, err = GetRecords(&input.ID, nil, nil, nil, []struct {
@@ -49,7 +51,7 @@ func GetRecord(ctx context.Context, input *struct {
 		return
 	}
 	output = &RecordOutput{
-		Body: records[0],
+		Body: toRecordResponse(records[0], input.Timestamps),
 	}
 	return
 }
@@ -62,9 +64,11 @@ var ListRecordsOperation = huma.Operation{
 func ListRecords(ctx context.Context, input *ListRecordsInput) (output *RecordsOutput, err error) {
 	var records []Record
 	records, err = GetRecordsFriendly(ctx, input.ID, input.ChildrenDepth, input.ParentDepth, input.Search)
-	output = &RecordsOutput{
-		Body: records,
+	responses := make([]RecordResponse, len(records))
+	for i, r := range records {
+		responses[i] = toRecordResponse(r, input.Timestamps)
 	}
+	output = &RecordsOutput{Body: responses}
 	return
 }
 
@@ -88,7 +92,7 @@ func CreateRecord(ctx context.Context, input *struct {
 
 	err = gorm.G[Record](db).Create(dbCtx, &record)
 	output = &RecordOutput{
-		Body: record,
+		Body: toRecordResponse(record, true),
 	}
 	return
 }

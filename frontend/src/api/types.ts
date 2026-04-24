@@ -41,6 +41,7 @@ export interface BackendTag {
 
 export interface BackendRecord {
   ID: number;
+  CreatedAt?: string;
   UpdatedAt?: string;
   Label?: string;
   Title?: string;

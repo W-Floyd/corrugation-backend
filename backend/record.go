@@ -5,6 +5,7 @@ import (
 	"log"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 	"gorm.io/gorm"
@@ -154,6 +155,43 @@ func GetRecordEmbeddings() (e map[uint][]float64, err error) {
 		e[r.ID] = singleE
 	}
 	return
+}
+
+type RecordResponse struct {
+	ID          uint     `json:"ID"`
+	CreatedAt   *time.Time `json:"CreatedAt,omitempty"`
+	UpdatedAt   *time.Time `json:"UpdatedAt,omitempty"`
+	Quantity    *uint    `json:",omitempty"`
+	Label       *string  `json:",omitempty"`
+	Title       *string  `json:",omitempty"`
+	Description *string  `json:",omitempty"`
+	Tags        []*Tag   `json:",omitempty"`
+	Artifacts   []*Artifact `json:",omitempty"`
+	ParentID    *uint    `json:",omitempty"`
+	LastModifiedBy        *string  `json:",omitempty"`
+	SearchConfidenceImage *float64 `json:",omitempty"`
+	SearchConfidenceText  *float64 `json:",omitempty"`
+}
+
+func toRecordResponse(r Record, timestamps bool) RecordResponse {
+	resp := RecordResponse{
+		ID:                    r.ID,
+		Quantity:              r.Quantity,
+		Label:                 r.Label,
+		Title:                 r.Title,
+		Description:           r.Description,
+		Tags:                  r.Tags,
+		Artifacts:             r.Artifacts,
+		ParentID:              r.ParentID,
+		LastModifiedBy:        r.LastModifiedBy,
+		SearchConfidenceImage: r.SearchConfidenceImage,
+		SearchConfidenceText:  r.SearchConfidenceText,
+	}
+	if timestamps {
+		resp.CreatedAt = &r.Model.CreatedAt
+		resp.UpdatedAt = &r.Model.UpdatedAt
+	}
+	return resp
 }
 
 func (r *Record) GenerateEmbeddings() (err error) {
