@@ -5,7 +5,6 @@ import { useRouter, useRoute } from "vue-router";
 const routerReady = ref(false);
 import { useEntitiesStore } from "@/stores/entities";
 import { useCameraStore } from "@/stores/camera";
-import { useClipStore } from "@/stores/clip";
 import { useToastsStore } from "@/stores/toasts";
 import EntityCard from "@/components/EntityCard.vue";
 import CameraModal from "@/components/CameraModal.vue";
@@ -25,7 +24,6 @@ const router = useRouter();
 const route = useRoute();
 const entitiesStore = useEntitiesStore();
 const cameraStore = useCameraStore();
-const clipStore = useClipStore();
 const toastsStore = useToastsStore();
 
 const newEntityVisible = ref(false);
@@ -41,12 +39,9 @@ const searchBarRef = ref<{ focusSearch: () => void } | null>(null);
 const editingCardId = ref<number | null>(null);
 
 const visibleEntities = computed(() =>
-    clipStore.merge(
-        entitiesStore.load(
-            entitiesStore.currentEntity,
-            entitiesStore.searchtext,
-        ),
-        entitiesStore,
+    entitiesStore.load(
+        entitiesStore.currentEntity,
+        entitiesStore.searchtext,
     ),
 );
 
@@ -64,7 +59,7 @@ const handleMoveConfirmed = async (
     const idx = visibleEntities.value.findIndex((e) => e.id === entityId);
     const rest = visibleEntities.value.filter((e) => e.id !== entityId);
     const nextId =
-        rest.length > 0 ? rest[Math.min(idx, rest.length - 1)].id : null;
+        rest.length > 0 ? rest[Math.min(idx, rest.length - 1)]!.id : null;
     confirmMoveId.value = null;
     selectedEntityId.value = null;
     try {
@@ -118,7 +113,7 @@ const confirmDeleteEntity = async (entityId: number): Promise<void> => {
     const idx = visibleEntities.value.findIndex((e) => e.id === entityId);
     const nextId =
         beforeList.length > 0
-            ? beforeList[Math.min(idx, beforeList.length - 1)].id
+            ? beforeList[Math.min(idx, beforeList.length - 1)]!.id
             : null;
     deleteConfirmId.value = null;
     selectedEntityId.value = null;
@@ -192,7 +187,7 @@ const navigateGrid = (direction: "up" | "down" | "left" | "right"): void => {
     if (entities.length === 0) return;
 
     if (selectedEntityId.value === null) {
-        selectedEntityId.value = entities[0].id;
+        selectedEntityId.value = entities[0]!.id;
         return;
     }
 
@@ -275,17 +270,6 @@ const handleKeydown = (e: KeyboardEvent): void => {
             commandDialogVisible.value = true;
             break;
 
-        case "v":
-        case "V":
-            e.preventDefault();
-            clipStore.enabled = !clipStore.enabled;
-            if (!clipStore.enabled) {
-                clipStore.results = [];
-                clipStore.scores = {};
-                clipStore.searching = false;
-            }
-            break;
-
         case "t":
         case "T":
             if (!e.shiftKey && !e.metaKey && !e.ctrlKey) {
@@ -330,7 +314,7 @@ const handleKeydown = (e: KeyboardEvent): void => {
                         nextTick(() => {
                             if (visibleEntities.value.length > 0) {
                                 selectedEntityId.value =
-                                    visibleEntities.value[0].id;
+                                    visibleEntities.value[0]!.id;
                             }
                         });
                     });

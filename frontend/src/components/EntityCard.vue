@@ -2,7 +2,6 @@
 import { ref, computed, watch, nextTick, onUnmounted } from "vue";
 import { useEntitiesStore } from "@/stores/entities";
 import { useCameraStore } from "@/stores/camera";
-import { useClipStore } from "@/stores/clip";
 import { useToastsStore } from "@/stores/toasts";
 import { api } from "@/api";
 import type { Entity } from "@/api/types";
@@ -43,7 +42,6 @@ const emit = defineEmits<{
 
 const entitiesStore = useEntitiesStore();
 const cameraStore = useCameraStore();
-const clipStore = useClipStore();
 const toastsStore = useToastsStore();
 
 const cardEl = ref<HTMLElement | null>(null);
@@ -538,26 +536,18 @@ defineExpose({ cardEl });
         <!-- Match badges -->
         <div class="absolute top-2 right-2 flex gap-1 items-center">
             <div
-                v-if="
-                    entitiesStore.searchtext &&
-                    clipStore.textMatchIds.has(entity.id) &&
-                    clipStore.enabled
-                "
-                class="text-xs text-gray-400 font-medium px-1 rounded bg-gray-100 dark:bg-gray-700"
-                title="Text match"
+                v-if="entitiesStore.apiSearchScores[entity.id]?.text != null"
+                class="text-xs text-gray-400 px-1 rounded bg-gray-100 dark:bg-gray-700 cursor-default"
+                :title="`Text search: ${(entitiesStore.apiSearchScores[entity.id]!.text! * 100).toFixed(1)}%`"
             >
-                T
+                {{ Math.round(entitiesStore.apiSearchScores[entity.id]!.text! * 100) }}%T
             </div>
             <div
-                v-if="
-                    clipStore.enabled &&
-                    clipStore.scores[entity.id] !== undefined &&
-                    clipStore.scores[entity.id] !== null
-                "
+                v-if="entitiesStore.apiSearchScores[entity.id]?.image != null && entitiesStore.apiSearchScores[entity.id]!.image! > 0"
                 class="text-xs text-gray-400 px-1 rounded bg-gray-100 dark:bg-gray-700 cursor-default"
-                :title="`Visual: ${(clipStore.scores[entity.id]! * 100).toFixed(1)}%`"
+                :title="`Image search: ${(entitiesStore.apiSearchScores[entity.id]!.image! * 100).toFixed(1)}%`"
             >
-                {{ Math.round(clipStore.scores[entity.id]! * 100) }}%
+                {{ Math.round(entitiesStore.apiSearchScores[entity.id]!.image! * 100) }}%I
             </div>
         </div>
 

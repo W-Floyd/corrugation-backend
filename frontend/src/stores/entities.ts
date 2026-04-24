@@ -25,6 +25,7 @@ export const useEntitiesStore = defineStore("entities", () => {
   const searching = ref(false);
   const filterworld = ref(false);
   const apiSearchResults = ref<Entity[]>([]);
+  const apiSearchScores = ref<Record<number, { image?: number; text?: number }>>({});
   const searchdescription = ref(true);
   const currentEntity = ref<number>(0);
   const locationtree = ref<number[]>([]);
@@ -137,6 +138,7 @@ export const useEntitiesStore = defineStore("entities", () => {
     if (!text.trim()) {
       searching.value = false;
       apiSearchResults.value = [];
+      apiSearchScores.value = {};
       filterToMissingImage.value = false;
       filterToOnlyImage.value = false;
       return;
@@ -153,7 +155,13 @@ export const useEntitiesStore = defineStore("entities", () => {
         const scopeId = !filterworld.value && currentEntity.value !== 0
           ? currentEntity.value
           : undefined;
-        apiSearchResults.value = await api.searchEntities(query, scopeId);
+        const results = await api.searchEntities(query, scopeId);
+        apiSearchResults.value = results.map((r) => r.entity);
+        const scores: Record<number, { image?: number; text?: number }> = {};
+        for (const r of results) {
+          scores[r.entity.id] = { image: r.imageScore, text: r.textScore };
+        }
+        apiSearchScores.value = scores;
       } else {
         const childIds = filterworld.value
           ? listChildLocationsDeep(0)
@@ -243,6 +251,7 @@ export const useEntitiesStore = defineStore("entities", () => {
     filterToOnlyImage,
     searching,
     filterworld,
+    apiSearchScores,
     searchdescription,
     currentEntity,
     locationtree,

@@ -57,6 +57,7 @@ func RegisterHandlers(api huma.API) {
 	huma.Register(api, DeleteRecordOperation, DeleteRecord)
 
 	huma.Register(api, VisualizeGraphRecordsOperation, VisualizeGraphRecords)
+	huma.Register(api, FlushStaleEmbeddingsOperation, FlushStaleEmbeddings)
 
 	huma.Register(api, CreateArtifactOperation, CreateArtifact)
 	huma.Register(api, GetArtifactOperation, GetArtifact)

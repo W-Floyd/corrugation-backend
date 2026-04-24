@@ -178,8 +178,8 @@ func GetRecords(ID *uint, childrenDepth *int, parentDepth *int, search *string, 
 
 		for _, r := range artifactSearch {
 			score, ok := bestImageScore[r.id]
-			if !ok || normalizeImageSearchScore(r.score) > normalizeImageSearchScore(score) {
-				bestImageScore[r.id] = normalizeImageSearchScore(r.score)
+			if !ok || r.score > score {
+				bestImageScore[r.id] = r.score
 				if bestImageScore[r.id] > bestScore[r.id] {
 					bestScore[r.id] = bestImageScore[r.id]
 				}
@@ -187,7 +187,7 @@ func GetRecords(ID *uint, childrenDepth *int, parentDepth *int, search *string, 
 		}
 
 		for _, r := range recordSearch {
-			textScore[r.id] = normalizeTextSearchScore(r.score)
+			textScore[r.id] = r.score
 			if textScore[r.id] > bestScore[r.id] {
 				bestScore[r.id] = textScore[r.id]
 			}
@@ -232,8 +232,8 @@ func GetRecords(ID *uint, childrenDepth *int, parentDepth *int, search *string, 
 		for _, rid := range recordIDs {
 			r, ok := recordMap[rid]
 			if ok && r != nil {
-				is := textScore[rid]
-				ts := bestImageScore[rid]
+				is := bestImageScore[rid]
+				ts := textScore[rid]
 				r.SearchConfidenceImage = &is
 				r.SearchConfidenceText = &ts
 				filteredSortedRecords = append(filteredSortedRecords, *r)

@@ -2,6 +2,7 @@ package backend
 
 import (
 	"context"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -85,12 +86,14 @@ func CreateRecord(ctx context.Context, input *struct {
 		return
 	}
 
-	err = record.GenerateEmbeddings()
+	err = gorm.G[Record](db).Create(dbCtx, &record)
 	if err != nil {
 		return
 	}
-
-	err = gorm.G[Record](db).Create(dbCtx, &record)
+	if _, genErr := record.GenerateEmbeddings(); genErr != nil {
+		log.Println("embedding generation failed:", genErr)
+	}
+	err = nil
 	output = &RecordOutput{
 		Body: toRecordResponse(record, true),
 	}
@@ -143,6 +146,43 @@ func DeleteRecord(ctx context.Context, input *struct {
 		err = huma.Error404NotFound(errorRecordNotFound + " " + strconv.Itoa(int(input.ID)))
 	}
 	output = &EmptyOutput{}
+	return
+}
+
+var FlushStaleEmbeddingsOperation = huma.Operation{
+	Method: http.MethodPost,
+	Path:   "/api/v2/embeddings/flush",
+}
+
+func FlushStaleEmbeddings(ctx context.Context, _ *struct{}) (output *struct {
+	Body struct {
+		RecordsFlushed   int64 `json:"recordsFlushed"`
+		ArtifactsFlushed int64 `json:"artifactsFlushed"`
+	}
+}, err error) {
+	stale := "embed_model != ?"
+
+	recordsFlushed, err := gorm.G[Embedding](db).Where("record_id IS NOT NULL AND "+stale, infinityModel).Delete(dbCtx)
+	if err != nil {
+		return
+	}
+	artifactsFlushed, err := gorm.G[Embedding](db).Where("artifact_id IS NOT NULL AND "+stale, infinityModel).Delete(dbCtx)
+	if err != nil {
+		return
+	}
+
+	output = &struct {
+		Body struct {
+			RecordsFlushed   int64 `json:"recordsFlushed"`
+			ArtifactsFlushed int64 `json:"artifactsFlushed"`
+		}
+	}{Body: struct {
+		RecordsFlushed   int64 `json:"recordsFlushed"`
+		ArtifactsFlushed int64 `json:"artifactsFlushed"`
+	}{
+		RecordsFlushed:   int64(recordsFlushed),
+		ArtifactsFlushed: int64(artifactsFlushed),
+	}}
 	return
 }
 

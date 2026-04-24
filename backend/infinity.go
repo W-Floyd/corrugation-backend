@@ -94,7 +94,10 @@ func GenerateEmbeddings(input string) (e Embeddings, err error) {
 }
 
 func (i *Image) GenerateEmbeddings() (err error) {
-
+	if i.ID == 0 {
+		err = errors.New("artifact must be persisted before generating embeddings")
+		return
+	}
 	if i.Data == nil || len(*i.Data) == 0 {
 		err = errors.New("no data in image")
 		return
@@ -106,10 +109,8 @@ func (i *Image) GenerateEmbeddings() (err error) {
 	infinityRequest := infinityEmbeddingsRequest{
 		Model:          infinityModel,
 		EncodingFormat: "float",
-		Input: []string{
-			base64Image,
-		},
-		Modality: "image",
+		Input:          []string{base64Image},
+		Modality:       "image",
 	}
 
 	e, err := infinityRequest.GenerateEmbeddings()
@@ -117,15 +118,29 @@ func (i *Image) GenerateEmbeddings() (err error) {
 		return
 	}
 
-	hash, jsonData, err := e.MarshalEmbeddings()
-	if err != nil {
-		return
-	}
-	i.Embedding = &jsonData
-	i.EmbeddingHash = &hash
-
+	id := i.ID
+	err = saveEmbedding(nil, &id, e)
 	return
+}
 
+func AverageEmbeddings(vecs []Embeddings) (Embeddings, error) {
+	if len(vecs) == 0 {
+		return nil, errors.New("no embeddings to average")
+	}
+	dim := len(vecs[0])
+	for _, v := range vecs {
+		if len(v) != dim {
+			return nil, errors.New("embedding dimension mismatch")
+		}
+	}
+	avg := make(Embeddings, dim)
+	n := float64(len(vecs))
+	for _, v := range vecs {
+		for i, x := range v {
+			avg[i] += x / n
+		}
+	}
+	return avg, nil
 }
 
 func (e *Embeddings) MarshalEmbeddings() (hash string, jsonData []byte, err error) {

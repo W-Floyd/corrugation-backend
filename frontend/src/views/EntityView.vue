@@ -3,7 +3,6 @@ import { ref, computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useEntitiesStore } from "@/stores/entities";
 import { useCameraStore } from "@/stores/camera";
-import { useClipStore } from "@/stores/clip";
 import { useToastsStore } from "@/stores/toasts";
 import { api } from "@/api";
 import type { Entity } from "@/api/types";
@@ -12,7 +11,6 @@ const route = useRoute();
 const router = useRouter();
 const entitiesStore = useEntitiesStore();
 const cameraStore = useCameraStore();
-const clipStore = useClipStore();
 const toastsStore = useToastsStore();
 
 const isLoading = computed(() => entitiesStore.isLoading);
@@ -161,12 +159,9 @@ const handleMoveEntitySubmit = async (): Promise<void> => {
             <!-- Entity grid -->
             <div class="flex flex-wrap justify-center gap-4">
                 <EntityCard
-                    v-for="entity in clipStore.merge(
-                        entitiesStore.load(
-                            entitiesStore.currentEntity,
-                            entitiesStore.searchtext,
-                        ),
-                        entitiesStore,
+                    v-for="entity in entitiesStore.load(
+                        entitiesStore.currentEntity,
+                        entitiesStore.searchtext,
                     )"
                     :key="entity.id"
                     :entity="entity"

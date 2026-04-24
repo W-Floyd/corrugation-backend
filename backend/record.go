@@ -39,8 +39,6 @@ type Record struct {
 
 	LastModifiedBy *string `json:",omitempty"`
 
-	Embedding     *[]byte `json:"-"` // JSON of embedding data
-	EmbeddingHash *string `json:"-"` // Hash of JSON of embedding data (to allow caching)
 
 	SearchConfidenceImage *float64 `gorm:"-" json:",omitempty"`
 	SearchConfidenceText  *float64 `gorm:"-" json:",omitempty"`
@@ -116,44 +114,51 @@ func (record *Record) PrettyString() (output string) {
 }
 
 func GetRecordEmbeddings() (e map[uint][]float64, err error) {
-	records, err := GetRecords(nil, nil, nil, nil, nil, []string{"id", "embedding", "embedding_hash", "title", "label", "description"})
+	embeddings, err := gorm.G[Embedding](db).Where("record_id IS NOT NULL AND embed_model = ?", infinityModel).Find(dbCtx)
 	if err != nil {
 		return
 	}
 
 	e = map[uint][]float64{}
+	embeddedIDs := map[uint]bool{}
+
+	for _, emb := range embeddings {
+		if emb.RecordID == nil {
+			continue
+		}
+		var vec []float64
+		if cached, ok := embeddingsCache[emb.Hash]; ok {
+			vec = cached
+		} else {
+			if err = json.Unmarshal(emb.Data, &vec); err != nil {
+				return
+			}
+			embeddingsCache[emb.Hash] = vec
+		}
+		e[*emb.RecordID] = vec
+		embeddedIDs[*emb.RecordID] = true
+	}
+
+	records, err := GetRecords(nil, nil, nil, nil, nil, []string{"id", "title", "label", "description"})
+	if err != nil {
+		return
+	}
 
 	for _, record := range records {
+		if embeddedIDs[record.ID] {
+			continue
+		}
 		r := &record
-		if r.EmbeddingHash == nil || r.Embedding == nil {
-			err = r.GenerateEmbeddings()
-			if err != nil {
-				return
-			}
-
-			_, err = gorm.G[Record](db).Where("id = ?", r.ID).Update(dbCtx, "embedding", *r.Embedding)
-			if err != nil {
-				return
-			}
-			_, err = gorm.G[Record](db).Where("id = ?", r.ID).Update(dbCtx, "embedding_hash", r.EmbeddingHash)
-			if err != nil {
-				return
-			}
+		vec, genErr := r.GenerateEmbeddings()
+		if genErr != nil {
+			log.Printf("embedding generation failed for record %d: %v", r.ID, genErr)
+			continue
 		}
-
-		var singleE []float64
-		singleE, ok := embeddingsCache[*r.EmbeddingHash]
-		if !ok {
-			singleE = []float64{}
-			subErr := json.Unmarshal(*r.Embedding, &singleE)
-			if subErr != nil {
-				err = subErr
-				return
-			}
-			embeddingsCache[*r.EmbeddingHash] = singleE
+		if vec != nil {
+			e[r.ID] = vec
 		}
-		e[r.ID] = singleE
 	}
+
 	return
 }
 
@@ -194,32 +199,28 @@ func toRecordResponse(r Record, timestamps bool) RecordResponse {
 	return resp
 }
 
-func (r *Record) GenerateEmbeddings() (err error) {
-	search := []string{}
+func (r *Record) GenerateEmbeddings() (vec Embeddings, err error) {
+	parts := []string{}
 	if r.Title != nil && *r.Title != "" {
-		search = append(search, *r.Title)
+		parts = append(parts, *r.Title)
 	}
 	if r.Label != nil && *r.Label != "" {
-		search = append(search, *r.Label)
+		parts = append(parts, *r.Label)
 	}
 	if r.Description != nil && *r.Description != "" {
-		search = append(search, *r.Description)
+		parts = append(parts, *r.Description)
 	}
 
-	log.Println("hgmmm")
+	if len(parts) == 0 {
+		return
+	}
 
-	e, err := GenerateEmbeddings(strings.Join(search, " - "))
+	vec, err = GenerateEmbeddings(strings.Join(parts, " - "))
 	if err != nil {
 		return
 	}
 
-	hash, jsonData, err := e.MarshalEmbeddings()
-	if err != nil {
-		return
-	}
-	r.Embedding = &jsonData
-	r.EmbeddingHash = &hash
-
+	id := r.ID
+	err = saveEmbedding(&id, nil, vec)
 	return
-
 }

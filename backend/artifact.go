@@ -42,10 +42,6 @@ type Artifact struct {
 	LargePreview   *Artifact `json:"-" gorm:"foreignKey:LargePreviewID"`
 
 	RecordID *uint `json:",omitempty"`
-
-	Embedding     *[]byte `json:"-"` // JSON of embedding data
-	EmbeddingHash *string `json:"-"` // Hash of JSON of embedding data (to allow caching)
-
 }
 
 func GetArtifactFromDB(ID uint) (artifact Artifact, err error) {
@@ -95,13 +91,6 @@ func (i *Image) Store(file huma.FormFile) (err error) {
 	}
 
 	i.Data = &b
-
-	err = i.GenerateEmbeddings()
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
 	i.OriginalFilename = &file.Filename
 	i.ContentType = &file.ContentType
 
@@ -120,6 +109,11 @@ func (i *Image) Store(file huma.FormFile) (err error) {
 	}
 
 	*i = Image(a)
+
+	if err = i.GenerateEmbeddings(); err != nil {
+		log.Println("embedding generation failed:", err)
+		err = nil
+	}
 
 	return
 }
@@ -291,44 +285,45 @@ func (i *Image) GetID() (output uint) {
 	return i.ID
 }
 
-func GetArtifactEmbeddings() (e map[uint]*struct {
+type artifactEmbedding struct {
 	embedding []float64
-	artifact  *Artifact
-}, err error) {
-	artifacts, err := gorm.G[Artifact](db).Select("id", "embedding", "embedding_hash", "record_id").Find(dbCtx)
+	recordID  *uint
+}
+
+func GetArtifactEmbeddings() (e map[uint]*artifactEmbedding, err error) {
+	embeddings, err := gorm.G[Embedding](db).Where("artifact_id IS NOT NULL AND embed_model = ?", infinityModel).Find(dbCtx)
 	if err != nil {
 		return
 	}
 
-	e = map[uint]*struct {
-		embedding []float64
-		artifact  *Artifact
-	}{}
-
+	artifacts, err := gorm.G[Artifact](db).Select("id", "record_id").Find(dbCtx)
+	if err != nil {
+		return
+	}
+	artifactRecordMap := map[uint]*uint{}
 	for _, a := range artifacts {
-		if a.Embedding == nil {
+		artifactRecordMap[a.ID] = a.RecordID
+	}
+
+	e = map[uint]*artifactEmbedding{}
+	for _, emb := range embeddings {
+		if emb.ArtifactID == nil {
 			continue
 		}
-		var singleE []float64
-		singleE, ok := embeddingsCache[*a.EmbeddingHash]
-		if !ok {
-			singleE = []float64{}
-			subErr := json.Unmarshal(*a.Embedding, &singleE)
-			if subErr != nil {
-				err = subErr
+		var vec []float64
+		if cached, ok := embeddingsCache[emb.Hash]; ok {
+			vec = cached
+		} else {
+			if err = json.Unmarshal(emb.Data, &vec); err != nil {
 				return
 			}
-			embeddingsCache[*a.EmbeddingHash] = singleE
+			embeddingsCache[emb.Hash] = vec
 		}
-		e[a.ID] = &struct {
-			embedding []float64
-			artifact  *Artifact
-		}{
-			embedding: singleE,
-			artifact:  &a,
+		e[*emb.ArtifactID] = &artifactEmbedding{
+			embedding: vec,
+			recordID:  artifactRecordMap[*emb.ArtifactID],
 		}
 	}
 
 	return
-
 }

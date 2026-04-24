@@ -9,14 +9,6 @@ const (
 	minimumTextSearchConfidence  float64 = 0.9
 )
 
-func normalizeImageSearchScore(s float64) float64 {
-	return (s - minimumImageSearchConfidence) * (1 / minimumImageSearchConfidence)
-}
-
-func normalizeTextSearchScore(s float64) float64 {
-	return (s - minimumTextSearchConfidence) * (1 / (1 - minimumTextSearchConfidence))
-}
-
 func dotProduct(v1 []float64, v2 []float64) (dotProduct float64, err error) {
 	if len(v1) != len(v2) {
 		err = errors.New("vectors should have same lenghth")
@@ -48,12 +40,12 @@ func SearchByArtifact(search string, threshold float64) (recordResults []struct 
 		if err != nil {
 			return
 		}
-		if p > threshold && e.artifact.RecordID != nil {
+		if p > threshold && e.recordID != nil {
 			recordResults = append(recordResults, struct {
 				id    uint
 				score float64
 			}{
-				id:    *e.artifact.RecordID,
+				id:    *e.recordID,
 				score: p,
 			})
 		}

@@ -51,6 +51,8 @@ export interface BackendRecord {
   Artifacts?: BackendArtifactRef[];
   ParentID?: number;
   LastModifiedBy?: string;
+  SearchConfidenceImage?: number;
+  SearchConfidenceText?: number;
 }
 
 export function recordToEntity(r: BackendRecord): Entity {
