@@ -1,0 +1,54 @@
+info:
+  name: Replace Entity
+  type: http
+  seq: 6
+
+http:
+  method: PUT
+  url: "{{baseUrl}}/api/entity/{{entityId}}"
+  headers:
+    - name: content-type
+      value: application/json
+    - name: accept
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "name": "Bruno Test Box (replaced)",
+        "description": "Updated by PUT",
+        "location": 0,
+        "metadata": {
+          "quantity": 5,
+          "owners": ["tester"],
+          "tags": ["test", "replaced"],
+          "islabeled": false
+        }
+      }
+  auth:
+    type: bearer
+    token: "{{authToken}}"
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("Returns 200", function() {
+          expect(res.status).to.equal(200);
+        });
+        test("Top-level fields are correct", function() {
+          expect(res.body.id).to.equal(1);
+          expect(res.body.name).to.equal("Bruno Test Box (replaced)");
+          expect(res.body.description).to.equal("Updated by PUT");
+          expect(res.body.artifacts).to.be.null;
+          expect(res.body.location).to.equal(0);
+        });
+        test("Metadata is correct", function() {
+          const m = res.body.metadata;
+          expect(m.quantity).to.equal(5);
+          expect(m.owners).to.deep.equal(["tester"]);
+          expect(m.tags).to.deep.equal(["test", "replaced"]);
+          expect(m.islabeled).to.equal(false);
+          expect(m.lastmodifiedby).to.equal("admin");
+          expect(m.lastmodified).to.be.a("string").and.not.empty;
+        });

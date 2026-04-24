@@ -3,3 +3,6 @@
 corrugation-backend
 /dist/
 /main
+**/node_modules/
+/infinity/
+*.sqlite

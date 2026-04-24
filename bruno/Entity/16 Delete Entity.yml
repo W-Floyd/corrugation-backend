@@ -1,0 +1,22 @@
+info:
+  name: Delete Entity
+  type: http
+  seq: 16
+
+http:
+  method: DELETE
+  url: "{{baseUrl}}/api/entity/{{entityId}}"
+  headers:
+    - name: accept
+      value: application/json
+  auth:
+    type: bearer
+    token: "{{authToken}}"
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("Returns 200", function() {
+          expect(res.status).to.equal(200);
+        });
