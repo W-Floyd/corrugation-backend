@@ -233,10 +233,23 @@ func GetRecords(ID *uint, childrenDepth *int, parentDepth *int, search *RecordQu
 		slices.Sort(recordIDs)
 		recordIDs = slices.Compact(recordIDs)
 
+		avgScore := func(id uint) float64 {
+			img, txt := bestImageScore[id], textScore[id]
+			switch {
+			case img > 0 && txt > 0:
+				return (img + txt) / 2.0
+			case img > 0:
+				return img
+			default:
+				return txt
+			}
+		}
+
 		slices.SortFunc(recordIDs, func(a uint, b uint) int {
-			if bestScore[a] > bestScore[b] {
+			sa, sb := avgScore(a), avgScore(b)
+			if sa > sb {
 				return -1
-			} else if bestScore[a] < bestScore[b] {
+			} else if sa < sb {
 				return 1
 			}
 			return 0
