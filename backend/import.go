@@ -58,7 +58,18 @@ func Import(ctx context.Context, input *struct {
 
 	f := input.RawBody.Data().File
 
-	gz, err := gzip.NewReader(f)
+	result, err := ImportFromReader(ctx, f, input.Reset)
+	if err != nil {
+		return
+	}
+
+	output = &struct{ Body ImportResult }{Body: result}
+	return
+}
+
+// ImportFromReader imports legacy data from a tar.gz reader.
+func ImportFromReader(ctx context.Context, r io.Reader, reset bool) (result ImportResult, err error) {
+	gz, err := gzip.NewReader(r)
 	if err != nil {
 		err = huma.Error400BadRequest("not a gzip file: " + err.Error())
 		return
@@ -111,7 +122,7 @@ func Import(ctx context.Context, input *struct {
 		}
 	}
 
-	if input.Reset {
+	if reset {
 		tables := []string{"record_tags", "artifacts", "records", "tags"}
 		for _, table := range tables {
 			if e := db.Exec("DELETE FROM " + table).Error; e != nil {
@@ -128,7 +139,6 @@ func Import(ctx context.Context, input *struct {
 	}
 
 	// Import artifacts first (entities reference them by ID)
-	artifactsImported := 0
 	ct := "image/webp"
 	for id, data := range artifactData {
 		d := make([]byte, len(data))
@@ -144,11 +154,10 @@ func Import(ctx context.Context, input *struct {
 			// Skip if already exists
 			continue
 		}
-		artifactsImported++
+		result.ArtifactsImported++
 	}
 
 	// Import entities
-	entitiesImported := 0
 	for _, le := range store.Entities {
 		r := Record{}
 		r.ID = uint(le.ID)
@@ -201,15 +210,10 @@ func Import(ctx context.Context, input *struct {
 		if e := db.Create(&r).Error; e != nil {
 			continue
 		}
-		entitiesImported++
+		result.EntitiesImported++
 	}
 
 	Broadcast()
-
-	output = &struct{ Body ImportResult }{Body: ImportResult{
-		EntitiesImported:  entitiesImported,
-		ArtifactsImported: artifactsImported,
-	}}
 	return
 }
 

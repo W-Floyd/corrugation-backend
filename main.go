@@ -1,6 +1,8 @@
 package main
 
 import (
+	"archive/tar"
+	"compress/gzip"
 	"context"
 	"fmt"
 	"io/fs"
@@ -41,13 +43,24 @@ func main() {
 				log.Fatalln(err)
 			}
 		}
-		err := backend.ConnectDB(filepath.Join(options.Data, "db.sqlite"))
+
+		dbPath := filepath.Join(options.Data, "db.sqlite")
+		_, dbStatErr := os.Stat(dbPath)
+		dbExists := dbStatErr == nil
+
+		err := backend.ConnectDB(dbPath)
 		if err != nil {
 			log.Fatalln(err)
 		}
 		err = backend.InitAndMigrateDB()
 		if err != nil {
 			log.Fatalln(err)
+		}
+
+		if !dbExists {
+			if err := runLegacyMigration(options.Data); err != nil {
+				log.Printf("legacy migration failed: %v", err)
+			}
 		}
 
 		assets := []string{}
@@ -164,6 +177,85 @@ func main() {
 	// Run the CLI. When passed no commands, it starts the server.
 	cli.Run()
 
+}
+
+func runLegacyMigration(dataPath string) error {
+	storeJSON := filepath.Join(dataPath, "store.json")
+	if _, err := os.Stat(storeJSON); os.IsNotExist(err) {
+		return nil
+	}
+
+	log.Println("legacy data found, running migration")
+
+	tarPath := filepath.Join(dataPath, "legacy.tar.gz")
+	if err := buildLegacyTarGz(dataPath, tarPath); err != nil {
+		return fmt.Errorf("build tar.gz: %w", err)
+	}
+
+	f, err := os.Open(tarPath)
+	if err != nil {
+		return fmt.Errorf("open tar.gz: %w", err)
+	}
+	defer f.Close()
+
+	result, err := backend.ImportFromReader(context.Background(), f, false)
+	if err != nil {
+		return fmt.Errorf("import: %w", err)
+	}
+
+	log.Printf("legacy migration complete: %d entities, %d artifacts imported", result.EntitiesImported, result.ArtifactsImported)
+	return nil
+}
+
+func buildLegacyTarGz(dataPath, tarPath string) error {
+	out, err := os.Create(tarPath)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	gw := gzip.NewWriter(out)
+	defer gw.Close()
+	tw := tar.NewWriter(gw)
+	defer tw.Close()
+
+	addFile := func(name, arcName string) error {
+		data, err := os.ReadFile(name)
+		if err != nil {
+			return err
+		}
+		hdr := &tar.Header{
+			Name: arcName,
+			Mode: 0644,
+			Size: int64(len(data)),
+		}
+		if err := tw.WriteHeader(hdr); err != nil {
+			return err
+		}
+		_, err = tw.Write(data)
+		return err
+	}
+
+	if err := addFile(filepath.Join(dataPath, "store.json"), "store.json"); err != nil {
+		return fmt.Errorf("store.json: %w", err)
+	}
+
+	artifactsDir := filepath.Join(dataPath, "artifacts")
+	entries, err := os.ReadDir(artifactsDir)
+	if err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("read artifacts dir: %w", err)
+	}
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".webp") {
+			continue
+		}
+		src := filepath.Join(artifactsDir, e.Name())
+		if err := addFile(src, "artifacts/"+e.Name()); err != nil {
+			log.Printf("skipping artifact %s: %v", e.Name(), err)
+		}
+	}
+
+	return nil
 }
 
 type CustomResponseWriter struct {
