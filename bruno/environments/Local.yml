@@ -2,6 +2,8 @@ name: Local
 variables:
   - name: baseUrl
     value: http://localhost:8083
+  - name: wsUrl
+    value: ws://localhost:8083
   - secret: true
     name: authToken
   - name: username

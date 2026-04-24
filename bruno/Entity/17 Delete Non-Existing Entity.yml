@@ -1,0 +1,22 @@
+info:
+  name: Delete Non-Existing Entity
+  type: http
+  seq: 17
+
+http:
+  method: DELETE
+  url: "{{baseUrl}}/api/entity/9999"
+  headers:
+    - name: accept
+      value: application/json
+  auth:
+    type: bearer
+    token: "{{authToken}}"
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("Returns 204 for non-existing entity", function() {
+          expect(res.status).to.equal(204);
+        });
