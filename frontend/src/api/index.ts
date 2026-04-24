@@ -127,12 +127,14 @@ export const api = {
     await apiFetch(`/api/artifact/${id}`, { method: "DELETE" });
   },
 
-  async searchEntities(query: string, parentId?: number): Promise<{ entity: Entity; imageScore?: number; textScore?: number }[]> {
+  async searchEntities(query: string, parentId?: number, searchDescription = true, searchLabel = true): Promise<{ entity: Entity; imageScore?: number; textScore?: number }[]> {
     const params = new URLSearchParams({ search: query });
     if (parentId != null) {
       params.set("id", String(parentId));
       params.set("childrenDepth", "-1");
     }
+    if (searchDescription) params.set("searchDescription", "true");
+    if (searchLabel) params.set("searchLabel", "true");
     const response = await apiFetch(`/api/v2/records?${params}`);
     const records: BackendRecord[] = await response.json();
     return records.map((r) => ({

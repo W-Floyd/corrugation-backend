@@ -11,13 +11,17 @@ const (
 )
 
 var (
-	infinityAddress    = "http://localhost:8002"
-	infinityImageModel = "openai/clip-vit-large-patch14"
-	infinityTextModel  = "wkcn/TinyCLIP-ViT-8M-16-Text-3M-YFCC15M"
+	infinityAddress            = "http://infinity:8002"
+	infinityImageModel         = "openai/clip-vit-large-patch14"
+	infinityTextModel          = "BAAI/bge-large-en-v1.5"
+	infinityTextQueryPrefix    = "Represent this sentence for searching relevant passages: "
+	infinityTextDocumentPrefix = ""
 )
 
-func SetInfinityConfig(address, textModel string, imageModel string) {
+func SetInfinityConfig(address, textModel, imageModel, textQueryPrefix, textDocumentPrefix string) {
 	infinityAddress = address
 	infinityImageModel = imageModel
 	infinityTextModel = textModel
+	infinityTextQueryPrefix = textQueryPrefix
+	infinityTextDocumentPrefix = textDocumentPrefix
 }

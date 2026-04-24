@@ -7,6 +7,7 @@ import (
 	"io"
 	"slices"
 	"strconv"
+	"strings"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-echarts/go-echarts/v2/charts"
@@ -16,23 +17,27 @@ import (
 	"gorm.io/gorm"
 )
 
-func GetRecordsFriendly(ctx context.Context, inputID uint, inputChildrenDepth int, inputParentDepth int, inputSearch string) (records []Record, err error) {
+type RecordQuery struct {
+	Query             string
+	SearchDescription bool
+	SearchLabel       bool
+	ChildrenDepth     int
+	ParentDepth       int
+}
+
+func GetRecordsFriendly(ctx context.Context, inputID uint, search *RecordQuery) (records []Record, err error) {
 	var ID *uint
 	var ChildrenDepth, ParentDepth *int
-	var Search *string
 	if inputID != 0 {
 		ID = &inputID
 	}
-	if inputChildrenDepth != 0 {
-		ChildrenDepth = &inputChildrenDepth
+	if search != nil && search.ChildrenDepth != 0 {
+		ChildrenDepth = &search.ChildrenDepth
 	}
-	if inputParentDepth != 0 {
-		ParentDepth = &inputParentDepth
+	if search != nil && search.ParentDepth != 0 {
+		ParentDepth = &search.ParentDepth
 	}
-	if inputSearch != "" {
-		Search = &inputSearch
-	}
-	records, err = GetRecords(ID, ChildrenDepth, ParentDepth, Search, []struct {
+	records, err = GetRecords(ID, ChildrenDepth, ParentDepth, search, []struct {
 		q string
 		h func(db gorm.PreloadBuilder) error
 	}{
@@ -47,7 +52,7 @@ func GetRecordsFriendly(ctx context.Context, inputID uint, inputChildrenDepth in
 	return
 }
 
-func GetRecords(ID *uint, childrenDepth *int, parentDepth *int, search *string, preload []struct {
+func GetRecords(ID *uint, childrenDepth *int, parentDepth *int, search *RecordQuery, preload []struct {
 	q string
 	h func(db gorm.PreloadBuilder) error
 }, selects []string) (records []Record, err error) {
@@ -163,22 +168,18 @@ func GetRecords(ID *uint, childrenDepth *int, parentDepth *int, search *string, 
 			id    uint
 			score float64
 		}
-		artifactSearch, err = SearchByArtifact(*search, minimumImageSearchConfidence, scopedIDs)
+		artifactSearch, err = SearchByArtifact(search.Query, scopedIDs)
 		if err != nil {
 			return
 		}
 
-		recordSearch, err = SearchByRecord(*search, minimumTextSearchConfidence)
+		recordSearch, err = SearchByRecord(search.Query)
 		if err != nil {
 			return
 		}
-
-		// searchResults := append(artifactSearch, recordSearch...)
 
 		textScore := map[uint]float64{}
-
 		bestImageScore := map[uint]float64{}
-
 		bestScore := map[uint]float64{}
 
 		for _, r := range artifactSearch {
@@ -198,38 +199,47 @@ func GetRecords(ID *uint, childrenDepth *int, parentDepth *int, search *string, 
 			}
 		}
 
+		searchLower := strings.ToLower(search.Query)
+		for _, r := range records {
+			var desc *string
+			if search.SearchDescription {
+				desc = r.Description
+			}
+			var label *string
+			if search.SearchLabel {
+				label = r.Label
+			}
+			score := maxFieldScore(searchLower, r.Title, label, desc)
+			if score > textScore[r.ID] {
+				textScore[r.ID] = score
+			}
+			if textScore[r.ID] > bestScore[r.ID] {
+				bestScore[r.ID] = textScore[r.ID]
+			}
+		}
+
 		var recordMap = map[uint]*Record{}
 		for _, r := range records {
-			// if (r.Title != nil && strings.Contains(strings.ToLower(*r.Title), strings.ToLower(*search))) ||
-			// 	(r.Label != nil && strings.Contains(strings.ToLower(*r.Label), strings.ToLower(*search))) ||
-			// 	(r.Description != nil && strings.Contains(strings.ToLower(*r.Description), strings.ToLower(*search))) {
-
-			// 	textScore[r.ID] = 1
-			// }
 			recordMap[r.ID] = &r
 		}
 
 		recordIDs := []uint{}
-
-		for id := range textScore {
-			recordIDs = append(recordIDs, id)
-		}
-		for id := range bestImageScore {
-			recordIDs = append(recordIDs, id)
+		for id := range bestScore {
+			if bestImageScore[id] >= minimumImageSearchConfidence || textScore[id] >= minimumTextSearchConfidence {
+				recordIDs = append(recordIDs, id)
+			}
 		}
 
 		slices.Sort(recordIDs)
-		slices.Compact(recordIDs)
+		recordIDs = slices.Compact(recordIDs)
 
 		slices.SortFunc(recordIDs, func(a uint, b uint) int {
-
 			if bestScore[a] > bestScore[b] {
 				return -1
 			} else if bestScore[a] < bestScore[b] {
 				return 1
-			} else {
-				return 0
 			}
+			return 0
 		})
 
 		var filteredSortedRecords []Record
@@ -283,7 +293,7 @@ func GetChildrenRecurse(parentID uint, searchDepth int, currentDepth int) (recor
 
 func GetRecordsGraphFriendly(ctx context.Context, inputID uint, inputChildrenDepth int, inputParentDepth int) (graphOutput string, err error) {
 	var records []Record
-	records, err = GetRecordsFriendly(ctx, inputID, inputChildrenDepth, inputParentDepth, "")
+	records, err = GetRecordsFriendly(ctx, inputID, &RecordQuery{ChildrenDepth: inputChildrenDepth, ParentDepth: inputParentDepth})
 
 	recordMap := make(map[uint]*Record)
 
@@ -314,7 +324,7 @@ func GetRecordsGraphFriendly(ctx context.Context, inputID uint, inputChildrenDep
 
 func GetRecordsGraphFriendlyNative(ctx context.Context, inputID uint, inputChildrenDepth int, inputParentDepth int) (graphOutput string, err error) {
 	var records []Record
-	records, err = GetRecordsFriendly(ctx, inputID, inputChildrenDepth, inputParentDepth, "")
+	records, err = GetRecordsFriendly(ctx, inputID, &RecordQuery{ChildrenDepth: inputChildrenDepth, ParentDepth: inputParentDepth})
 	if err != nil {
 		return
 	}
@@ -418,4 +428,33 @@ func treeBase(treenodes []*opts.TreeData) *charts.Tree {
 			charts.WithLabelOpts(opts.Label{Show: opts.Bool(true), Position: "top", Color: "Black"}),
 		)
 	return graph
+}
+
+func fieldScore(field *string, searchLower string) float64 {
+	if field == nil {
+		return 0
+	}
+	fieldLower := strings.ToLower(*field)
+	if fieldLower == searchLower {
+		return 1.0
+	}
+	for _, word := range strings.Fields(fieldLower) {
+		if word == searchLower {
+			return 1.0
+		}
+	}
+	if strings.Contains(fieldLower, searchLower) {
+		return 0.99
+	}
+	return 0
+}
+
+func maxFieldScore(searchLower string, fields ...*string) float64 {
+	var best float64
+	for _, f := range fields {
+		if s := fieldScore(f, searchLower); s > best {
+			best = s
+		}
+	}
+	return best
 }

@@ -77,8 +77,12 @@ func (i *infinityEmbeddingsRequest) GenerateEmbeddings() (e Embeddings, err erro
 
 }
 
-func GenerateTextEmbeddings(input string) (e Embeddings, err error) {
-	return generateTextEmbeddings(input, infinityTextModel)
+func GenerateTextQueryEmbeddings(input string) (e Embeddings, err error) {
+	return generateTextEmbeddings(infinityTextQueryPrefix+input, infinityTextModel)
+}
+
+func GenerateTextDocumentEmbeddings(input string) (e Embeddings, err error) {
+	return generateTextEmbeddings(infinityTextDocumentPrefix+input, infinityTextModel)
 }
 
 func GenerateImageQueryEmbeddings(input string) (e Embeddings, err error) {

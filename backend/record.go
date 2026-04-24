@@ -260,7 +260,7 @@ func (r *Record) GenerateEmbeddings() (vec Embeddings, err error) {
 		return
 	}
 
-	vec, err = GenerateTextEmbeddings(strings.Join(parts, " - "))
+	vec, err = GenerateTextDocumentEmbeddings(strings.Join(parts, " - "))
 	if err != nil {
 		return
 	}

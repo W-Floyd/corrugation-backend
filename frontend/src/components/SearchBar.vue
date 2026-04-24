@@ -103,6 +103,23 @@ onBeforeUnmount(() => {
             </label>
         </div>
 
+        <!-- Search label checkbox -->
+        <div class="flex items-center">
+            <label
+                class="flex items-center cursor-pointer"
+                title="Include label in search"
+            >
+                <input
+                    type="checkbox"
+                    v-model="entitiesStore.searchLabel"
+                    class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span class="ml-1 text-sm text-gray-600 dark:text-gray-400"
+                    >Label</span
+                >
+            </label>
+        </div>
+
         <!-- Search input -->
         <div class="relative flex-1">
             <input

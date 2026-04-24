@@ -5,8 +5,8 @@ import (
 )
 
 const (
-	minimumImageSearchConfidence float64 = 0.0
-	minimumTextSearchConfidence  float64 = 0.925
+	minimumImageSearchConfidence float64 = 0.2
+	minimumTextSearchConfidence  float64 = 0.9
 )
 
 func dotProduct(v1 []float64, v2 []float64) (dotProduct float64, err error) {
@@ -20,7 +20,7 @@ func dotProduct(v1 []float64, v2 []float64) (dotProduct float64, err error) {
 	return
 }
 
-func SearchByArtifact(search string, threshold float64, recordIDs []uint) (recordResults []struct {
+func SearchByArtifact(search string, recordIDs []uint) (recordResults []struct {
 	id    uint
 	score float64
 }, err error) {
@@ -35,27 +35,24 @@ func SearchByArtifact(search string, threshold float64, recordIDs []uint) (recor
 	}
 
 	for _, e := range es {
+		if e.recordID == nil {
+			continue
+		}
 		var p float64
 		p, err = dotProduct(e.embedding, searchEmbeddings)
 		if err != nil {
 			return
 		}
-		if p > threshold && e.recordID != nil {
-			recordResults = append(recordResults, struct {
-				id    uint
-				score float64
-			}{
-				id:    *e.recordID,
-				score: p,
-			})
-		}
+		recordResults = append(recordResults, struct {
+			id    uint
+			score float64
+		}{id: *e.recordID, score: p})
 	}
 
 	return
-
 }
 
-func SearchByRecord(search string, threshold float64) (recordResults []struct {
+func SearchByRecord(search string) (recordResults []struct {
 	id    uint
 	score float64
 }, err error) {
@@ -64,12 +61,10 @@ func SearchByRecord(search string, threshold float64) (recordResults []struct {
 		return
 	}
 
-	searchEmbeddings, err := GenerateTextEmbeddings(search)
+	searchEmbeddings, err := GenerateTextQueryEmbeddings(search)
 	if err != nil {
 		return
 	}
-
-	var similarityScore = map[uint]float64{}
 
 	for id, e := range es {
 		var p float64
@@ -77,19 +72,10 @@ func SearchByRecord(search string, threshold float64) (recordResults []struct {
 		if err != nil {
 			return
 		}
-		similarityScore[id] = p
-	}
-
-	for id, score := range similarityScore {
-		if score > threshold {
-			recordResults = append(recordResults, struct {
-				id    uint
-				score float64
-			}{
-				id:    id,
-				score: score,
-			})
-		}
+		recordResults = append(recordResults, struct {
+			id    uint
+			score float64
+		}{id: id, score: p})
 	}
 
 	return

@@ -20,16 +20,18 @@ import (
 )
 
 type Options struct {
-	Address                string `help:"Address to listen on" default:"0.0.0.0"`
-	Port                   int    `help:"Port to listen on" default:"8083"`
-	Dist                   string `help:"Dist path" default:"./dist"`
-	Data                   string `help:"Data path" default:"./data"`
-	OIDCDiscoveryURL       string `help:"OIDC discovery URL (e.g. https://authentik.example.com/application/o/<slug>/.well-known/openid-configuration); omit to disable auth"`
-	OIDCClientID           string `help:"OAuth2 client ID registered in Authentik"`
-	OIDCInsecureSkipVerify bool   `help:"Skip TLS certificate verification for OIDC discovery and JWKS requests"`
-	InfinityAddress        string `help:"Infinity embeddings server address" default:"http://localhost:8002"`
-	InfinityTextModel      string `help:"Infinity text embeddings model ID" default:"wkcn/TinyCLIP-ViT-8M-16-Text-3M-YFCC15M"`
-	InfinityImageModel     string `help:"Infinity image embeddings model ID" default:"openai/clip-vit-large-patch14"`
+	Address                    string `help:"Address to listen on" default:"0.0.0.0"`
+	Port                       int    `help:"Port to listen on" default:"8083"`
+	Dist                       string `help:"Dist path" default:"./dist"`
+	Data                       string `help:"Data path" default:"./data"`
+	OIDCDiscoveryURL           string `help:"OIDC discovery URL (e.g. https://authentik.example.com/application/o/<slug>/.well-known/openid-configuration); omit to disable auth"`
+	OIDCClientID               string `help:"OAuth2 client ID registered in Authentik"`
+	OIDCInsecureSkipVerify     bool   `help:"Skip TLS certificate verification for OIDC discovery and JWKS requests"`
+	InfinityAddress            string `help:"Infinity embeddings server address" default:"http://localhost:8002"`
+	InfinityTextModel          string `help:"Infinity text embeddings model ID" default:"BAAI/bge-large-en-v1.5"`
+	InfinityImageModel         string `help:"Infinity image embeddings model ID" default:"openai/clip-vit-large-patch14"`
+	InfinityTextQueryPrefix    string `help:"Prefix prepended to text search queries before embedding" default:"Represent this sentence for searching relevant passages: "`
+	InfinityTextDocumentPrefix string `help:"Prefix prepended to text documents before embedding" default:""`
 }
 
 func init() {
@@ -41,7 +43,7 @@ func main() {
 	cli := humacli.New(func(hooks humacli.Hooks, options *Options) {
 
 		log.Println("init backend")
-		backend.SetInfinityConfig(options.InfinityAddress, options.InfinityTextModel, options.InfinityImageModel)
+		backend.SetInfinityConfig(options.InfinityAddress, options.InfinityTextModel, options.InfinityImageModel, options.InfinityTextQueryPrefix, options.InfinityTextDocumentPrefix)
 
 		if _, err := os.Stat(options.Data); os.IsNotExist(err) {
 			err := os.Mkdir(options.Data, 0755)
