@@ -2,12 +2,14 @@ package backend
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"path/filepath"
 	"strings"
 
 	"github.com/danielgtaylor/huma/v2"
+	"github.com/danielgtaylor/huma/v2/conditional"
 )
 
 var CreateArtifactOperation = huma.Operation{
@@ -58,6 +60,7 @@ var GetArtifactOperation = huma.Operation{
 }
 
 func GetArtifact(ctx context.Context, input *struct {
+	conditional.Params
 	ID uint `path:"id" example:"1" doc:"Artifact ID to get"`
 }) (output *BytesOutput, err error) {
 
@@ -66,21 +69,29 @@ func GetArtifact(ctx context.Context, input *struct {
 		return
 	}
 
+	etag := fmt.Sprintf(`"%d"`, artifact.UpdatedAt.UnixMilli())
+
+	if input.HasConditionalParams() {
+		if err = input.PreconditionFailed(etag, artifact.UpdatedAt); err != nil {
+			return
+		}
+	}
+
 	i, err := artifact.GetInterface()
 	if err != nil {
 		return
 	}
-
-	output = &BytesOutput{}
 
 	ob, err := i.GetSmallPreviewContents()
 	if err != nil {
 		return
 	}
 
+	output = &BytesOutput{}
 	output.Body = *ob
 	output.ContentType = http.DetectContentType(output.Body)
 	output.CacheControl = "public, max-age=604800"
+	output.ETag = etag
 
 	return
 }

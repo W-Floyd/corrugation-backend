@@ -16,6 +16,7 @@ type PlaintextOutput struct {
 type BytesOutput struct {
 	ContentType  string `header:"Content-Type"`
 	CacheControl string `header:"Cache-Control"`
+	ETag         string `header:"ETag"`
 	Body         []byte
 }
 
