@@ -9,6 +9,7 @@ import (
 
 	"github.com/W-Floyd/corrugation/oldbackend"
 	"github.com/danielgtaylor/huma/v2"
+	qrcode "github.com/skip2/go-qrcode"
 	"gorm.io/gorm"
 )
 
@@ -525,7 +526,13 @@ func PatchEntity(ctx context.Context, input *struct {
 	Body EntityPatch
 }) (output *EntityOutput, err error) {
 
-	records, err := GetRecords(&input.ID, nil, nil, nil, nil, nil)
+	records, err := GetRecords(&input.ID, nil, nil, nil, []struct {
+		q string
+		h func(db gorm.PreloadBuilder) error
+	}{
+		{q: "Artifacts", h: func(db gorm.PreloadBuilder) error { return nil }},
+		{q: "Tags", h: func(db gorm.PreloadBuilder) error { return nil }},
+	}, nil)
 	if err != nil {
 		return
 	}
@@ -550,13 +557,51 @@ func PatchEntity(ctx context.Context, input *struct {
 		r.ParentID = &v
 	}
 
-	var artifact Artifact
-	for _, a := range i.Artifacts {
-		artifact, err = GetArtifactFromDB(*a)
-		if err != nil {
-			return
+	if i.Artifacts != nil {
+		r.Artifacts = nil
+		var artifact Artifact
+		for _, a := range i.Artifacts {
+			artifact, err = GetArtifactFromDB(*a)
+			if err != nil {
+				return
+			}
+			r.Artifacts = append(r.Artifacts, &artifact)
 		}
-		r.Artifacts = append(r.Artifacts, &artifact)
+	}
+
+	if i.Metadata != nil {
+		if i.Metadata.Quantity != nil {
+			v := uint(*i.Metadata.Quantity)
+			r.Quantity = &v
+		}
+		if i.Metadata.Tags != nil {
+			var newTags []*Tag
+			var foundTags []Tag
+			var foundTag *Tag
+			for _, tag := range i.Metadata.Tags {
+				foundTags, err = gorm.G[Tag](db).Where("title = ?", tag).Find(dbCtx)
+				if err != nil {
+					return
+				} else if len(foundTags) > 1 {
+					err = huma.Error500InternalServerError(errorMoreTagsThanExpected)
+					return
+				} else if len(foundTags) == 1 {
+					foundTag = &foundTags[0]
+				} else {
+					newtag := Tag{Title: *tag}
+					err = gorm.G[Tag](db).Create(dbCtx, &newtag)
+					if err != nil {
+						return
+					}
+					foundTag = &newtag
+				}
+				newTags = append(newTags, foundTag)
+			}
+			if err = db.Model(&r).Association("Tags").Replace(newTags); err != nil {
+				return
+			}
+			r.Tags = newTags
+		}
 	}
 
 	if u := UsernameFromContext(ctx); u != "" {
@@ -579,6 +624,214 @@ func PatchEntity(ctx context.Context, input *struct {
 		Body: *entity,
 	}
 
+	return
+}
+
+var GetEntityQRCodeOperation = huma.Operation{
+	Method: http.MethodGet,
+	Path:   "/api/entity/{id}/qrcode",
+}
+
+func GetEntityQRCode(_ context.Context, input *struct {
+	ID uint `path:"id"`
+}) (output *BytesOutput, err error) {
+	png, err := qrcode.Encode(strconv.FormatUint(uint64(input.ID), 10), qrcode.Medium, 1024)
+	if err != nil {
+		return
+	}
+	output = &BytesOutput{
+		ContentType:  "image/png",
+		CacheControl: "public, max-age=31536000",
+		Body:         png,
+	}
+	return
+}
+
+var GetNextIDOperation = huma.Operation{
+	Method: http.MethodGet,
+	Path:   "/api/entity/find/nextid",
+}
+
+func GetNextID(ctx context.Context, _ *struct{}) (output *UIntOutput, err error) {
+	return GetFirstFreeID(ctx, &struct{}{})
+}
+
+var GetFirstLabeledIDOperation = huma.Operation{
+	Method: http.MethodGet,
+	Path:   "/api/entity/find/firstid",
+}
+
+func GetFirstLabeledID(ctx context.Context, _ *struct{}) (output *UIntOutput, err error) {
+	var labeledIDs []uint
+	if tx := db.Model(&Record{}).Where("label IS NOT NULL").Order("id ASC").Pluck("id", &labeledIDs); tx.Error != nil {
+		err = tx.Error
+		return
+	}
+	labeled := make(map[uint]struct{}, len(labeledIDs))
+	for _, id := range labeledIDs {
+		labeled[id] = struct{}{}
+	}
+	var next uint = 1
+	for {
+		if _, used := labeled[next]; !used {
+			break
+		}
+		next++
+	}
+	output = &UIntOutput{Body: next}
+	return
+}
+
+var FindLocationsOperation = huma.Operation{
+	Method: http.MethodGet,
+	Path:   "/api/entity/find/locations",
+}
+
+func FindLocations(ctx context.Context, _ *struct{}) (output *struct{ Body []uint }, err error) {
+	type row struct {
+		ParentID *uint
+	}
+	var rows []row
+	if tx := db.Model(&Record{}).Select("DISTINCT parent_id").Scan(&rows); tx.Error != nil {
+		err = tx.Error
+		return
+	}
+	ids := []uint{}
+	hasNull := false
+	for _, r := range rows {
+		if r.ParentID == nil {
+			hasNull = true
+		} else {
+			ids = append(ids, *r.ParentID)
+		}
+	}
+	if hasNull {
+		ids = append([]uint{0}, ids...)
+	}
+	output = &struct{ Body []uint }{Body: ids}
+	return
+}
+
+var FindLocationsFullOperation = huma.Operation{
+	Method: http.MethodGet,
+	Path:   "/api/entity/find/locations/full",
+}
+
+func FindLocationsFull(ctx context.Context, _ *struct{}) (output *struct{ Body []*EntityInput }, err error) {
+	var parentIDs []uint
+	if tx := db.Model(&Record{}).Where("parent_id IS NOT NULL").Distinct("parent_id").Pluck("parent_id", &parentIDs); tx.Error != nil {
+		err = tx.Error
+		return
+	}
+	entities := []*EntityInput{}
+	for _, id := range parentIDs {
+		var records []Record
+		if tx := db.Where("id = ?", id).Preload("Artifacts").Preload("Tags").Find(&records); tx.Error != nil {
+			err = tx.Error
+			return
+		}
+		if len(records) == 1 {
+			e, e2 := records[0].ToEntity()
+			if e2 != nil {
+				err = e2
+				return
+			}
+			entities = append(entities, e)
+		}
+	}
+	output = &struct{ Body []*EntityInput }{Body: entities}
+	return
+}
+
+var GetChildrenFullOperation = huma.Operation{
+	Method: http.MethodGet,
+	Path:   "/api/entity/find/children/{id}/full",
+}
+
+func childrenQuery(id uint) *gorm.DB {
+	if id == 0 {
+		return db.Where("parent_id IS NULL")
+	}
+	return db.Where("parent_id = ?", id)
+}
+
+func GetChildrenFull(ctx context.Context, input *struct {
+	ID uint `path:"id"`
+}) (output *struct{ Body []*EntityInput }, err error) {
+	var children []Record
+	if tx := childrenQuery(input.ID).Preload("Artifacts").Preload("Tags").Find(&children); tx.Error != nil {
+		err = tx.Error
+		return
+	}
+	output = &struct{ Body []*EntityInput }{Body: []*EntityInput{}}
+	for i := range children {
+		e, e2 := children[i].ToEntity()
+		if e2 != nil {
+			err = e2
+			return
+		}
+		output.Body = append(output.Body, e)
+	}
+	return
+}
+
+var GetChildrenFullRecursiveOperation = huma.Operation{
+	Method: http.MethodGet,
+	Path:   "/api/entity/find/children/{id}/full/recursive",
+}
+
+func getDescendants(parentID uint, out *[]*EntityInput) error {
+	var children []Record
+	if tx := childrenQuery(parentID).Preload("Artifacts").Preload("Tags").Find(&children); tx.Error != nil {
+		return tx.Error
+	}
+	for i := range children {
+		e, err := children[i].ToEntity()
+		if err != nil {
+			return err
+		}
+		*out = append(*out, e)
+		if err := getDescendants(children[i].ID, out); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func GetChildrenFullRecursive(ctx context.Context, input *struct {
+	ID uint `path:"id"`
+}) (output *struct{ Body []*EntityInput }, err error) {
+	entities := []*EntityInput{}
+	if err = getDescendants(input.ID, &entities); err != nil {
+		return
+	}
+	output = &struct{ Body []*EntityInput }{Body: entities}
+	return
+}
+
+var GetEntityContainsOperation = huma.Operation{
+	Method: http.MethodGet,
+	Path:   "/api/entity/{id}/contains",
+}
+
+func GetEntityContains(ctx context.Context, input *struct {
+	ID uint `path:"id" example:"1" doc:"Parent entity ID"`
+}) (output *struct{ Body []uint }, err error) {
+	var children []Record
+	tx := childrenQuery(input.ID).Select("id").Find(&children)
+	if tx.Error != nil {
+		err = tx.Error
+		return
+	}
+	if len(children) == 0 {
+		output = &struct{ Body []uint }{Body: nil}
+		return
+	}
+	ids := make([]uint, len(children))
+	for i, c := range children {
+		ids[i] = c.ID
+	}
+	output = &struct{ Body []uint }{Body: ids}
 	return
 }
 
@@ -643,7 +896,7 @@ func ReplaceEntity(ctx context.Context, input *struct {
 		r.Artifacts = append(r.Artifacts, &artifact)
 	}
 
-	r.Tags = nil
+	var newTags []*Tag
 	if i.Metadata != nil {
 		var foundTags []Tag
 		var foundTag *Tag
@@ -664,9 +917,13 @@ func ReplaceEntity(ctx context.Context, input *struct {
 				}
 				foundTag = &newtag
 			}
-			r.Tags = append(r.Tags, foundTag)
+			newTags = append(newTags, foundTag)
 		}
 	}
+	if err = db.Model(&r).Association("Tags").Replace(newTags); err != nil {
+		return
+	}
+	r.Tags = newTags
 
 	if u := UsernameFromContext(ctx); u != "" {
 		r.LastModifiedBy = &u
