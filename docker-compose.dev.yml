@@ -1,0 +1,28 @@
+services:
+  corrugation:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - 8083:8083
+    restart: "no"
+    environment:
+      - SERVICE_ADDRESS=0.0.0.0
+      - SERVICE_PORT=8083
+      - SERVICE_DIST=/dist
+      - SERVICE_DATA=/data
+      - SERVICE_OIDC_DISCOVERY_URL=
+      - SERVICE_OIDC_CLIENT_ID=
+      - SERVICE_OIDC_INSECURE_SKIP_VERIFY=true
+      - SERVICE_INFINITY_ADDRESS=http://infinity:8002
+      - SERVICE_INFINITY_MODEL=wkcn/TinyCLIP-ViT-8M-16-Text-3M-YFCC15M
+    volumes:
+      - ./data/corrugation:/data
+    depends_on:
+      - infinity
+  infinity:
+    image: michaelf34/infinity:latest
+    command: v2 --engine torch --device cpu --model-id wkcn/TinyCLIP-ViT-8M-16-Text-3M-YFCC15M --port 8002 --log-level warning
+    restart: unless-stopped
+    volumes:
+      - ./data/infinity/:/app/.cache

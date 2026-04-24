@@ -1,5 +1,16 @@
+x-corrugation-env: &corrugation-env
+  SERVICE_ADDRESS: 0.0.0.0
+  SERVICE_PORT: "8083"
+  SERVICE_DIST: /dist
+  SERVICE_DATA: /data
+  SERVICE_OIDC_DISCOVERY_URL: ""
+  SERVICE_OIDC_CLIENT_ID: ""
+  SERVICE_INFINITY_ADDRESS: http://infinity:8002
+  SERVICE_INFINITY_MODEL: wkcn/TinyCLIP-ViT-8M-16-Text-3M-YFCC15M
+
 services:
   corrugation:
+    profiles: [dev]
     build:
       context: .
       dockerfile: Dockerfile
@@ -7,21 +18,31 @@ services:
       - 8083:8083
     restart: "no"
     environment:
-      - SERVICE_ADDRESS=0.0.0.0
-      - SERVICE_PORT=8083
-      - SERVICE_DIST=/dist
-      - SERVICE_DATA=/data
-      - SERVICE_OIDC_DISCOVERY_URL=
-      - SERVICE_OIDC_CLIENT_ID=
-      - SERVICE_OIDC_INSECURE_SKIP_VERIFY=false
-      - SERVICE_INFINITY_ADDRESS=http://infinity:8002
-      - SERVICE_INFINITY_MODEL=wkcn/TinyCLIP-ViT-8M-16-Text-3M-YFCC15M
+      <<: *corrugation-env
+      SERVICE_OIDC_INSECURE_SKIP_VERIFY: "true"
     volumes:
       - ./data/corrugation:/data
+    depends_on:
+      - infinity
+
+  corrugation-prod:
+    profiles: [prod]
+    image: ghcr.io/w-floyd/corrugation:latest
+    ports:
+      - 8083:8083
+    restart: unless-stopped
+    environment:
+      <<: *corrugation-env
+      SERVICE_OIDC_INSECURE_SKIP_VERIFY: "false"
+    volumes:
+      - ./data/corrugation:/data
+    depends_on:
+      - infinity
+
   infinity:
-    stdin_open: true
-    tty: true
+    profiles: [dev, prod]
+    image: michaelf34/infinity:latest
+    command: v2 --engine torch --device cpu --model-id wkcn/TinyCLIP-ViT-8M-16-Text-3M-YFCC15M --port 8002 --log-level warning
+    restart: unless-stopped
     volumes:
       - ./data/infinity/:/app/.cache
-    image: michaelf34/infinity:latest
-    command: v2 --engine torch --device cpu --model-id wkcn/TinyCLIP-ViT-8M-16-Text-3M-YFCC15M --port 8002 --log-level debug
