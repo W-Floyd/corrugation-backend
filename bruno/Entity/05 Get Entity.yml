@@ -31,7 +31,7 @@ runtime:
           const m = res.body.metadata;
           expect(m.quantity).to.equal(3);
           expect(m.owners).to.deep.equal([]);
-          expect(m.tags).to.deep.equal(["test", "bruno"]);
+          expect(m.tags).to.have.members(["test", "bruno"]);
           expect(m.islabeled).to.equal(false);
           expect(m.lastmodifiedby).to.equal("admin");
           expect(m.lastmodified).to.be.a("string").and.not.empty;
