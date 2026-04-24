@@ -59,16 +59,22 @@ func deleteArtifact(c echo.Context) error {
 	id := c.Param("id")
 
 	iID, err := strconv.Atoi(id)
-
 	if err != nil {
 		return err
 	}
 
 	aID := ArtifactID(iID)
 
-	d.Erase(store.Artifacts[aID].Path)
+	artifact, exists := store.Artifacts[aID]
+	if !exists {
+		return c.JSON(http.StatusNoContent, "Artifact "+id+" does not exist")
+	}
 
-	return c.JSON(http.StatusNoContent, "Artifact "+id+" does not exist")
+	d.Erase(artifact.Path)
+	delete(store.Artifacts, aID)
+	updateStore()
+
+	return c.NoContent(http.StatusOK)
 }
 
 func uploadArtifact(c echo.Context) error {

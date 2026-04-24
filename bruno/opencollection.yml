@@ -1,0 +1,20 @@
+opencollection: 1.0.0
+
+info:
+  name: Corrugation API
+docs:
+  content: |-
+    # Corrugation Backend API
+
+    Inventory management backend. All endpoints are under `/api`.
+
+    **Auth:** Optional JWT. Run "Login" first — the token is saved automatically
+    and used by all subsequent requests via `{{authToken}}`.
+
+    **Workflow:**
+    1. Auth → Login
+    2. Entity → Create Entity (saves `entityId`)
+    3. Artifact → Upload Artifact (saves `artifactId`)
+    4. Run remaining endpoints freely
+    5. Reset Store to wipe all data
+  type: text/markdown

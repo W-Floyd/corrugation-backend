@@ -1,0 +1,64 @@
+info:
+  name: Full Store Check
+  type: http
+  seq: 8
+
+http:
+  method: GET
+  url: "{{baseUrl}}/api/store"
+  headers:
+    - name: accept
+      value: application/json
+  auth:
+    type: bearer
+    token: "{{authToken}}"
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("Returns 200", function() {
+          expect(res.status).to.equal(200);
+        });
+        test("Store contains exactly 3 entities", function() {
+          expect(Object.keys(res.body.entities)).to.have.lengthOf(3);
+        });
+        test("Store artifacts is empty", function() {
+          expect(res.body.artifacts).to.deep.equal({});
+        });
+        test("Parent entity is correct", function() {
+          const e = res.body.entities[bru.getVar("parentId")];
+          expect(e.id).to.equal(Number(bru.getVar("parentId")));
+          expect(e.name).to.equal("Parent Box");
+          expect(e.description).to.equal("Top-level container");
+          expect(e.artifacts).to.be.null;
+          expect(e.location).to.equal(0);
+          expect(e.metadata.quantity).to.equal(1);
+          expect(e.metadata.owners).to.deep.equal([]);
+          expect(e.metadata.tags).to.deep.equal(["parent"]);
+          expect(e.metadata.islabeled).to.equal(false);
+        });
+        test("Child entity is correct", function() {
+          const e = res.body.entities[bru.getVar("childId")];
+          expect(e.id).to.equal(Number(bru.getVar("childId")));
+          expect(e.name).to.equal("Child Box");
+          expect(e.description).to.equal("Nested inside Parent Box");
+          expect(e.artifacts).to.be.null;
+          expect(e.location).to.equal(Number(bru.getVar("parentId")));
+          expect(e.metadata.quantity).to.equal(1);
+          expect(e.metadata.owners).to.deep.equal([]);
+          expect(e.metadata.tags).to.deep.equal(["child"]);
+          expect(e.metadata.islabeled).to.equal(false);
+        });
+        test("Grandchild entity is correct", function() {
+          const e = res.body.entities[bru.getVar("grandchildId")];
+          expect(e.id).to.equal(Number(bru.getVar("grandchildId")));
+          expect(e.name).to.equal("Grandchild Box");
+          expect(e.description).to.equal("Nested inside Child Box");
+          expect(e.artifacts).to.be.null;
+          expect(e.location).to.equal(Number(bru.getVar("childId")));
+          expect(e.metadata.quantity).to.equal(1);
+          expect(e.metadata.owners).to.deep.equal([]);
+          expect(e.metadata.tags).to.deep.equal(["grandchild"]);
+          expect(e.metadata.islabeled).to.equal(false);
+        });

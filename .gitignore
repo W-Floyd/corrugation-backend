@@ -6,4 +6,6 @@
 corrugation
 /dist/
 /main
+**/node_modules/
+/infinity/
 *.sqlite
