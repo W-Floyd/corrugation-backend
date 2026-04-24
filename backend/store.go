@@ -963,6 +963,26 @@ func ResetStore(ctx context.Context, input *struct{}) (output *EmptyOutput, err 
 	return
 }
 
+var GetArtifactQRCodeOperation = huma.Operation{
+	Method: http.MethodGet,
+	Path:   "/api/artifact/{id}/qrcode",
+}
+
+func GetArtifactQRCode(_ context.Context, input *struct {
+	ID uint `path:"id"`
+}) (output *BytesOutput, err error) {
+	png, err := qrcode.Encode(strconv.FormatUint(uint64(input.ID), 10), qrcode.Medium, 1024)
+	if err != nil {
+		return
+	}
+	output = &BytesOutput{
+		ContentType:  "image/png",
+		CacheControl: "public, max-age=31536000",
+		Body:         png,
+	}
+	return
+}
+
 var ListArtifactsOperation = huma.Operation{
 	Method: http.MethodGet,
 	Path:   "/api/artifact/list",
