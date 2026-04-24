@@ -10,6 +10,12 @@ variables:
     value: admin
   - secret: true
     name: password
+  - name: oidcAuthorizationUrl
+    value: ""
+  - name: oidcTokenUrl
+    value: ""
+  - name: oidcClientId
+    value: ""
   - name: entityId
     value: "1"
   - name: artifactId

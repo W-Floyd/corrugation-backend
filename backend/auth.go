@@ -61,6 +61,15 @@ func RegisterAuthHandlers(api huma.API) {
 	huma.Register(api, GetAuthConfigOperation, GetAuthConfigHandler)
 }
 
+type contextKey string
+
+const usernameContextKey contextKey = "username"
+
+func UsernameFromContext(ctx context.Context) string {
+	v, _ := ctx.Value(usernameContextKey).(string)
+	return v
+}
+
 func newJWKSet(jwksURL string) jwk.Set {
 	cache := jwk.NewCache(context.Background())
 	if err := cache.Register(jwksURL, jwk.WithMinRefreshInterval(10*time.Minute)); err != nil {
@@ -88,7 +97,7 @@ func NewAuthMiddleware(api huma.API, issuer, jwksURL string) func(huma.Context, 
 			huma.WriteErr(api, ctx, http.StatusUnauthorized, "Unauthorized")
 			return
 		}
-		_, err := jwt.ParseString(token,
+		parsed, err := jwt.ParseString(token,
 			jwt.WithKeySet(keySet),
 			jwt.WithValidate(true),
 			jwt.WithIssuer(issuer),
@@ -97,6 +106,9 @@ func NewAuthMiddleware(api huma.API, issuer, jwksURL string) func(huma.Context, 
 			huma.WriteErr(api, ctx, http.StatusUnauthorized, "Unauthorized")
 			return
 		}
+		username, _ := parsed.Get("preferred_username")
+		usernameStr, _ := username.(string)
+		ctx = huma.WithValue(ctx, usernameContextKey, usernameStr)
 		next(ctx)
 	}
 }

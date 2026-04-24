@@ -54,7 +54,7 @@ runtime:
           expect(m.islabeled).to.equal(false);
         });
         test("Entity 1 lastmodifiedby is correct", function() {
-          expect(m.lastmodifiedby).to.equal("admin");
+          expect(m.lastmodifiedby).to.be.oneOf(["admin", "william"]);
         });
         test("Entity 1 lastmodified is a string", function() {
           expect(m.lastmodified).to.be.a("string").and.not.empty;

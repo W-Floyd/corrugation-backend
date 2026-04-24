@@ -109,6 +109,7 @@ func (record *Record) ToEntity() (output *EntityInput, err error) {
 					v := record.UpdatedAt.UTC().Format("2006-01-02 15:04:05.000000") + " UTC"
 					return &v
 				}(),
+				LastModifiedBy: record.LastModifiedBy,
 				IsLabeled: func() *bool {
 					v := record.Label != nil
 					return &v
@@ -354,6 +355,10 @@ func CreateEntity(ctx context.Context, input *struct {
 		record.Tags = append(record.Tags, foundTag)
 	}
 
+	if u := UsernameFromContext(ctx); u != "" {
+		record.LastModifiedBy = &u
+	}
+
 	err = gorm.G[Record](db).Create(dbCtx, record)
 	if err != nil {
 		return
@@ -554,6 +559,10 @@ func PatchEntity(ctx context.Context, input *struct {
 		r.Artifacts = append(r.Artifacts, &artifact)
 	}
 
+	if u := UsernameFromContext(ctx); u != "" {
+		r.LastModifiedBy = &u
+	}
+
 	_, err = gorm.G[Record](db).Where("id = ?", r.ID).Updates(dbCtx, r)
 	if err != nil {
 		return
@@ -570,6 +579,112 @@ func PatchEntity(ctx context.Context, input *struct {
 		Body: *entity,
 	}
 
+	return
+}
+
+var ReplaceEntityOperation = huma.Operation{
+	Method: http.MethodPut,
+	Path:   "/api/entity/{id}",
+}
+
+func ReplaceEntity(ctx context.Context, input *struct {
+	ID   uint `path:"id" example:"1" doc:"ID to replace"`
+	Body EntityInput
+}) (output *EntityOutput, err error) {
+
+	records, err := GetRecords(&input.ID, nil, nil, nil, []struct {
+		q string
+		h func(db gorm.PreloadBuilder) error
+	}{
+		{q: "Artifacts", h: func(db gorm.PreloadBuilder) error { return nil }},
+		{q: "Tags", h: func(db gorm.PreloadBuilder) error { return nil }},
+	}, nil)
+	if err != nil {
+		return
+	}
+
+	r := records[0]
+	i := input.Body
+
+	if i.Metadata != nil && i.Metadata.IsLabeled != nil && *i.Metadata.IsLabeled {
+		r.Label = i.Name
+		r.Title = nil
+	} else {
+		r.Title = i.Name
+		r.Label = nil
+	}
+
+	r.Description = i.Description
+
+	if i.Location != nil && *i.Location != 0 {
+		v := uint(*i.Location)
+		r.ParentID = &v
+	} else {
+		r.ParentID = nil
+	}
+
+	if i.Metadata != nil && i.Metadata.Quantity != nil {
+		v := uint(*i.Metadata.Quantity)
+		r.Quantity = &v
+	} else {
+		r.Quantity = nil
+	}
+
+	r.Artifacts = nil
+	for _, a := range i.Artifacts {
+		if a == nil {
+			continue
+		}
+		var artifact Artifact
+		artifact, err = GetArtifactFromDB(*a)
+		if err != nil {
+			return
+		}
+		r.Artifacts = append(r.Artifacts, &artifact)
+	}
+
+	r.Tags = nil
+	if i.Metadata != nil {
+		var foundTags []Tag
+		var foundTag *Tag
+		for _, tag := range i.Metadata.Tags {
+			foundTags, err = gorm.G[Tag](db).Where("title = ?", tag).Find(dbCtx)
+			if err != nil {
+				return
+			} else if len(foundTags) > 1 {
+				err = huma.Error500InternalServerError(errorMoreTagsThanExpected)
+				return
+			} else if len(foundTags) == 1 {
+				foundTag = &foundTags[0]
+			} else {
+				newtag := Tag{Title: *tag}
+				err = gorm.G[Tag](db).Create(dbCtx, &newtag)
+				if err != nil {
+					return
+				}
+				foundTag = &newtag
+			}
+			r.Tags = append(r.Tags, foundTag)
+		}
+	}
+
+	if u := UsernameFromContext(ctx); u != "" {
+		r.LastModifiedBy = &u
+	}
+
+	_, err = gorm.G[Record](db).Where("id = ?", r.ID).Updates(dbCtx, r)
+	if err != nil {
+		return
+	}
+
+	Broadcast()
+
+	entity, err := r.ToEntity()
+	if err != nil {
+		return
+	}
+
+	output = &EntityOutput{Body: *entity}
 	return
 }
 

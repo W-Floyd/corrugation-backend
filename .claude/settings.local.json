@@ -24,7 +24,8 @@
       "Bash(./test.sh)",
       "mcp__firefox-devtools__fill_by_uid",
       "mcp__firefox-devtools__navigate_history",
-      "WebFetch(domain:docs.usebruno.com)"
+      "WebFetch(domain:docs.usebruno.com)",
+      "WebFetch(domain:huma.rocks)"
     ]
   }
 }

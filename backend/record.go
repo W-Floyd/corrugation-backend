@@ -36,6 +36,8 @@ type Record struct {
 	ParentID *uint   `json:",omitempty"`
 	Parent   *Record `gorm:"foreignKey:ParentID" json:"-"`
 
+	LastModifiedBy *string `json:",omitempty"`
+
 	Embedding     *[]byte `json:"-"` // JSON of embedding data
 	EmbeddingHash *string `json:"-"` // Hash of JSON of embedding data (to allow caching)
 
