@@ -17,13 +17,17 @@ runtime:
   scripts:
     - type: tests
       code: |-
+        const ids = res.body.map(String);
+
         test("Returns 200", function() {
           expect(res.status).to.equal(200);
         });
-        test("Parent directly contains child", function() {
+        test("Response is an array", function() {
           expect(res.body).to.be.an("array");
-          expect(res.body.map(String)).to.include(bru.getVar("childId"));
+        });
+        test("Parent directly contains child", function() {
+          expect(ids).to.include(bru.getVar("childId"));
         });
         test("Parent does not directly contain grandchild", function() {
-          expect(res.body.map(String)).to.not.include(bru.getVar("grandchildId"));
+          expect(ids).to.not.include(bru.getVar("grandchildId"));
         });

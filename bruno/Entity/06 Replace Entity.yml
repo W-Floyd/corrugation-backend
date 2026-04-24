@@ -33,22 +33,42 @@ runtime:
   scripts:
     - type: tests
       code: |-
+        const e = res.body;
+        const m = e.metadata;
+
         test("Returns 200", function() {
           expect(res.status).to.equal(200);
         });
-        test("Top-level fields are correct", function() {
-          expect(res.body.id).to.equal(1);
-          expect(res.body.name).to.equal("Bruno Test Box (replaced)");
-          expect(res.body.description).to.equal("Updated by PUT");
-          expect(res.body.artifacts).to.be.null;
-          expect(res.body.location).to.equal(0);
+        test("id is correct", function() {
+          expect(e.id).to.equal(1);
         });
-        test("Metadata is correct", function() {
-          const m = res.body.metadata;
+        test("name is correct", function() {
+          expect(e.name).to.equal("Bruno Test Box (replaced)");
+        });
+        test("description is correct", function() {
+          expect(e.description).to.equal("Updated by PUT");
+        });
+        test("artifacts is null", function() {
+          expect(e.artifacts).to.be.null;
+        });
+        test("location is correct", function() {
+          expect(e.location).to.equal(0);
+        });
+        test("quantity is correct", function() {
           expect(m.quantity).to.equal(5);
+        });
+        test("owners is correct", function() {
           expect(m.owners).to.deep.equal(["tester"]);
+        });
+        test("tags are correct", function() {
           expect(m.tags).to.have.members(["test", "replaced"]);
+        });
+        test("islabeled is correct", function() {
           expect(m.islabeled).to.equal(false);
+        });
+        test("lastmodifiedby is correct", function() {
           expect(m.lastmodifiedby).to.equal("admin");
+        });
+        test("lastmodified is a non-empty string", function() {
           expect(m.lastmodified).to.be.a("string").and.not.empty;
         });
