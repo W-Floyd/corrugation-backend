@@ -99,6 +99,7 @@ func (record *Record) ToEntity() (output *EntityInput, err error) {
 					return &v
 				}(),
 				Tags: func() (out []*string) {
+					out = []*string{}
 					for _, tag := range record.Tags {
 						out = append(out, &tag.Title)
 					}
@@ -109,13 +110,8 @@ func (record *Record) ToEntity() (output *EntityInput, err error) {
 					return &v
 				}(),
 				IsLabeled: func() *bool {
-					var v bool
-					if record.Label != nil {
-						v = true
-						return &v
-					} else {
-						return nil
-					}
+					v := record.Label != nil
+					return &v
 				}(),
 			},
 		}
@@ -372,6 +368,27 @@ func CreateEntity(ctx context.Context, input *struct {
 	return
 }
 
+var ListEntityIDsOperation = huma.Operation{
+	Method: http.MethodGet,
+	Path:   "/api/entity/list",
+}
+
+type EntityIDListOutput struct {
+	Body []string
+}
+
+func ListEntityIDs(ctx context.Context, input *struct{}) (output *EntityIDListOutput, err error) {
+	records, err := GetRecords(nil, nil, nil, nil, nil, []string{"id"})
+	if err != nil {
+		return
+	}
+	output = &EntityIDListOutput{Body: []string{}}
+	for _, r := range records {
+		output.Body = append(output.Body, strconv.FormatUint(uint64(r.ID), 10))
+	}
+	return
+}
+
 var GetAllEntitiesOperation = huma.Operation{
 	Method: http.MethodGet,
 	Path:   "/api/entity",
@@ -428,7 +445,22 @@ func GetEntity(ctx context.Context, input *struct {
 		err = huma.Error500InternalServerError("id must not be 0")
 	}
 
-	records, err := GetRecords(&input.ID, nil, nil, nil, nil, nil)
+	records, err := GetRecords(&input.ID, nil, nil, nil, []struct {
+		q string
+		h func(db gorm.PreloadBuilder) error
+	}{
+		{
+			q: "Artifacts",
+			h: func(db gorm.PreloadBuilder) error {
+				db.Select("id", "record_id")
+				return nil
+			},
+		},
+		{
+			q: "Tags",
+			h: func(db gorm.PreloadBuilder) error { return nil },
+		},
+	}, nil)
 	if err != nil {
 		return
 	}
