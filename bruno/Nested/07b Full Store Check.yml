@@ -35,7 +35,7 @@ runtime:
           expect(e.location).to.equal(0);
           expect(e.metadata.quantity).to.equal(1);
           expect(e.metadata.owners).to.deep.equal([]);
-          expect(e.metadata.tags).to.deep.equal(["parent"]);
+          expect(e.metadata.tags).to.have.members(["parent"]);
           expect(e.metadata.islabeled).to.equal(false);
         });
         test("Child entity is correct", function() {
@@ -47,7 +47,7 @@ runtime:
           expect(e.location).to.equal(Number(bru.getVar("parentId")));
           expect(e.metadata.quantity).to.equal(1);
           expect(e.metadata.owners).to.deep.equal([]);
-          expect(e.metadata.tags).to.deep.equal(["child"]);
+          expect(e.metadata.tags).to.have.members(["child"]);
           expect(e.metadata.islabeled).to.equal(false);
         });
         test("Grandchild entity is correct", function() {
@@ -59,6 +59,6 @@ runtime:
           expect(e.location).to.equal(Number(bru.getVar("childId")));
           expect(e.metadata.quantity).to.equal(1);
           expect(e.metadata.owners).to.deep.equal([]);
-          expect(e.metadata.tags).to.deep.equal(["grandchild"]);
+          expect(e.metadata.tags).to.have.members(["grandchild"]);
           expect(e.metadata.islabeled).to.equal(false);
         });

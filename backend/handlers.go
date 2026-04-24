@@ -27,8 +27,9 @@ func RegisterHandlers(api huma.API) {
 	huma.Register(api, GetFirstFreeIDOperation, GetFirstFreeID)
 	huma.Register(api, CreateEntityOperation, CreateEntity)
 	huma.Register(api, PatchEntityOperation, PatchEntity)
+	huma.Register(api, GetAllEntitiesOperation, GetAllEntities)
 	huma.Register(api, GetEntityOperation, GetEntity)
-	huma.Register(api, DeleteEntityOperation, DeleteRecord)
+	huma.Register(api, DeleteEntityOperation, DeleteEntity)
 
 	huma.Register(api, CreateArtifactStoreOperation, CreateArtifact)
 	huma.Register(api, GetArtifactStoreOperation, GetArtifact)

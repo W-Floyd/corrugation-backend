@@ -88,6 +88,7 @@ func (record *Record) ToEntity() (output *EntityInput, err error) {
 				return
 			}(),
 			Metadata: &Metadata{
+				Owners: []*string{},
 				Quantity: func() *int {
 					var v int
 					if record.Quantity == nil {
@@ -143,6 +144,10 @@ func GetStore(ctx context.Context, input *struct{}) (output *StoreOutput, err er
 				return nil
 			},
 		},
+		{
+			q: "Tags",
+			h: func(db gorm.PreloadBuilder) error { return nil },
+		},
 	}, nil)
 	if err != nil {
 		return
@@ -171,7 +176,7 @@ func GetStore(ctx context.Context, input *struct{}) (output *StoreOutput, err er
 	output.Body.StoreVersion = int(newest.Unix())
 
 	var lastID *uint
-	tx := db.Model(&Record{}).Unscoped().Select("MAX(id)").Scan(&lastID)
+	tx := db.Model(&Artifact{}).Unscoped().Select("MAX(id)").Scan(&lastID)
 	if tx.Error != nil {
 		err = tx.Error
 		return
@@ -282,7 +287,7 @@ var CreateEntityOperation = huma.Operation{
 
 func CreateEntity(ctx context.Context, input *struct {
 	Body EntityInput
-}) (output *EntityOutput, err error) {
+}) (output *StringOutput, err error) {
 
 	record := &Record{}
 
@@ -304,6 +309,11 @@ func CreateEntity(ctx context.Context, input *struct {
 	}
 
 	record.Description = input.Body.Description
+
+	if input.Body.Metadata != nil && input.Body.Metadata.Quantity != nil {
+		v := uint(*input.Body.Metadata.Quantity)
+		record.Quantity = &v
+	}
 
 	location := input.Body.Location
 	if location != nil && *location != 0 {
@@ -353,15 +363,54 @@ func CreateEntity(ctx context.Context, input *struct {
 		return
 	}
 
-	entity, err := record.ToEntity()
+	output = &StringOutput{
+		Body: strconv.FormatUint(uint64(record.ID), 10),
+	}
+
+	return
+}
+
+var GetAllEntitiesOperation = huma.Operation{
+	Method: http.MethodGet,
+	Path:   "/api/entity",
+}
+
+type AllEntitiesOutput struct {
+	Body map[oldbackend.EntityID]*EntityInput
+}
+
+func GetAllEntities(ctx context.Context, input *struct{}) (output *AllEntitiesOutput, err error) {
+	records, err := GetRecords(nil, nil, nil, nil, []struct {
+		q string
+		h func(db gorm.PreloadBuilder) error
+	}{
+		{
+			q: "Artifacts",
+			h: func(db gorm.PreloadBuilder) error {
+				db.Select("id", "record_id")
+				return nil
+			},
+		},
+		{
+			q: "Tags",
+			h: func(db gorm.PreloadBuilder) error { return nil },
+		},
+	}, nil)
 	if err != nil {
 		return
 	}
 
-	output = &EntityOutput{
-		Body: *entity,
+	output = &AllEntitiesOutput{
+		Body: make(map[oldbackend.EntityID]*EntityInput),
 	}
-
+	for _, record := range records {
+		e, e2 := record.ToEntity()
+		if e2 != nil {
+			err = e2
+			return
+		}
+		output.Body[oldbackend.EntityID(record.ID)] = e
+	}
 	return
 }
 
@@ -400,8 +449,30 @@ func GetEntity(ctx context.Context, input *struct {
 }
 
 var DeleteEntityOperation = huma.Operation{
-	Method: http.MethodDelete,
-	Path:   "/api/entity/{id}",
+	Method:       http.MethodDelete,
+	Path:         "/api/entity/{id}",
+	DefaultStatus: http.StatusOK,
+}
+
+type DeleteOutput struct {
+	Status int
+}
+
+func DeleteEntity(ctx context.Context, input *struct {
+	ID uint `path:"id" example:"1" doc:"ID to delete"`
+}) (output *DeleteOutput, err error) {
+	result := db.Where("id = ?", input.ID).Delete(&Record{})
+	if result.Error != nil {
+		err = result.Error
+		return
+	}
+	output = &DeleteOutput{}
+	if result.RowsAffected == 0 {
+		output.Status = http.StatusNoContent
+	} else {
+		output.Status = http.StatusOK
+	}
+	return
 }
 
 var PatchEntityOperation = huma.Operation{
