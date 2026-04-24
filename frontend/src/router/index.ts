@@ -1,0 +1,55 @@
+import { createRouter, createWebHistory } from "vue-router";
+import { useAuthStore } from "../stores/auth";
+
+let configFetched = false;
+
+const router = createRouter({
+  history: createWebHistory(),
+  routes: [
+    {
+      path: "/login",
+      name: "login",
+      component: () => import("../views/LoginView.vue"),
+    },
+    {
+      path: "/callback",
+      name: "callback",
+      component: () => import("../views/CallbackView.vue"),
+    },
+    {
+      path: "/",
+      name: "entity",
+      component: () => import("../views/EntityView.vue"),
+    },
+  ],
+});
+
+router.beforeEach(async (to) => {
+  const authStore = useAuthStore();
+  DEBUG && console.log("[router] beforeEach to:", to.name, to.fullPath);
+
+  if (!configFetched) {
+    DEBUG && console.log("[router] fetching auth config");
+    await authStore.fetchConfig();
+    configFetched = true;
+  }
+
+  const token = authStore.token;
+  const authEnabled = authStore.authConfig.enabled;
+  DEBUG && console.log("[router] token:", !!token, "authEnabled:", authEnabled);
+
+  if (to.name === "callback") {
+    DEBUG && console.log("[router] allowing callback route");
+    return;
+  }
+  if (to.name === "login" && token) {
+    DEBUG && console.log("[router] already authed, redirecting to entity");
+    return { name: "entity" };
+  }
+  if (authEnabled && !token && to.name !== "login") {
+    DEBUG && console.log("[router] not authed, redirecting to login");
+    return { name: "login" };
+  }
+});
+
+export default router;

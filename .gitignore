@@ -1,3 +1,11 @@
 /data/
 /ignore/
-corrugation-backend
+/tmp/
+/clone/
+/infinity/
+corrugation
+/dist/
+/main
+**/node_modules/
+/infinity/
+*.sqlite

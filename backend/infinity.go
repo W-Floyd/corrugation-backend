@@ -1,0 +1,151 @@
+package backend
+
+import (
+	"bytes"
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/json"
+	"errors"
+	"io"
+	"net/http"
+	"strconv"
+)
+
+type infinityEmbeddingsRequest struct {
+	Model          string   `json:"model"`
+	EncodingFormat string   `json:"encoding_format"`
+	Input          []string `json:"input"`
+	Modality       string   `json:"modality"`
+}
+
+type infinityEmbeddingsReponse struct {
+	Object string `json:"object"`
+	Data   []struct {
+		Object    string    `json:"object"`
+		Embedding []float64 `json:"embedding"`
+		Index     uint      `json:"index"`
+	} `json:"data"`
+	Model string `json:"model"`
+	Usage struct {
+		PromptTokens uint `json:"prompt_tokens"`
+		TotalTokens  uint `json:"total_tokens"`
+	} `json:"usage"`
+	ID      string `json:"id"`
+	Created int64  `json:"created"`
+}
+
+type Embeddings []float64
+
+var embeddingsCache map[string]Embeddings
+
+func init() {
+	embeddingsCache = make(map[string]Embeddings)
+}
+
+func (i *infinityEmbeddingsRequest) GenerateEmbeddings() (e Embeddings, err error) {
+
+	b, err := json.Marshal(*i)
+	if err != nil {
+		return
+	}
+
+	c := http.Client{}
+	resp, err := c.Post(infinityAddress+"/embeddings", "application/json", bytes.NewBuffer(b))
+	if err != nil {
+		return
+	}
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return
+	}
+	if resp.StatusCode != http.StatusOK {
+		err = errors.Join(errors.New(string(respBody)), errors.New("http error "+strconv.Itoa(resp.StatusCode)+" when submitting data to Infinity backend"))
+		return
+	}
+
+	var infinityResponse infinityEmbeddingsReponse
+
+	err = json.Unmarshal(respBody, &infinityResponse)
+	if err != nil {
+		return
+	}
+
+	e = infinityResponse.Data[0].Embedding
+
+	return
+
+}
+
+func GenerateEmbeddings(input string) (e Embeddings, err error) {
+
+	infinityRequest := infinityEmbeddingsRequest{
+		Model:          infinityModel,
+		EncodingFormat: "float",
+		Input: []string{
+			input,
+		},
+		Modality: "text",
+	}
+
+	e, err = infinityRequest.GenerateEmbeddings()
+
+	return
+}
+
+func (i *Image) GenerateEmbeddings() (err error) {
+
+	if i.Data == nil || len(*i.Data) == 0 {
+		err = errors.New("no data in image")
+		return
+	}
+
+	base64Image := base64.StdEncoding.EncodeToString(*i.Data)
+	base64Image = "data:" + http.DetectContentType(*i.Data) + ";base64," + base64Image
+
+	infinityRequest := infinityEmbeddingsRequest{
+		Model:          infinityModel,
+		EncodingFormat: "float",
+		Input: []string{
+			base64Image,
+		},
+		Modality: "image",
+	}
+
+	e, err := infinityRequest.GenerateEmbeddings()
+	if err != nil {
+		return
+	}
+
+	hash, jsonData, err := e.MarshalEmbeddings()
+	if err != nil {
+		return
+	}
+	i.Embedding = &jsonData
+	i.EmbeddingHash = &hash
+
+	return
+
+}
+
+func (e *Embeddings) MarshalEmbeddings() (hash string, jsonData []byte, err error) {
+
+	jsonData, err = json.Marshal(*e)
+	if err != nil {
+		return
+	}
+
+	h := sha256.New()
+	_, err = h.Write(jsonData)
+	if err != nil {
+		return
+	}
+
+	hash = string(h.Sum(nil))
+
+	if _, ok := embeddingsCache[hash]; !ok {
+		embeddingsCache[hash] = *e
+	}
+
+	return
+}

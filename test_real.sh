@@ -1,7 +1,7 @@
 #!/bin/bash
 
-__username="$(yq -r '.username' <"${HOME}/.corrugation-backend.yaml")"
-__password="$(yq -r '.password' <"${HOME}/.corrugation-backend.yaml")"
+__username="$(yq -r '.username' <"${HOME}/.corrugation.yaml")"
+__password="$(yq -r '.password' <"${HOME}/.corrugation.yaml")"
 
 __jwt=$(curl -sS -X POST -d "username=${__username}" -d "password=${__password}" localhost:8083/login | jq -r '.token')
 

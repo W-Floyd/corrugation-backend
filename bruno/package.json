@@ -1,0 +1,8 @@
+{
+  "name": "corrugation-api-tests",
+  "version": "1.0.0",
+  "dependencies": {
+    "fast-png": "^6.0.0",
+    "jsqr": "^1.4.0"
+  }
+}
