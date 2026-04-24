@@ -1,7 +1,7 @@
 info:
-  name: 13 Get Next ID
+  name: 23 Check Next ID After Deleting A
   type: http
-  seq: 13
+  seq: 23
 
 http:
   method: GET
@@ -17,9 +17,10 @@ runtime:
   scripts:
     - type: tests
       code: |-
+        // Deletions don't lower nextId — Unscoped MAX includes soft-deleted
         test("Returns 200", function() {
           expect(res.status).to.equal(200);
         });
-        test("Next ID is 2", function() {
-          expect(res.body).to.equal(2);
+        test("nextId unchanged after deleting A", function() {
+          expect(res.body).to.equal(parseInt(bru.getEnvVar("expectedNextId")));
         });

@@ -1,7 +1,7 @@
 info:
-  name: 14 Get First Labeled ID
+  name: 25 Check First Available After Deleting B
   type: http
-  seq: 14
+  seq: 25
 
 http:
   method: GET
@@ -17,9 +17,10 @@ runtime:
   scripts:
     - type: tests
       code: |-
+        // State: entity 1 (unlabeled), A and B deleted
         test("Returns 200", function() {
           expect(res.status).to.equal(200);
         });
-        test("First ID is 1", function() {
+        test("firstAvailableId is 1 (no labeled entities remain)", function() {
           expect(res.body).to.equal(1);
         });

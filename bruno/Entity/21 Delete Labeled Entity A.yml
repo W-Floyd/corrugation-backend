@@ -1,14 +1,11 @@
 info:
-  name: 16 Delete Entity
+  name: 21 Delete Labeled Entity A
   type: http
-  seq: 16
+  seq: 21
 
 http:
   method: DELETE
-  url: "{{baseUrl}}/api/entity/{{entityId}}"
-  headers:
-    - name: accept
-      value: application/json
+  url: "{{baseUrl}}/api/entity/{{labeledEntityIdA}}"
   auth:
     type: bearer
     token: "{{authToken}}"

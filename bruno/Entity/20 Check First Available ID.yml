@@ -1,7 +1,7 @@
 info:
-  name: 14 Get First Labeled ID
+  name: 20 Check First Available ID
   type: http
-  seq: 14
+  seq: 20
 
 http:
   method: GET
@@ -17,9 +17,11 @@ runtime:
   scripts:
     - type: tests
       code: |-
+        // State: entity 1 (unlabeled), A (labeled), B (labeled)
+        // firstAvailableId = 1 — slot 1 is not labeled
         test("Returns 200", function() {
           expect(res.status).to.equal(200);
         });
-        test("First ID is 1", function() {
+        test("firstAvailableId is 1 (entity 1 is unlabeled)", function() {
           expect(res.body).to.equal(1);
         });
