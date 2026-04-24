@@ -10,3 +10,4 @@ corrugation
 /infinity/
 *.sqlite
 __debug_bin*
+.env

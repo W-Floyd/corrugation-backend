@@ -29,7 +29,7 @@ type Options struct {
 	OIDCInsecureSkipVerify bool   `help:"Skip TLS certificate verification for OIDC discovery and JWKS requests"`
 	InfinityAddress        string `help:"Infinity embeddings server address" default:"http://localhost:8002"`
 	InfinityTextModel      string `help:"Infinity text embeddings model ID" default:"wkcn/TinyCLIP-ViT-8M-16-Text-3M-YFCC15M"`
-	InfinityImageModel     string `help:"Infinity image embeddings model ID" default:"wkcn/TinyCLIP-ViT-8M-16-Text-3M-YFCC15M"`
+	InfinityImageModel     string `help:"Infinity image embeddings model ID" default:"openai/clip-vit-large-patch14"`
 }
 
 func init() {
