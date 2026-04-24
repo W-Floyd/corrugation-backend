@@ -12,7 +12,7 @@ const (
 
 var (
 	infinityAddress    = "http://localhost:8002"
-	infinityImageModel = "mixedbread-ai/mxbai-embed-large-v1"
+	infinityImageModel = "wkcn/TinyCLIP-ViT-8M-16-Text-3M-YFCC15M"
 	infinityTextModel  = "wkcn/TinyCLIP-ViT-8M-16-Text-3M-YFCC15M"
 )
 

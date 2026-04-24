@@ -305,6 +305,7 @@ func GetArtifactEmbeddings() (e map[uint]*artifactEmbedding, err error) {
 		artifactRecordMap[a.ID] = a.RecordID
 	}
 
+	embeddedIDs := map[uint]bool{}
 	e = map[uint]*artifactEmbedding{}
 	for _, emb := range embeddings {
 		if emb.ArtifactID == nil {
@@ -322,6 +323,48 @@ func GetArtifactEmbeddings() (e map[uint]*artifactEmbedding, err error) {
 		e[*emb.ArtifactID] = &artifactEmbedding{
 			embedding: vec,
 			recordID:  artifactRecordMap[*emb.ArtifactID],
+		}
+		embeddedIDs[*emb.ArtifactID] = true
+	}
+
+	for id := range artifactRecordMap {
+		if embeddedIDs[id] {
+			continue
+		}
+		a, fetchErr := GetArtifactFromDB(id)
+		if fetchErr != nil {
+			log.Printf("embedding generation failed for artifact %d: %v", id, fetchErr)
+			continue
+		}
+		iface, ifaceErr := a.GetInterface()
+		if ifaceErr != nil {
+			continue
+		}
+		img, ok := iface.(*Image)
+		if !ok {
+			continue
+		}
+		if genErr := img.GenerateEmbeddings(); genErr != nil {
+			log.Printf("embedding generation failed for artifact %d: %v", id, genErr)
+			continue
+		}
+		reloaded, reloadErr := gorm.G[Embedding](db).Where("artifact_id = ? AND embed_model = ?", id, infinityImageModel).Find(dbCtx)
+		if reloadErr != nil || len(reloaded) == 0 {
+			continue
+		}
+		var vec []float64
+		if cached, ok := embeddingsCache[reloaded[0].Hash]; ok {
+			vec = cached
+		} else {
+			if jsonErr := json.Unmarshal(reloaded[0].Data, &vec); jsonErr != nil {
+				continue
+			}
+			embeddingsCache[reloaded[0].Hash] = vec
+		}
+		recordID := artifactRecordMap[id]
+		e[id] = &artifactEmbedding{
+			embedding: vec,
+			recordID:  recordID,
 		}
 	}
 

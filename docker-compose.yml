@@ -1,13 +1,14 @@
-x-corrugation-env: &corrugation-env
+x-env: &env
   SERVICE_ADDRESS: 0.0.0.0
   SERVICE_PORT: "8083"
   SERVICE_DIST: /dist
   SERVICE_DATA: /data
   SERVICE_OIDC_DISCOVERY_URL: ""
   SERVICE_OIDC_CLIENT_ID: ""
-  SERVICE_INFINITY_ADDRESS: http://infinity:8002
+  INFINITY_PORT: "8002"
+  SERVICE_INFINITY_ADDRESS: http://infinity:${INFINITY_PORT}
   SERVICE_INFINITY_IMAGE_MODEL: wkcn/TinyCLIP-ViT-8M-16-Text-3M-YFCC15M
-  SERVICE_INFINITY_TEXT_MODEL: mixedbread-ai/mxbai-embed-large-v1
+  SERVICE_INFINITY_TEXT_MODEL: wkcn/TinyCLIP-ViT-8M-16-Text-3M-YFCC15M
 
 services:
   corrugation:
@@ -16,10 +17,10 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - 8083:8083
+      - ${SERVICE_PORT}:${SERVICE_PORT}
     restart: "no"
     environment:
-      <<: *corrugation-env
+      <<: *env
       SERVICE_OIDC_INSECURE_SKIP_VERIFY: "true"
     volumes:
       - ./data/corrugation:/data
@@ -30,10 +31,10 @@ services:
     profiles: [prod]
     image: ghcr.io/w-floyd/corrugation:latest
     ports:
-      - 8083:8083
+      - ${SERVICE_PORT}:${SERVICE_PORT}
     restart: unless-stopped
     environment:
-      <<: *corrugation-env
+      <<: *env
       SERVICE_OIDC_INSECURE_SKIP_VERIFY: "false"
     volumes:
       - ./data/corrugation:/data
@@ -43,7 +44,11 @@ services:
   infinity:
     profiles: [dev, prod]
     image: michaelf34/infinity:latest
-    command: v2 --engine torch --device cpu --model-id wkcn/TinyCLIP-ViT-8M-16-Text-3M-YFCC15M --model-id mixedbread-ai/mxbai-embed-large-v1 --port 8002 --log-level warning
+    ports:
+      - ${INFINITY_PORT}:${INFINITY_PORT}
+    environment:
+      <<: *env
+    command: v2 --engine torch --device cpu --model-id ${SERVICE_INFINITY_IMAGE_MODEL} --model-id ${SERVICE_INFINITY_TEXT_MODEL} --log-level warning
     restart: unless-stopped
     volumes:
       - ./data/infinity/:/app/.cache
