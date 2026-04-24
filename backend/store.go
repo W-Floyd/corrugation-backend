@@ -983,6 +983,30 @@ func GetArtifactQRCode(_ context.Context, input *struct {
 	return
 }
 
+var DeleteArtifactOperation = huma.Operation{
+	Method:        http.MethodDelete,
+	Path:          "/api/artifact/{id}",
+	DefaultStatus: http.StatusOK,
+}
+
+func DeleteArtifact(ctx context.Context, input *struct {
+	ID uint `path:"id"`
+}) (output *DeleteOutput, err error) {
+	result := db.Unscoped().Where("id = ?", input.ID).Delete(&Artifact{})
+	if result.Error != nil {
+		err = result.Error
+		return
+	}
+	output = &DeleteOutput{}
+	if result.RowsAffected == 0 {
+		output.Status = http.StatusNoContent
+	} else {
+		output.Status = http.StatusOK
+		Broadcast()
+	}
+	return
+}
+
 var ListArtifactsOperation = huma.Operation{
 	Method: http.MethodGet,
 	Path:   "/api/artifact/list",
