@@ -110,6 +110,7 @@ func main() {
 		}
 
 		backend.RegisterHandlers(api)
+		router.HandleFunc("/ws", backend.WsHandler)
 
 		// Tell the CLI how to start your router.
 		hooks.OnStart(func() {

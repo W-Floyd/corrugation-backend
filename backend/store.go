@@ -363,6 +363,8 @@ func CreateEntity(ctx context.Context, input *struct {
 		return
 	}
 
+	Broadcast()
+
 	output = &StringOutput{
 		Body: strconv.FormatUint(uint64(record.ID), 10),
 	}
@@ -471,6 +473,7 @@ func DeleteEntity(ctx context.Context, input *struct {
 		output.Status = http.StatusNoContent
 	} else {
 		output.Status = http.StatusOK
+		Broadcast()
 	}
 	return
 }
@@ -524,6 +527,8 @@ func PatchEntity(ctx context.Context, input *struct {
 		return
 	}
 
+	Broadcast()
+
 	entity, err := r.ToEntity()
 	if err != nil {
 		return
@@ -551,6 +556,7 @@ func ResetStore(ctx context.Context, input *struct{}) (output *EmptyOutput, err 
 	if err = db.Unscoped().Where("1 = 1").Delete(&Tag{}).Error; err != nil {
 		return
 	}
+	Broadcast()
 	output = &EmptyOutput{}
 	return
 }

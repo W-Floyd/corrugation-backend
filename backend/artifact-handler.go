@@ -43,6 +43,8 @@ func CreateArtifact(ctx context.Context, input *struct {
 		return
 	}
 
+	Broadcast()
+
 	output = &UIntOutput{
 		Body: a.GetID(),
 	}
