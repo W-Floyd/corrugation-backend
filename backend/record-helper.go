@@ -18,11 +18,9 @@ import (
 )
 
 type RecordQuery struct {
-	Query             string
-	SearchDescription bool
-	SearchLabel       bool
-	ChildrenDepth     int
-	ParentDepth       int
+	Query         string
+	ChildrenDepth int
+	ParentDepth   int
 }
 
 func GetRecordsFriendly(ctx context.Context, inputID uint, search *RecordQuery) (records []Record, err error) {
@@ -201,15 +199,7 @@ func GetRecords(ID *uint, childrenDepth *int, parentDepth *int, search *RecordQu
 
 		searchLower := strings.ToLower(search.Query)
 		for _, r := range records {
-			var desc *string
-			if search.SearchDescription {
-				desc = r.Description
-			}
-			var label *string
-			if search.SearchLabel {
-				label = r.Label
-			}
-			score := maxFieldScore(searchLower, r.Title, label, desc)
+			score := maxFieldScore(searchLower, r.Title, r.Label, r.Description)
 			if score > textScore[r.ID] {
 				textScore[r.ID] = score
 			}

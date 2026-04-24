@@ -5,7 +5,6 @@ import (
 	"compress/gzip"
 	"context"
 	"fmt"
-	"io/fs"
 	"log"
 	"net/http"
 	"os"
@@ -70,22 +69,6 @@ func main() {
 			}
 		}
 
-		assets := []string{}
-
-		err = filepath.WalkDir(options.Dist, func(path string, d fs.DirEntry, err error) error {
-			if err != nil {
-				return err
-			}
-			if !d.IsDir() {
-				assets = append(assets, path)
-			}
-			return nil
-		})
-
-		if err != nil {
-			log.Fatalln(err)
-		}
-
 		// Create a new router & API
 		router := http.NewServeMux()
 		config := huma.DefaultConfig("My API", "1.0.0")
@@ -122,49 +105,16 @@ func main() {
 
 		autopatch.AutoPatch(api)
 
-		var indexHTML []byte
-
-		for _, asset := range assets {
-			contents, err := os.ReadFile(asset)
-			if err != nil {
-				log.Fatalln(err)
-			}
-			var contentType string
-			switch filepath.Ext(asset) {
-			case ".js":
-				contentType = "text/javascript"
-			case ".css":
-				contentType = "text/css"
-			default:
-				contentType = http.DetectContentType(contents)
-			}
-
-			path := strings.TrimPrefix(filepath.Clean(asset), filepath.Clean(options.Dist))
-
-			if path == "/index.html" {
-				indexHTML = contents
-				continue
-			}
-
-			huma.Register(api,
-				huma.Operation{
-					Path:   path,
-					Method: http.MethodGet,
-					Hidden: true,
-				}, func(ctx context.Context, i *struct{}) (output *backend.BytesOutput, err error) {
-					output = &backend.BytesOutput{
-						Body:        contents,
-						ContentType: contentType,
-					}
-					return
-				})
-		}
-
-		// Catch-all: serve index.html for any path not matched by API or assets.
-		if indexHTML != nil {
+		// Catch-all: serve from dist on each request; fallback to index.html for SPA.
+		if _, err := os.Stat(options.Dist); err == nil {
+			dist := options.Dist
 			router.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Set("Content-Type", "text/html; charset=utf-8")
-				w.Write(indexHTML)
+				path := filepath.Join(dist, filepath.Clean(r.URL.Path))
+				if info, err := os.Stat(path); err == nil && !info.IsDir() {
+					http.ServeFile(w, r, path)
+					return
+				}
+				http.ServeFile(w, r, filepath.Join(dist, "index.html"))
 			})
 		}
 

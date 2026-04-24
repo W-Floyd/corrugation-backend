@@ -86,40 +86,6 @@ onBeforeUnmount(() => {
             </label>
         </div>
 
-        <!-- Search description checkbox -->
-        <div class="flex items-center">
-            <label
-                class="flex items-center cursor-pointer"
-                title="Include description in search"
-            >
-                <input
-                    type="checkbox"
-                    v-model="entitiesStore.searchdescription"
-                    class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-                <span class="ml-1 text-sm text-gray-600 dark:text-gray-400"
-                    >Desc</span
-                >
-            </label>
-        </div>
-
-        <!-- Search label checkbox -->
-        <div class="flex items-center">
-            <label
-                class="flex items-center cursor-pointer"
-                title="Include label in search"
-            >
-                <input
-                    type="checkbox"
-                    v-model="entitiesStore.searchLabel"
-                    class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-                <span class="ml-1 text-sm text-gray-600 dark:text-gray-400"
-                    >Label</span
-                >
-            </label>
-        </div>
-
         <!-- Search input -->
         <div class="relative flex-1">
             <input
@@ -144,11 +110,7 @@ onBeforeUnmount(() => {
 
         <!-- Clear button -->
         <button
-            v-if="
-                entitiesStore.searchtext ||
-                entitiesStore.filterworld ||
-                entitiesStore.searchdescription
-            "
+            v-if="entitiesStore.searchtext || entitiesStore.filterworld"
             @click="resetSearch"
             type="button"
             class="h-8 w-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-300"
