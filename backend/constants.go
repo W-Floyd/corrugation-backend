@@ -9,6 +9,14 @@ const (
 	errorMoreArtifactsThanExpected = "more artifacts than expected"
 	topLevelName                   = "World"
 
+)
+
+var (
 	infinityAddress = "http://localhost:8002"
 	infinityModel   = "wkcn/TinyCLIP-ViT-8M-16-Text-3M-YFCC15M"
 )
+
+func SetInfinityConfig(address, model string) {
+	infinityAddress = address
+	infinityModel = model
+}

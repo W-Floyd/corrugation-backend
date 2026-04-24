@@ -2,6 +2,7 @@ package backend
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"net/http"
 	"strings"
@@ -19,8 +20,13 @@ type OIDCConfig struct {
 	TokenEndpoint         string `json:"token_endpoint"`
 }
 
-func FetchOIDCConfig(discoveryURL string) (*OIDCConfig, error) {
-	resp, err := http.Get(discoveryURL) //nolint:gosec
+func FetchOIDCConfig(discoveryURL string, insecureSkipVerify bool) (*OIDCConfig, error) {
+	client := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: insecureSkipVerify}, //nolint:gosec
+		},
+	}
+	resp, err := client.Get(discoveryURL) //nolint:gosec
 	if err != nil {
 		return nil, err
 	}
@@ -70,9 +76,17 @@ func UsernameFromContext(ctx context.Context) string {
 	return v
 }
 
-func newJWKSet(jwksURL string) jwk.Set {
+func newJWKSet(jwksURL string, insecureSkipVerify bool) jwk.Set {
+	registerOpts := []jwk.RegisterOption{jwk.WithMinRefreshInterval(10 * time.Minute)}
+	if insecureSkipVerify {
+		registerOpts = append(registerOpts, jwk.WithHTTPClient(&http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec
+			},
+		}))
+	}
 	cache := jwk.NewCache(context.Background())
-	if err := cache.Register(jwksURL, jwk.WithMinRefreshInterval(10*time.Minute)); err != nil {
+	if err := cache.Register(jwksURL, registerOpts...); err != nil {
 		panic("failed to register jwk location: " + err.Error())
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -84,8 +98,8 @@ func newJWKSet(jwksURL string) jwk.Set {
 }
 
 // NewAuthMiddleware guards all /api/ paths (except /api/auth/) with OIDC JWT validation.
-func NewAuthMiddleware(api huma.API, issuer, jwksURL string) func(huma.Context, func(huma.Context)) {
-	keySet := newJWKSet(jwksURL)
+func NewAuthMiddleware(api huma.API, issuer, jwksURL string, insecureSkipVerify bool) func(huma.Context, func(huma.Context)) {
+	keySet := newJWKSet(jwksURL, insecureSkipVerify)
 	return func(ctx huma.Context, next func(huma.Context)) {
 		path := ctx.URL().Path
 		if !strings.HasPrefix(path, "/api/") || strings.HasPrefix(path, "/api/auth/") {

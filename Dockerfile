@@ -26,8 +26,6 @@ RUN --mount=type=cache,target="/root/.cache/go-build" go build -ldflags="-extldf
 # Stage 2: Final image
 FROM scratch
 WORKDIR /
-ENV CORRUGATION_AUTHENTICATION=false
-ENV CORRUGATION_DATA=/data
 COPY --from=backend /app/main /app/main
 COPY --from=frontend /app/dist /dist
 ENTRYPOINT ["/app/main"]

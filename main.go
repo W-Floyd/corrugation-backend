@@ -24,8 +24,11 @@ type Options struct {
 	Port             int    `help:"Port to listen on" default:"8083"`
 	Dist             string `help:"Dist path" default:"./dist"`
 	Data             string `help:"Data path" default:"./data"`
-	OIDCDiscoveryURL string `help:"OIDC discovery URL (e.g. https://authentik.example.com/application/o/<slug>/.well-known/openid-configuration); omit to disable auth"`
-	OIDCClientID     string `help:"OAuth2 client ID registered in Authentik"`
+	OIDCDiscoveryURL       string `help:"OIDC discovery URL (e.g. https://authentik.example.com/application/o/<slug>/.well-known/openid-configuration); omit to disable auth"`
+	OIDCClientID           string `help:"OAuth2 client ID registered in Authentik"`
+	OIDCInsecureSkipVerify bool   `help:"Skip TLS certificate verification for OIDC discovery and JWKS requests"`
+	InfinityAddress  string `help:"Infinity embeddings server address" default:"http://localhost:8002"`
+	InfinityModel    string `help:"Infinity embeddings model ID" default:"wkcn/TinyCLIP-ViT-8M-16-Text-3M-YFCC15M"`
 }
 
 func init() {
@@ -37,6 +40,8 @@ func main() {
 	cli := humacli.New(func(hooks humacli.Hooks, options *Options) {
 
 		log.Println("init backend")
+		backend.SetInfinityConfig(options.InfinityAddress, options.InfinityModel)
+
 		if _, err := os.Stat(options.Data); os.IsNotExist(err) {
 			err := os.Mkdir(options.Data, 0755)
 			if err != nil {
@@ -86,7 +91,7 @@ func main() {
 		var oidcCfg *backend.OIDCConfig
 		if options.OIDCDiscoveryURL != "" {
 			var err error
-			oidcCfg, err = backend.FetchOIDCConfig(options.OIDCDiscoveryURL)
+			oidcCfg, err = backend.FetchOIDCConfig(options.OIDCDiscoveryURL, options.OIDCInsecureSkipVerify)
 			if err != nil {
 				log.Fatalf("fetch OIDC config: %v", err)
 			}
@@ -110,7 +115,7 @@ func main() {
 		backend.RegisterAuthHandlers(api)
 
 		if oidcCfg != nil {
-			api.UseMiddleware(backend.NewAuthMiddleware(api, oidcCfg.Issuer, oidcCfg.JWKSURI))
+			api.UseMiddleware(backend.NewAuthMiddleware(api, oidcCfg.Issuer, oidcCfg.JWKSURI, options.OIDCInsecureSkipVerify))
 		}
 
 		autopatch.AutoPatch(api)
