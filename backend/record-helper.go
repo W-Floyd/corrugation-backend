@@ -154,11 +154,16 @@ func GetRecords(ID *uint, childrenDepth *int, parentDepth *int, search *string, 
 	}
 
 	if search != nil {
+		scopedIDs := make([]uint, 0, len(records))
+		for _, r := range records {
+			scopedIDs = append(scopedIDs, r.ID)
+		}
+
 		var artifactSearch, recordSearch []struct {
 			id    uint
 			score float64
 		}
-		artifactSearch, err = SearchByArtifact(*search, minimumImageSearchConfidence)
+		artifactSearch, err = SearchByArtifact(*search, minimumImageSearchConfidence, scopedIDs)
 		if err != nil {
 			return
 		}

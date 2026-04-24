@@ -171,6 +171,7 @@ func main() {
 
 		// Tell the CLI how to start your router.
 		hooks.OnStart(func() {
+			go backend.BackfillEmbeddings()
 			err := http.ListenAndServe(fmt.Sprintf("%s:%d", options.Address, options.Port), router)
 			if err != nil {
 				log.Fatalln(err)

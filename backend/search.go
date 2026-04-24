@@ -11,7 +11,7 @@ const (
 
 func dotProduct(v1 []float64, v2 []float64) (dotProduct float64, err error) {
 	if len(v1) != len(v2) {
-		err = errors.New("vectors should have same lenghth")
+		err = errors.New("vectors should have same length")
 		return
 	}
 	for i := range len(v1) {
@@ -20,16 +20,16 @@ func dotProduct(v1 []float64, v2 []float64) (dotProduct float64, err error) {
 	return
 }
 
-func SearchByArtifact(search string, threshold float64) (recordResults []struct {
+func SearchByArtifact(search string, threshold float64, recordIDs []uint) (recordResults []struct {
 	id    uint
 	score float64
 }, err error) {
-	es, err := GetArtifactEmbeddings()
+	es, err := GetArtifactEmbeddings(recordIDs)
 	if err != nil {
 		return
 	}
 
-	searchEmbeddings, err := GenerateEmbeddings(search)
+	searchEmbeddings, err := GenerateImageQueryEmbeddings(search)
 	if err != nil {
 		return
 	}
@@ -64,7 +64,7 @@ func SearchByRecord(search string, threshold float64) (recordResults []struct {
 		return
 	}
 
-	searchEmbeddings, err := GenerateEmbeddings(search)
+	searchEmbeddings, err := GenerateTextEmbeddings(search)
 	if err != nil {
 		return
 	}

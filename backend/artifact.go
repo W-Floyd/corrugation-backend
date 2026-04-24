@@ -290,19 +290,29 @@ type artifactEmbedding struct {
 	recordID  *uint
 }
 
-func GetArtifactEmbeddings() (e map[uint]*artifactEmbedding, err error) {
-	embeddings, err := gorm.G[Embedding](db).Where("artifact_id IS NOT NULL AND embed_model = ?", infinityImageModel).Find(dbCtx)
-	if err != nil {
-		return
+func GetArtifactEmbeddings(recordIDs []uint) (e map[uint]*artifactEmbedding, err error) {
+	var artifacts []Artifact
+	if len(recordIDs) > 0 {
+		artifacts, err = gorm.G[Artifact](db).Where("record_id IN ?", recordIDs).Select("id", "record_id").Find(dbCtx)
+	} else {
+		artifacts, err = gorm.G[Artifact](db).Select("id", "record_id").Find(dbCtx)
 	}
-
-	artifacts, err := gorm.G[Artifact](db).Select("id", "record_id").Find(dbCtx)
 	if err != nil {
 		return
 	}
 	artifactRecordMap := map[uint]*uint{}
 	for _, a := range artifacts {
 		artifactRecordMap[a.ID] = a.RecordID
+	}
+
+	artifactIDs := make([]uint, 0, len(artifactRecordMap))
+	for id := range artifactRecordMap {
+		artifactIDs = append(artifactIDs, id)
+	}
+
+	embeddings, err := gorm.G[Embedding](db).Where("artifact_id IN ? AND embed_model = ?", artifactIDs, infinityImageModel).Find(dbCtx)
+	if err != nil {
+		return
 	}
 
 	embeddedIDs := map[uint]bool{}
@@ -327,10 +337,44 @@ func GetArtifactEmbeddings() (e map[uint]*artifactEmbedding, err error) {
 		embeddedIDs[*emb.ArtifactID] = true
 	}
 
-	for id := range artifactRecordMap {
-		if embeddedIDs[id] {
+	generateMissingArtifactEmbeddings(artifactIDs, embeddedIDs)
+
+	newEmbeddings, err := gorm.G[Embedding](db).Where("artifact_id IN ? AND embed_model = ?", artifactIDs, infinityImageModel).Find(dbCtx)
+	if err != nil {
+		return
+	}
+	for _, emb := range newEmbeddings {
+		if emb.ArtifactID == nil || e[*emb.ArtifactID] != nil {
 			continue
 		}
+		var vec []float64
+		if cached, ok := embeddingsCache[emb.Hash]; ok {
+			vec = cached
+		} else {
+			if jsonErr := json.Unmarshal(emb.Data, &vec); jsonErr != nil {
+				continue
+			}
+			embeddingsCache[emb.Hash] = vec
+		}
+		e[*emb.ArtifactID] = &artifactEmbedding{
+			embedding: vec,
+			recordID:  artifactRecordMap[*emb.ArtifactID],
+		}
+	}
+
+	return
+}
+
+// generateMissingArtifactEmbeddings generates image embeddings for artifact IDs not in embeddedIDs.
+// Pass nil artifactIDs to process all artifacts.
+func generateMissingArtifactEmbeddings(artifactIDs []uint, embeddedIDs map[uint]bool) {
+	var candidates []uint
+	for _, id := range artifactIDs {
+		if !embeddedIDs[id] {
+			candidates = append(candidates, id)
+		}
+	}
+	for _, id := range candidates {
 		a, fetchErr := GetArtifactFromDB(id)
 		if fetchErr != nil {
 			log.Printf("embedding generation failed for artifact %d: %v", id, fetchErr)
@@ -346,27 +390,6 @@ func GetArtifactEmbeddings() (e map[uint]*artifactEmbedding, err error) {
 		}
 		if genErr := img.GenerateEmbeddings(); genErr != nil {
 			log.Printf("embedding generation failed for artifact %d: %v", id, genErr)
-			continue
-		}
-		reloaded, reloadErr := gorm.G[Embedding](db).Where("artifact_id = ? AND embed_model = ?", id, infinityImageModel).Find(dbCtx)
-		if reloadErr != nil || len(reloaded) == 0 {
-			continue
-		}
-		var vec []float64
-		if cached, ok := embeddingsCache[reloaded[0].Hash]; ok {
-			vec = cached
-		} else {
-			if jsonErr := json.Unmarshal(reloaded[0].Data, &vec); jsonErr != nil {
-				continue
-			}
-			embeddingsCache[reloaded[0].Hash] = vec
-		}
-		recordID := artifactRecordMap[id]
-		e[id] = &artifactEmbedding{
-			embedding: vec,
-			recordID:  recordID,
 		}
 	}
-
-	return
 }

@@ -77,19 +77,22 @@ func (i *infinityEmbeddingsRequest) GenerateEmbeddings() (e Embeddings, err erro
 
 }
 
-func GenerateEmbeddings(input string) (e Embeddings, err error) {
+func GenerateTextEmbeddings(input string) (e Embeddings, err error) {
+	return generateTextEmbeddings(input, infinityTextModel)
+}
 
+func GenerateImageQueryEmbeddings(input string) (e Embeddings, err error) {
+	return generateTextEmbeddings(input, infinityImageModel)
+}
+
+func generateTextEmbeddings(input string, model string) (e Embeddings, err error) {
 	infinityRequest := infinityEmbeddingsRequest{
-		Model:          infinityTextModel,
+		Model:          model,
 		EncodingFormat: "float",
-		Input: []string{
-			input,
-		},
-		Modality: "text",
+		Input:          []string{input},
+		Modality:       "text",
 	}
-
 	e, err = infinityRequest.GenerateEmbeddings()
-
 	return
 }
 

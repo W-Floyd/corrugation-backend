@@ -143,22 +143,68 @@ func GetRecordEmbeddings() (e map[uint][]float64, err error) {
 		return
 	}
 
+	recordIDs := make([]uint, len(records))
+	for i, r := range records {
+		recordIDs[i] = r.ID
+	}
+	generateMissingRecordEmbeddings(recordIDs, embeddedIDs)
+
 	for _, record := range records {
-		if embeddedIDs[record.ID] {
+		if e[record.ID] != nil {
 			continue
 		}
-		r := &record
-		vec, genErr := r.GenerateEmbeddings()
-		if genErr != nil {
-			log.Printf("embedding generation failed for record %d: %v", r.ID, genErr)
+		reloaded, reloadErr := gorm.G[Embedding](db).Where("record_id = ? AND embed_model = ?", record.ID, infinityTextModel).Find(dbCtx)
+		if reloadErr != nil || len(reloaded) == 0 {
 			continue
 		}
-		if vec != nil {
-			e[r.ID] = vec
+		var vec []float64
+		if cached, ok := embeddingsCache[reloaded[0].Hash]; ok {
+			vec = cached
+		} else {
+			if jsonErr := json.Unmarshal(reloaded[0].Data, &vec); jsonErr != nil {
+				continue
+			}
+			embeddingsCache[reloaded[0].Hash] = vec
 		}
+		e[record.ID] = vec
 	}
 
 	return
+}
+
+// generateMissingRecordEmbeddings generates text embeddings for record IDs not in embeddedIDs.
+// Pass nil recordIDs to process all records.
+func generateMissingRecordEmbeddings(recordIDs []uint, embeddedIDs map[uint]bool) {
+	var candidates []uint
+	for _, id := range recordIDs {
+		if !embeddedIDs[id] {
+			candidates = append(candidates, id)
+		}
+	}
+
+	if len(candidates) == 0 {
+		return
+	}
+
+	records, err := GetRecords(nil, nil, nil, nil, nil, []string{"id", "title", "label", "description"})
+	if err != nil {
+		log.Printf("embedding generation: failed to fetch records: %v", err)
+		return
+	}
+	recordMap := map[uint]Record{}
+	for _, r := range records {
+		recordMap[r.ID] = r
+	}
+
+	for _, id := range candidates {
+		r, ok := recordMap[id]
+		if !ok {
+			continue
+		}
+		if _, genErr := r.GenerateEmbeddings(); genErr != nil {
+			log.Printf("embedding generation failed for record %d: %v", id, genErr)
+		}
+	}
 }
 
 type RecordResponse struct {
@@ -214,7 +260,7 @@ func (r *Record) GenerateEmbeddings() (vec Embeddings, err error) {
 		return
 	}
 
-	vec, err = GenerateEmbeddings(strings.Join(parts, " - "))
+	vec, err = GenerateTextEmbeddings(strings.Join(parts, " - "))
 	if err != nil {
 		return
 	}
