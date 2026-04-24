@@ -34,17 +34,22 @@ export const useAuthStore = defineStore("auth", () => {
   const isAuthenticated = computed(() => token.value !== null);
 
   DEBUG && console.log("[auth] store init, token in localStorage:", !!localStorage.getItem("auth_token"));
+  if (token.value) {
+    document.cookie = `auth_token=${token.value}; path=/; SameSite=Strict`;
+  }
 
   function setToken(t: string) {
     DEBUG && console.log("[auth] setToken", t.slice(0, 20) + "…");
     token.value = t;
     localStorage.setItem("auth_token", t);
+    document.cookie = `auth_token=${t}; path=/; SameSite=Strict`;
   }
 
   function clearToken() {
     DEBUG && console.log("[auth] clearToken");
     token.value = null;
     localStorage.removeItem("auth_token");
+    document.cookie = "auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
   }
 
   async function fetchConfig(): Promise<void> {

@@ -94,6 +94,14 @@ func NewAuthMiddleware(api huma.API, issuer, jwksURL string) func(huma.Context, 
 		}
 		token := strings.TrimPrefix(ctx.Header("Authorization"), "Bearer ")
 		if token == "" {
+			header := http.Header{}
+			header.Add("Cookie", ctx.Header("Cookie"))
+			req := http.Request{Header: header}
+			if c, cookieErr := req.Cookie("auth_token"); cookieErr == nil {
+				token = c.Value
+			}
+		}
+		if token == "" {
 			huma.WriteErr(api, ctx, http.StatusUnauthorized, "Unauthorized")
 			return
 		}
