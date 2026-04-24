@@ -627,6 +627,17 @@ func PatchEntity(ctx context.Context, input *struct {
 	return
 }
 
+var GetQRCodeOperation = huma.Operation{
+	Method: http.MethodGet,
+	Path:   "/api/qrcode/{id}",
+}
+
+func GetQRCode(_ context.Context, input *struct {
+	ID uint `path:"id"`
+}) (output *BytesOutput, err error) {
+	return GetEntityQRCode(nil, input)
+}
+
 var GetEntityQRCodeOperation = huma.Operation{
 	Method: http.MethodGet,
 	Path:   "/api/entity/{id}/qrcode",

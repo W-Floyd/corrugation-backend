@@ -28,6 +28,7 @@ func RegisterHandlers(api huma.API) {
 	huma.Register(api, CreateEntityOperation, CreateEntity)
 	huma.Register(api, PatchEntityOperation, PatchEntity)
 	huma.Register(api, ReplaceEntityOperation, ReplaceEntity)
+	huma.Register(api, GetQRCodeOperation, GetQRCode)
 	huma.Register(api, GetEntityQRCodeOperation, GetEntityQRCode)
 	huma.Register(api, GetNextIDOperation, GetNextID)
 	huma.Register(api, GetFirstLabeledIDOperation, GetFirstLabeledID)
