@@ -2,6 +2,7 @@ import type { Entity, Artifact, FullState, Metadata, BackendRecord } from "./typ
 import { recordToEntity } from "./types";
 import router from "../router";
 import { useAuthStore } from "../stores/auth";
+import { useToastsStore } from "../stores/toasts";
 
 export interface EntityCreate {
   id?: number;
@@ -50,7 +51,23 @@ export async function apiFetch(url: string, options: RequestInit = {}): Promise<
     throw new Error("Unauthorized");
   }
 
+  if (!response.ok) {
+    const body = await response.text();
+    const message = body || `HTTP ${response.status}`;
+    useToastsStore().add(message);
+    throw new Error(message);
+  }
+
   return response;
+}
+
+export async function withErrorToast<T>(fn: () => Promise<T>): Promise<T | undefined> {
+  try {
+    return await fn();
+  } catch (e) {
+    useToastsStore().add(e instanceof Error ? e.message : String(e));
+    return undefined;
+  }
 }
 
 export const api = {
