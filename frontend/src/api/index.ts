@@ -38,8 +38,13 @@ export async function apiFetch(url: string, options: RequestInit = {}): Promise<
   const response = await fetch(url, { ...options, headers });
 
   if (response.status === 401) {
-    localStorage.removeItem("auth_token");
-    router.push({ name: "login" });
+    const currentRoute = router.currentRoute.value.name;
+    DEBUG && console.warn("[apiFetch] 401 on", url, "current route:", currentRoute, new Error().stack?.split("\n")[2]?.trim());
+    if (currentRoute !== "callback") {
+      localStorage.removeItem("auth_token");
+      router.push({ name: "login" });
+      throw new Error("Unauthorized");
+    }
     throw new Error("Unauthorized");
   }
 
@@ -47,19 +52,6 @@ export async function apiFetch(url: string, options: RequestInit = {}): Promise<
 }
 
 export const api = {
-  async login(username: string, password: string): Promise<string> {
-    const response = await fetch("/api/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password }),
-    });
-    if (!response.ok) {
-      throw new Error("Invalid credentials");
-    }
-    const data = await response.json();
-    return data.token;
-  },
-
   async getFullState(): Promise<FullState> {
     const response = await apiFetch("/api/store");
     return response.json();

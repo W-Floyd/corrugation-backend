@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, watch, ref, computed, nextTick } from "vue";
 import { useRouter, useRoute } from "vue-router";
+
+const routerReady = ref(false);
 import { useEntitiesStore } from "@/stores/entities";
 import { useCameraStore } from "@/stores/camera";
 import { useClipStore } from "@/stores/clip";
@@ -445,15 +447,14 @@ const handleKeyup = (e: KeyboardEvent): void => {
     }
 };
 
-// Initialize router from hash on app mount
 onMounted(() => {
-    const hashId = parseInt(window.location.hash.slice(1), 10);
-    if (!isNaN(hashId)) {
-        entitiesStore.setCurrentEntity(hashId);
-    } else {
-        entitiesStore.setCurrentEntity(0);
-    }
-    entitiesStore.connectWS();
+    router.isReady().then(() => {
+        routerReady.value = true;
+        DEBUG && console.log("[app] router ready, route:", route.name, "token:", !!localStorage.getItem("auth_token"));
+        if (route.name !== "callback") {
+            entitiesStore.connectWS();
+        }
+    });
     window.addEventListener("keydown", handleKeydown);
     window.addEventListener("keyup", handleKeyup);
 });
@@ -478,9 +479,8 @@ watch(
     },
 );
 
-// Watch hash changes
 watch(
-    () => route.params.entityId,
+    () => route.query.entity,
     async (newId) => {
         const id = parseInt(newId as string, 10);
         if (!isNaN(id)) {
@@ -491,7 +491,10 @@ watch(
 </script>
 
 <template>
+    <template v-if="routerReady">
     <LoginView v-if="route.name === 'login'" />
+
+    <RouterView v-else-if="route.name === 'callback'" />
 
     <div
         v-else
@@ -627,6 +630,7 @@ watch(
         <!-- Toast notifications -->
         <ToastContainer />
     </div>
+    </template>
 </template>
 
 <style scoped>

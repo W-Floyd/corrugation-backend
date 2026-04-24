@@ -22,21 +22,13 @@ import { watch } from "vue";
 import { onMounted } from "vue";
 
 onMounted(() => {
-    const hashId = parseInt(window.location.hash.slice(1), 10);
-    if (!isNaN(hashId)) {
-        entitiesStore.setCurrentEntity(hashId);
-    } else {
-        entitiesStore.setCurrentEntity(0);
-    }
     entitiesStore.connectWS();
 });
 
 watch(
-    () => route.params.entityId,
+    () => route.query.entity,
     async (newId) => {
-        if (newId !== undefined && newId !== null) {
-            await entitiesStore.setCurrentEntity(parseInt(newId as string, 10));
-        }
+        await entitiesStore.setCurrentEntity(newId ? parseInt(newId as string, 10) : 0);
     },
     { immediate: true },
 );
@@ -100,7 +92,7 @@ const handleMoveEntitySubmit = async (): Promise<void> => {
     if (!moveEntityTarget.value || moveEntityTarget.value === 0) return;
     try {
         await api.moveEntity(
-            Number(route.params.entityId),
+            Number(route.query.entity ?? entitiesStore.currentEntity),
             moveEntityTarget.value,
         );
         await entitiesStore.reload();

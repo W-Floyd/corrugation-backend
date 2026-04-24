@@ -15,14 +15,15 @@ import (
 	"github.com/danielgtaylor/huma/v2/adapters/humago"
 	"github.com/danielgtaylor/huma/v2/autopatch"
 	"github.com/danielgtaylor/huma/v2/humacli"
-	"github.com/foolin/goview"
 )
 
 type Options struct {
-	Address string `help:"Address to listen on" default:"0.0.0.0"`
-	Port    int    `help:"Port to listen on" default:"8083"`
-	Dist    string `help:"Dist path" default:"./dist"`
-	Data    string `help:"Data path" default:"./data"`
+	Address          string `help:"Address to listen on" default:"0.0.0.0"`
+	Port             int    `help:"Port to listen on" default:"8083"`
+	Dist             string `help:"Dist path" default:"./dist"`
+	Data             string `help:"Data path" default:"./data"`
+	OIDCDiscoveryURL string `help:"OIDC discovery URL (e.g. https://authentik.example.com/application/o/<slug>/.well-known/openid-configuration); omit to disable auth"`
+	OIDCClientID     string `help:"OAuth2 client ID registered in Authentik"`
 }
 
 func init() {
@@ -67,12 +68,41 @@ func main() {
 
 		// Create a new router & API
 		router := http.NewServeMux()
-		api := humago.New(router, huma.DefaultConfig("My API", "1.0.0"))
+		config := huma.DefaultConfig("My API", "1.0.0")
+
+		var oidcCfg *backend.OIDCConfig
+		if options.OIDCDiscoveryURL != "" {
+			var err error
+			oidcCfg, err = backend.FetchOIDCConfig(options.OIDCDiscoveryURL)
+			if err != nil {
+				log.Fatalf("fetch OIDC config: %v", err)
+			}
+			config.Components.SecuritySchemes = map[string]*huma.SecurityScheme{
+				"authentik": {
+					Type:         "http",
+					Scheme:       "bearer",
+					BearerFormat: "JWT",
+				},
+			}
+			backend.SetAuthConfig(backend.AuthFrontendConfig{
+				Enabled:               true,
+				AuthorizationEndpoint: oidcCfg.AuthorizationEndpoint,
+				TokenEndpoint:         oidcCfg.TokenEndpoint,
+				ClientID:              options.OIDCClientID,
+			})
+			log.Printf("OIDC auth enabled, issuer: %s", oidcCfg.Issuer)
+		}
+
+		api := humago.New(router, config)
+		backend.RegisterAuthHandlers(api)
+
+		if oidcCfg != nil {
+			api.UseMiddleware(backend.NewAuthMiddleware(api, oidcCfg.Issuer, oidcCfg.JWKSURI))
+		}
 
 		autopatch.AutoPatch(api)
 
-		c := goview.DefaultConfig
-		c.DisableCache = true
+		var indexHTML []byte
 
 		for _, asset := range assets {
 			contents, err := os.ReadFile(asset)
@@ -92,7 +122,8 @@ func main() {
 			path := strings.TrimPrefix(filepath.Clean(asset), filepath.Clean(options.Dist))
 
 			if path == "/index.html" {
-				path = "/{$}"
+				indexHTML = contents
+				continue
 			}
 
 			huma.Register(api,
@@ -109,8 +140,16 @@ func main() {
 				})
 		}
 
+		// Catch-all: serve index.html for any path not matched by API or assets.
+		if indexHTML != nil {
+			router.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "text/html; charset=utf-8")
+				w.Write(indexHTML)
+			})
+		}
+
 		backend.RegisterHandlers(api)
-		router.HandleFunc("/ws", backend.WsHandler)
+		router.HandleFunc("GET /ws", backend.WsHandler)
 
 		// Tell the CLI how to start your router.
 		hooks.OnStart(func() {

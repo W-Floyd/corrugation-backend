@@ -33,6 +33,7 @@ export const useEntitiesStore = defineStore("entities", () => {
 
   // Actions
   async function loadFullState(): Promise<void> {
+    DEBUG && console.log("[entities] loadFullState — token in storage:", !!localStorage.getItem("auth_token"));
     try {
       const versionResponse = await apiFetch("/api/store/version");
       const newVersion = await versionResponse.json();
@@ -55,10 +56,16 @@ export const useEntitiesStore = defineStore("entities", () => {
   function connectWS(): void {
     const protocol = location.protocol === "https:" ? "wss" : "ws";
     const url = `${protocol}://${location.host}/ws`;
+    DEBUG && console.log("[entities] connectWS", url, new Error().stack?.split("\n")[2]?.trim());
 
     ws = new WebSocket(url);
 
+    ws.onopen = () => {
+      DEBUG && console.log("[entities] WS connected");
+      reload();
+    };
     ws.onmessage = () => {
+      DEBUG && console.log("[entities] WS message → reload");
       reload();
     };
 
@@ -111,7 +118,9 @@ export const useEntitiesStore = defineStore("entities", () => {
   async function setCurrentEntity(entityId: number): Promise<void> {
     if (isNaN(entityId)) entityId = 0;
     currentEntity.value = entityId;
-    window.location.hash = entityId === 0 ? "" : entityId.toString();
+    import("../router").then(({ default: router }) => {
+      router.push({ query: entityId === 0 ? {} : { entity: entityId } });
+    });
     searchtext.value = "";
     await reload();
     if (entityId !== 0 && !fullstate.value.entities[entityId]) {
