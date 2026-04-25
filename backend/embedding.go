@@ -16,12 +16,12 @@ type Embedding struct {
 	Hash       string `gorm:"not null"`
 }
 
-func saveEmbedding(recordID *uint, artifactID *uint, e Embeddings, model string) error {
+func saveEmbedding(recordID *uint, artifactID *uint, e Embeddings, model string, input string) error {
 	if recordID == nil && artifactID == nil {
 		return errors.New("saveEmbedding: both recordID and artifactID are nil")
 	}
 
-	hash, data, err := e.MarshalEmbeddings()
+	hash, data, err := e.MarshalEmbeddings(input)
 	if err != nil {
 		return err
 	}

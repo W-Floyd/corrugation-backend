@@ -1,6 +1,7 @@
 package backend
 
 import (
+	"context"
 	"log"
 
 	"gorm.io/gorm"
@@ -12,29 +13,59 @@ func BackfillEmbeddings() {
 }
 
 func backfillRecordEmbeddings() {
-	embeddings, err := gorm.G[Embedding](db).Where("record_id IS NOT NULL AND embed_model = ?", infinityTextModel).Find(dbCtx)
-	if err != nil {
-		log.Printf("backfill: failed to fetch record embeddings: %v", err)
-		return
-	}
-	embeddedIDs := map[uint]bool{}
-	for _, e := range embeddings {
-		if e.RecordID != nil {
-			embeddedIDs[*e.RecordID] = true
-		}
-	}
-
-	records, err := GetRecords(dbCtx, nil, nil, nil, nil, nil, []string{"id"})
+	records, err := GetRecords(dbCtx, nil, nil, nil, nil, nil, []string{"id", "title", "label", "description", "last_modified_by"})
 	if err != nil {
 		log.Printf("backfill: failed to fetch records: %v", err)
 		return
 	}
+
+	byUser := map[string][]Record{}
+	for _, r := range records {
+		username := ""
+		if r.LastModifiedBy != nil {
+			username = *r.LastModifiedBy
+		}
+		byUser[username] = append(byUser[username], r)
+	}
+
+	for username, userRecords := range byUser {
+		cfg, _ := loadUserConfig(username)
+		textModel, _, _, docPrefix := effectiveInfinityConfig(cfg)
+		ctx := context.WithValue(dbCtx, usernameContextKey, username)
+		backfillRecordEmbeddingsForUser(ctx, textModel, docPrefix, userRecords)
+	}
+}
+
+func backfillRecordEmbeddingsForUser(ctx context.Context, textModel, docPrefix string, records []Record) {
 	recordIDs := make([]uint, len(records))
 	for i, r := range records {
 		recordIDs[i] = r.ID
 	}
 
-	generateMissingRecordEmbeddings(recordIDs, embeddedIDs)
+	embeddings, err := gorm.G[Embedding](db).Where("record_id IN ? AND embed_model = ?", recordIDs, textModel).Find(dbCtx)
+	if err != nil {
+		log.Printf("backfill: failed to fetch embeddings for model %q: %v", textModel, err)
+		return
+	}
+	storedHash := map[uint]string{}
+	for _, e := range embeddings {
+		if e.RecordID != nil {
+			storedHash[*e.RecordID] = e.Hash
+		}
+	}
+
+	embeddedIDs := map[uint]bool{}
+	for _, r := range records {
+		text := recordEmbeddingText(r)
+		if text == "" {
+			continue
+		}
+		if storedHash[r.ID] == InputHash(docPrefix+text) {
+			embeddedIDs[r.ID] = true
+		}
+	}
+
+	generateMissingRecordEmbeddings(ctx, recordIDs, embeddedIDs)
 }
 
 func backfillArtifactEmbeddings() {

@@ -57,7 +57,7 @@ func SearchByRecord(ctx context.Context, search string) (recordResults []struct 
 	id    uint
 	score float64
 }, err error) {
-	es, err := GetRecordEmbeddings()
+	es, err := GetRecordEmbeddings(ctx)
 	if err != nil {
 		return
 	}

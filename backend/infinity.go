@@ -78,10 +78,12 @@ func (i *infinityEmbeddingsRequest) GenerateEmbeddings() (e Embeddings, err erro
 
 }
 
-func GenerateTextDocumentEmbeddingsCtx(ctx context.Context, input string) (Embeddings, error) {
+func GenerateTextDocumentEmbeddingsCtx(ctx context.Context, input string) (e Embeddings, fullInput string, err error) {
 	uc, _ := loadUserConfig(UsernameFromContext(ctx))
 	textModel, _, _, docPrefix := effectiveInfinityConfig(uc)
-	return generateTextEmbeddings(docPrefix+input, textModel)
+	fullInput = docPrefix + input
+	e, err = generateTextEmbeddings(fullInput, textModel)
+	return
 }
 
 func GenerateTextQueryEmbeddingsCtx(ctx context.Context, input string) (Embeddings, error) {
@@ -136,7 +138,7 @@ func (i *Image) GenerateEmbeddings(ctx context.Context) (err error) {
 	}
 
 	id := i.ID
-	err = saveEmbedding(nil, &id, e, imageModel)
+	err = saveEmbedding(nil, &id, e, imageModel, base64Image)
 	return
 }
 
@@ -160,20 +162,19 @@ func AverageEmbeddings(vecs []Embeddings) (Embeddings, error) {
 	return avg, nil
 }
 
-func (e *Embeddings) MarshalEmbeddings() (hash string, jsonData []byte, err error) {
+func InputHash(input string) string {
+	h := sha256.New()
+	h.Write([]byte(input))
+	return string(h.Sum(nil))
+}
 
+func (e *Embeddings) MarshalEmbeddings(input string) (hash string, jsonData []byte, err error) {
 	jsonData, err = json.Marshal(*e)
 	if err != nil {
 		return
 	}
 
-	h := sha256.New()
-	_, err = h.Write(jsonData)
-	if err != nil {
-		return
-	}
-
-	hash = string(h.Sum(nil))
+	hash = InputHash(input)
 
 	if _, ok := embeddingsCache[hash]; !ok {
 		embeddingsCache[hash] = *e

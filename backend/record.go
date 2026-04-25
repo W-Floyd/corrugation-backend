@@ -113,8 +113,11 @@ func (record *Record) PrettyString() (output string) {
 	return
 }
 
-func GetRecordEmbeddings() (e map[uint][]float64, err error) {
-	embeddings, err := gorm.G[Embedding](db).Where("record_id IS NOT NULL AND embed_model = ?", infinityTextModel).Find(dbCtx)
+func GetRecordEmbeddings(ctx context.Context) (e map[uint][]float64, err error) {
+	uc, _ := loadUserConfig(UsernameFromContext(ctx))
+	textModel, _, _, _ := effectiveInfinityConfig(uc)
+
+	embeddings, err := gorm.G[Embedding](db).Where("record_id IS NOT NULL AND embed_model = ?", textModel).Find(dbCtx)
 	if err != nil {
 		return
 	}
@@ -148,13 +151,13 @@ func GetRecordEmbeddings() (e map[uint][]float64, err error) {
 	for i, r := range records {
 		recordIDs[i] = r.ID
 	}
-	generateMissingRecordEmbeddings(recordIDs, embeddedIDs)
+	generateMissingRecordEmbeddings(ctx, recordIDs, embeddedIDs)
 
 	for _, record := range records {
 		if e[record.ID] != nil {
 			continue
 		}
-		reloaded, reloadErr := gorm.G[Embedding](db).Where("record_id = ? AND embed_model = ?", record.ID, infinityTextModel).Find(dbCtx)
+		reloaded, reloadErr := gorm.G[Embedding](db).Where("record_id = ? AND embed_model = ?", record.ID, textModel).Find(dbCtx)
 		if reloadErr != nil || len(reloaded) == 0 {
 			continue
 		}
@@ -175,7 +178,7 @@ func GetRecordEmbeddings() (e map[uint][]float64, err error) {
 
 // generateMissingRecordEmbeddings generates text embeddings for record IDs not in embeddedIDs.
 // Pass nil recordIDs to process all records.
-func generateMissingRecordEmbeddings(recordIDs []uint, embeddedIDs map[uint]bool) {
+func generateMissingRecordEmbeddings(ctx context.Context, recordIDs []uint, embeddedIDs map[uint]bool) {
 	var candidates []uint
 	for _, id := range recordIDs {
 		if !embeddedIDs[id] {
@@ -202,7 +205,7 @@ func generateMissingRecordEmbeddings(recordIDs []uint, embeddedIDs map[uint]bool
 		if !ok {
 			continue
 		}
-		if _, genErr := r.GenerateEmbeddings(dbCtx); genErr != nil {
+		if _, genErr := r.GenerateEmbeddings(ctx); genErr != nil {
 			log.Printf("embedding generation failed for record %d: %v", id, genErr)
 		}
 	}
@@ -245,7 +248,7 @@ func toRecordResponse(r Record, timestamps bool) RecordResponse {
 	return resp
 }
 
-func (r *Record) GenerateEmbeddings(ctx context.Context) (vec Embeddings, err error) {
+func recordEmbeddingText(r Record) string {
 	parts := []string{}
 	if r.Title != nil && *r.Title != "" {
 		parts = append(parts, *r.Title)
@@ -256,20 +259,25 @@ func (r *Record) GenerateEmbeddings(ctx context.Context) (vec Embeddings, err er
 	if r.Description != nil && *r.Description != "" {
 		parts = append(parts, *r.Description)
 	}
+	return strings.Join(parts, " - ")
+}
 
-	if len(parts) == 0 {
+func (r *Record) GenerateEmbeddings(ctx context.Context) (vec Embeddings, err error) {
+	text := recordEmbeddingText(*r)
+	if text == "" {
 		return
 	}
 
 	uc, _ := loadUserConfig(UsernameFromContext(ctx))
 	textModel, _, _, _ := effectiveInfinityConfig(uc)
 
-	vec, err = GenerateTextDocumentEmbeddingsCtx(ctx, strings.Join(parts, " - "))
+	var fullInput string
+	vec, fullInput, err = GenerateTextDocumentEmbeddingsCtx(ctx, text)
 	if err != nil {
 		return
 	}
 
 	id := r.ID
-	err = saveEmbedding(&id, nil, vec, textModel)
+	err = saveEmbedding(&id, nil, vec, textModel, fullInput)
 	return
 }
