@@ -2,6 +2,7 @@ package backend
 
 import (
 	"context"
+	"errors"
 	"log"
 	"net/http"
 	"strconv"
@@ -501,6 +502,21 @@ type DeleteOutput struct {
 func DeleteEntity(ctx context.Context, input *struct {
 	ID uint `path:"id" example:"1" doc:"ID to delete"`
 }) (output *DeleteOutput, err error) {
+	var record Record
+	if err = db.Where("id = ?", input.ID).First(&record).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			err = nil
+			output = &DeleteOutput{Status: http.StatusNoContent}
+		}
+		return
+	}
+
+	if record.ParentID != nil {
+		db.Model(&Record{}).Where("parent_id = ?", input.ID).Update("parent_id", *record.ParentID)
+	} else {
+		db.Model(&Record{}).Where("parent_id = ?", input.ID).Update("parent_id", nil)
+	}
+
 	result := db.Where("id = ?", input.ID).Delete(&Record{})
 	if result.Error != nil {
 		err = result.Error
