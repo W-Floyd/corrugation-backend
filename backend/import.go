@@ -180,7 +180,9 @@ func ImportFromReader(ctx context.Context, r io.Reader, reset bool) (result Impo
 		}
 
 		if le.Metadata.LastModifiedBy != "" {
-			r.LastModifiedBy = strPtr(le.Metadata.LastModifiedBy)
+			if u, uErr := loadUser(le.Metadata.LastModifiedBy); uErr == nil {
+				r.LastModifiedByID = &u.ID
+			}
 		}
 
 		// Link artifacts

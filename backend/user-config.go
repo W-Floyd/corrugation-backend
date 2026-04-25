@@ -2,8 +2,8 @@ package backend
 
 import "gorm.io/gorm"
 
-// UserConfig stores per-user runtime-overridable settings. Username is empty when auth is disabled.
-type UserConfig struct {
+// User stores user identity and per-user runtime-overridable settings. Username is empty when auth is disabled.
+type User struct {
 	gorm.Model
 	Username                   string  `gorm:"uniqueIndex"`
 	InfinityTextModel          *string
@@ -12,34 +12,41 @@ type UserConfig struct {
 	InfinityTextDocumentPrefix *string
 }
 
-func loadUserConfig(username string) (UserConfig, error) {
-	var cfg UserConfig
-	err := db.Where(UserConfig{Username: username}).FirstOrCreate(&cfg).Error
-	return cfg, err
+func userUsername(u *User) *string {
+	if u == nil {
+		return nil
+	}
+	return &u.Username
 }
 
-func saveUserConfig(cfg UserConfig) error {
-	return db.Where(UserConfig{Username: cfg.Username}).Assign(cfg).FirstOrCreate(&cfg).Error
+func loadUser(username string) (User, error) {
+	var u User
+	err := db.Where(User{Username: username}).FirstOrCreate(&u).Error
+	return u, err
+}
+
+func saveUser(u User) error {
+	return db.Where(User{Username: u.Username}).Assign(u).FirstOrCreate(&u).Error
 }
 
 // effectiveInfinityConfig returns the infinity config for a user, falling back to env defaults for nil fields.
-func effectiveInfinityConfig(cfg UserConfig) (text, image, queryPrefix, docPrefix string) {
+func effectiveInfinityConfig(u User) (text, image, queryPrefix, docPrefix string) {
 	text = infinityTextModel
 	image = infinityImageModel
 	queryPrefix = infinityTextQueryPrefix
 	docPrefix = infinityTextDocumentPrefix
 
-	if cfg.InfinityTextModel != nil {
-		text = *cfg.InfinityTextModel
+	if u.InfinityTextModel != nil {
+		text = *u.InfinityTextModel
 	}
-	if cfg.InfinityImageModel != nil {
-		image = *cfg.InfinityImageModel
+	if u.InfinityImageModel != nil {
+		image = *u.InfinityImageModel
 	}
-	if cfg.InfinityTextQueryPrefix != nil {
-		queryPrefix = *cfg.InfinityTextQueryPrefix
+	if u.InfinityTextQueryPrefix != nil {
+		queryPrefix = *u.InfinityTextQueryPrefix
 	}
-	if cfg.InfinityTextDocumentPrefix != nil {
-		docPrefix = *cfg.InfinityTextDocumentPrefix
+	if u.InfinityTextDocumentPrefix != nil {
+		docPrefix = *u.InfinityTextDocumentPrefix
 	}
 	return
 }

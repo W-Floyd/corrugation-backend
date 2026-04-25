@@ -13,26 +13,51 @@ func BackfillEmbeddings() {
 }
 
 func backfillRecordEmbeddings() {
-	records, err := GetRecords(dbCtx, nil, nil, nil, nil, nil, []string{"id", "title", "label", "description", "last_modified_by"})
+	records, err := GetRecords(dbCtx, nil, nil, nil, nil, nil, []string{"id", "title", "label", "description", "owner_id"})
 	if err != nil {
 		log.Printf("backfill: failed to fetch records: %v", err)
 		return
 	}
 
-	byUser := map[string][]Record{}
+	// Collect unique owner IDs and load their User rows.
+	ownerIDSet := map[uint]bool{}
 	for _, r := range records {
-		username := ""
-		if r.LastModifiedBy != nil {
-			username = *r.LastModifiedBy
+		if r.OwnerID != nil {
+			ownerIDSet[*r.OwnerID] = true
 		}
-		byUser[username] = append(byUser[username], r)
+	}
+	ownerIDs := make([]uint, 0, len(ownerIDSet))
+	for id := range ownerIDSet {
+		ownerIDs = append(ownerIDs, id)
+	}
+	var owners []User
+	if len(ownerIDs) > 0 {
+		db.Where("id IN ?", ownerIDs).Find(&owners)
+	}
+	userByID := map[uint]User{}
+	for _, u := range owners {
+		userByID[u.ID] = u
 	}
 
-	for username, userRecords := range byUser {
-		cfg, _ := loadUserConfig(username)
-		textModel, _, _, docPrefix := effectiveInfinityConfig(cfg)
-		ctx := context.WithValue(dbCtx, usernameContextKey, username)
-		backfillRecordEmbeddingsForUser(ctx, textModel, docPrefix, userRecords)
+	// Group records by owner ID (nil owner = global defaults).
+	type ownerKey struct{ valid bool; id uint }
+	byOwner := map[ownerKey][]Record{}
+	for _, r := range records {
+		var key ownerKey
+		if r.OwnerID != nil {
+			key = ownerKey{true, *r.OwnerID}
+		}
+		byOwner[key] = append(byOwner[key], r)
+	}
+
+	for key, ownerRecords := range byOwner {
+		var u User
+		if key.valid {
+			u = userByID[key.id]
+		}
+		textModel, _, _, docPrefix := effectiveInfinityConfig(u)
+		ctx := context.WithValue(dbCtx, usernameContextKey, u.Username)
+		backfillRecordEmbeddingsForUser(ctx, textModel, docPrefix, ownerRecords)
 	}
 }
 

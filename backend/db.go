@@ -53,6 +53,6 @@ func InitAndMigrateDB() (err error) {
 	db.AutoMigrate(&Artifact{})
 	db.AutoMigrate(&Embedding{})
 	db.AutoMigrate(&GlobalConfig{})
-	db.AutoMigrate(&UserConfig{})
+	db.AutoMigrate(&User{})
 	return nil
 }

@@ -95,15 +95,15 @@ var GetUserConfigOperation = huma.Operation{
 }
 
 func GetUserConfig(ctx context.Context, _ *struct{}) (output *struct{ Body UserConfigBody }, err error) {
-	uc, err := loadUserConfig(UsernameFromContext(ctx))
+	u, err := loadUser(UsernameFromContext(ctx))
 	if err != nil {
 		return
 	}
 	output = &struct{ Body UserConfigBody }{Body: UserConfigBody{
-		InfinityTextModel:          uc.InfinityTextModel,
-		InfinityImageModel:         uc.InfinityImageModel,
-		InfinityTextQueryPrefix:    uc.InfinityTextQueryPrefix,
-		InfinityTextDocumentPrefix: uc.InfinityTextDocumentPrefix,
+		InfinityTextModel:          u.InfinityTextModel,
+		InfinityImageModel:         u.InfinityImageModel,
+		InfinityTextQueryPrefix:    u.InfinityTextQueryPrefix,
+		InfinityTextDocumentPrefix: u.InfinityTextDocumentPrefix,
 	}}
 	return
 }
@@ -117,14 +117,14 @@ var PutUserConfigOperation = huma.Operation{
 func PutUserConfig(ctx context.Context, input *struct {
 	Body UserConfigBody
 }) (output *struct{ Body UserConfigBody }, err error) {
-	uc := UserConfig{
+	uc := User{
 		Username:                   UsernameFromContext(ctx),
 		InfinityTextModel:          input.Body.InfinityTextModel,
 		InfinityImageModel:         input.Body.InfinityImageModel,
 		InfinityTextQueryPrefix:    input.Body.InfinityTextQueryPrefix,
 		InfinityTextDocumentPrefix: input.Body.InfinityTextDocumentPrefix,
 	}
-	if err = saveUserConfig(uc); err != nil {
+	if err = saveUser(uc); err != nil {
 		return
 	}
 	output = &struct{ Body UserConfigBody }{Body: input.Body}

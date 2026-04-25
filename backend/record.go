@@ -38,7 +38,11 @@ type Record struct {
 	ParentID *uint   `json:",omitempty"`
 	Parent   *Record `gorm:"foreignKey:ParentID" json:"-"`
 
-	LastModifiedBy *string `json:",omitempty"`
+	OwnerID *uint `json:",omitempty"`
+	Owner   *User `gorm:"foreignKey:OwnerID" json:"-"`
+
+	LastModifiedByID *uint `json:",omitempty"`
+	LastModifiedBy   *User `gorm:"foreignKey:LastModifiedByID" json:"-"`
 
 	SearchConfidenceImage *float64 `gorm:"-" json:",omitempty"`
 	SearchConfidenceText  *float64 `gorm:"-" json:",omitempty"`
@@ -114,7 +118,7 @@ func (record *Record) PrettyString() (output string) {
 }
 
 func GetRecordEmbeddings(ctx context.Context) (e map[uint][]float64, err error) {
-	uc, _ := loadUserConfig(UsernameFromContext(ctx))
+	uc, _ := loadUser(UsernameFromContext(ctx))
 	textModel, _, _, _ := effectiveInfinityConfig(uc)
 
 	embeddings, err := gorm.G[Embedding](db).Where("record_id IS NOT NULL AND embed_model = ?", textModel).Find(dbCtx)
@@ -222,7 +226,7 @@ type RecordResponse struct {
 	Tags                  []*Tag      `json:",omitempty"`
 	Artifacts             []*Artifact `json:",omitempty"`
 	ParentID              *uint       `json:",omitempty"`
-	LastModifiedBy        *string     `json:",omitempty"`
+	LastModifiedBy        *string     `json:",omitempty"` // username string for API output
 	SearchConfidenceImage *float64    `json:",omitempty"`
 	SearchConfidenceText  *float64    `json:",omitempty"`
 }
@@ -237,7 +241,7 @@ func toRecordResponse(r Record, timestamps bool) RecordResponse {
 		Tags:                  r.Tags,
 		Artifacts:             r.Artifacts,
 		ParentID:              r.ParentID,
-		LastModifiedBy:        r.LastModifiedBy,
+		LastModifiedBy:        userUsername(r.LastModifiedBy),
 		SearchConfidenceImage: r.SearchConfidenceImage,
 		SearchConfidenceText:  r.SearchConfidenceText,
 	}
@@ -268,7 +272,7 @@ func (r *Record) GenerateEmbeddings(ctx context.Context) (vec Embeddings, err er
 		return
 	}
 
-	uc, _ := loadUserConfig(UsernameFromContext(ctx))
+	uc, _ := loadUser(UsernameFromContext(ctx))
 	textModel, _, _, _ := effectiveInfinityConfig(uc)
 
 	var fullInput string
