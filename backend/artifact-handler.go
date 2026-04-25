@@ -10,6 +10,7 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/conditional"
+	"gorm.io/gorm"
 )
 
 var CreateArtifactOperation = huma.Operation{
@@ -69,6 +70,24 @@ func GetArtifact(ctx context.Context, input *struct {
 		return
 	}
 
+	embedCtx := context.WithoutCancel(ctx)
+	go func() {
+		i, iErr := artifact.GetInterface()
+		if iErr != nil {
+			return
+		}
+		img, ok := i.(*Image)
+		if !ok {
+			return
+		}
+		existing, _ := gorm.G[Embedding](db).Where("artifact_id = ? AND embed_model = ?", artifact.ID, infinityImageModel).Find(dbCtx)
+		if len(existing) == 0 {
+			if genErr := img.GenerateEmbeddings(embedCtx); genErr != nil {
+				log.Println("embedding generation failed:", genErr)
+			}
+		}
+	}()
+
 	etag := fmt.Sprintf(`"%d"`, artifact.UpdatedAt.UnixMilli())
 
 	if input.HasConditionalParams() {
@@ -78,9 +97,6 @@ func GetArtifact(ctx context.Context, input *struct {
 	}
 
 	i, err := artifact.GetInterface()
-	if err != nil {
-		return
-	}
 
 	ob, err := i.GetSmallPreviewContents()
 	if err != nil {
