@@ -5,8 +5,8 @@ import "gorm.io/gorm"
 // GlobalConfig is a singleton table (always ID=1) storing server-wide settings.
 type GlobalConfig struct {
 	gorm.Model
-	LogLevel                   string
-	GenerateEmbeddingsOnStart  bool
+	LogLevel                  string
+	GenerateEmbeddingsOnStart bool
 }
 
 func loadGlobalConfig() (GlobalConfig, error) {

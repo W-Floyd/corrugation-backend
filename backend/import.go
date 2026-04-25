@@ -179,12 +179,6 @@ func ImportFromReader(ctx context.Context, r io.Reader, reset bool) (result Impo
 			r.Quantity = &v
 		}
 
-		if le.Metadata.LastModifiedBy != "" {
-			if u, uErr := loadUser(le.Metadata.LastModifiedBy); uErr == nil {
-				r.LastModifiedByID = &u.ID
-			}
-		}
-
 		// Link artifacts
 		for _, aid := range le.Artifacts {
 			var a Artifact

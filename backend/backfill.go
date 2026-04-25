@@ -40,7 +40,10 @@ func backfillRecordEmbeddings() {
 	}
 
 	// Group records by owner ID (nil owner = global defaults).
-	type ownerKey struct{ valid bool; id uint }
+	type ownerKey struct {
+		valid bool
+		id    uint
+	}
 	byOwner := map[ownerKey][]Record{}
 	for _, r := range records {
 		var key ownerKey

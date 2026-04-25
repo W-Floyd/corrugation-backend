@@ -41,9 +41,6 @@ type Record struct {
 	OwnerID *uint `json:",omitempty"`
 	Owner   *User `gorm:"foreignKey:OwnerID" json:"-"`
 
-	LastModifiedByID *uint `json:",omitempty"`
-	LastModifiedBy   *User `gorm:"foreignKey:LastModifiedByID" json:"-"`
-
 	SearchConfidenceImage *float64 `gorm:"-" json:",omitempty"`
 	SearchConfidenceText  *float64 `gorm:"-" json:",omitempty"`
 }
@@ -226,7 +223,6 @@ type RecordResponse struct {
 	Tags                  []*Tag      `json:",omitempty"`
 	Artifacts             []*Artifact `json:",omitempty"`
 	ParentID              *uint       `json:",omitempty"`
-	LastModifiedBy        *string     `json:",omitempty"` // username string for API output
 	SearchConfidenceImage *float64    `json:",omitempty"`
 	SearchConfidenceText  *float64    `json:",omitempty"`
 }
@@ -241,7 +237,6 @@ func toRecordResponse(r Record, timestamps bool) RecordResponse {
 		Tags:                  r.Tags,
 		Artifacts:             r.Artifacts,
 		ParentID:              r.ParentID,
-		LastModifiedBy:        userUsername(r.LastModifiedBy),
 		SearchConfidenceImage: r.SearchConfidenceImage,
 		SearchConfidenceText:  r.SearchConfidenceText,
 	}

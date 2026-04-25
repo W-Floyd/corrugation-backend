@@ -18,14 +18,14 @@ import (
 )
 
 type RecordQuery struct {
-	Query                    string
-	SearchImage              bool
-	SearchTextEmbedded       bool
-	SearchTextSubstring      bool
-	MinImageScore            float64
-	MinTextScore             float64
-	ChildrenDepth            int
-	ParentDepth              int
+	Query               string
+	SearchImage         bool
+	SearchTextEmbedded  bool
+	SearchTextSubstring bool
+	MinImageScore       float64
+	MinTextScore        float64
+	ChildrenDepth       int
+	ParentDepth         int
 }
 
 func NewRecordQuery(query string) RecordQuery {

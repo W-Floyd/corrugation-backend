@@ -15,12 +15,11 @@ import (
 )
 
 type Metadata struct {
-	Quantity       *int      `json:"quantity" required:"false"`
-	Owners         []*string `json:"owners" required:"false"`
-	Tags           []*string `json:"tags" required:"false"`
-	LastModified   *string   `json:"lastmodified" required:"false"`
-	LastModifiedBy *string   `json:"lastmodifiedby" required:"false"`
-	IsLabeled      *bool     `json:"islabeled" required:"false"`
+	Quantity     *int      `json:"quantity" required:"false"`
+	Owners       []*string `json:"owners" required:"false"`
+	Tags         []*string `json:"tags" required:"false"`
+	LastModified *string   `json:"lastmodified" required:"false"`
+	IsLabeled    *bool     `json:"islabeled" required:"false"`
 }
 
 type EntityOutput struct {
@@ -111,7 +110,6 @@ func (record *Record) ToEntity() (output *EntityInput, err error) {
 					v := record.UpdatedAt.UTC().Format("2006-01-02 15:04:05.000000") + " UTC"
 					return &v
 				}(),
-				LastModifiedBy: userUsername(record.LastModifiedBy),
 				IsLabeled: func() *bool {
 					v := record.Label != nil
 					return &v
@@ -145,10 +143,6 @@ func GetStore(ctx context.Context, input *struct{}) (output *StoreOutput, err er
 		},
 		{
 			q: "Tags",
-			h: func(db gorm.PreloadBuilder) error { return nil },
-		},
-		{
-			q: "LastModifiedBy",
 			h: func(db gorm.PreloadBuilder) error { return nil },
 		},
 	}, nil)
@@ -364,7 +358,6 @@ func CreateEntity(ctx context.Context, input *struct {
 	if u := UsernameFromContext(ctx); u != "" {
 		if user, userErr := loadUser(u); userErr == nil {
 			record.OwnerID = &user.ID
-			record.LastModifiedByID = &user.ID
 		}
 	}
 
@@ -497,8 +490,8 @@ func GetEntity(ctx context.Context, input *struct {
 }
 
 var DeleteEntityOperation = huma.Operation{
-	Method:       http.MethodDelete,
-	Path:         "/api/entity/{id}",
+	Method:        http.MethodDelete,
+	Path:          "/api/entity/{id}",
 	DefaultStatus: http.StatusOK,
 }
 
@@ -624,12 +617,6 @@ func PatchEntity(ctx context.Context, input *struct {
 				return
 			}
 			r.Tags = newTags
-		}
-	}
-
-	if u := UsernameFromContext(ctx); u != "" {
-		if user, userErr := loadUser(u); userErr == nil {
-			r.LastModifiedByID = &user.ID
 		}
 	}
 
@@ -960,12 +947,6 @@ func ReplaceEntity(ctx context.Context, input *struct {
 		return
 	}
 	r.Tags = newTags
-
-	if u := UsernameFromContext(ctx); u != "" {
-		if user, userErr := loadUser(u); userErr == nil {
-			r.LastModifiedByID = &user.ID
-		}
-	}
 
 	_, err = gorm.G[Record](db).Where("id = ?", r.ID).Updates(dbCtx, r)
 	if err != nil {
