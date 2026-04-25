@@ -14,7 +14,7 @@ http:
     data:
       - name: file
         value:
-          - /Users/william/Documents/Personal/git/corrugation-backend/bruno/fixtures/corrugation.tar.gz
+          - ./fixtures/corrugation.tar.gz
         type: file
   auth:
     type: bearer

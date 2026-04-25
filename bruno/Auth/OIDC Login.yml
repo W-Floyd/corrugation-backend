@@ -11,13 +11,11 @@ http:
     flow: authorization_code
     authorizationUrl: "{{oidcAuthorizationUrl}}"
     accessTokenUrl: "{{oidcTokenUrl}}"
-    callbackUrl: http://localhost
+    callbackUrl: http://localhost:8083/callback
     credentials:
       clientId: "{{oidcClientId}}"
-      clientSecret: ""
       placement: body
     scope: openid profile email
-    state: ""
     pkce: {}
     tokenConfig:
       id: credentials

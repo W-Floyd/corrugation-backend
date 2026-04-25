@@ -14,7 +14,7 @@ http:
     data:
       - name: file
         value:
-          - /Users/william/Documents/Personal/git/corrugation-backend/bruno/fixtures/sample.jpg
+          - ./fixtures/sample.jpg
         type: file
       - name: entityId
         value: "{{entityId}}"
