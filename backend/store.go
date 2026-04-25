@@ -228,8 +228,8 @@ var GetStoreVersionOperation = huma.Operation{
 }
 
 func GetStoreVersion(ctx context.Context, input *struct{}) (output *UIntOutput, err error) {
-	records, err := GetRecords(nil, nil, nil, nil, nil, []string{"updated_at", "created_at", "deleted_at"})
-	if err != nil {
+	var records []Record
+	if err = db.Unscoped().Select("updated_at", "created_at", "deleted_at").Find(&records).Error; err != nil {
 		return
 	}
 
