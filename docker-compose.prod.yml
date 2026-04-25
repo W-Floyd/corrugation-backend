@@ -16,7 +16,7 @@ services:
       - SERVICE_INFINITY_IMAGE_MODEL
       - SERVICE_INFINITY_TEXT_MODEL
     volumes:
-      - ./data/corrugation:/data
+      - ${DATA_DIR}/corrugation:/data
     depends_on:
       - infinity
   infinity:
@@ -30,4 +30,4 @@ services:
     command: v2 --engine torch --device cpu --model-id ${SERVICE_INFINITY_IMAGE_MODEL} --model-id ${SERVICE_INFINITY_TEXT_MODEL} --port ${INFINITY_PORT} --log-level warning
     restart: unless-stopped
     volumes:
-      - ./data/infinity/:/app/.cache
+      - ${DATA_DIR}/infinity/:/app/.cache
