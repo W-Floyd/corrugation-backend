@@ -57,18 +57,17 @@ func main() {
 		dbExists := fileExists(dbPath)
 
 		err := backend.ConnectDB(dbPath)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		if err = backend.InitAndMigrateDB(); err != nil {
+			log.Fatalln(err)
+		}
 		if err = backend.SetInitialLogLevel(options.LogLevel); err != nil {
 			log.Fatalf("failed to persist log level: %v", err)
 		}
 		if err = backend.SetInitialGenerateEmbeddingsOnStart(options.GenerateEmbeddingsOnStart); err != nil {
 			log.Fatalf("failed to persist generate-embeddings-on-start: %v", err)
-		}
-		if err != nil {
-			log.Fatalln(err)
-		}
-		err = backend.InitAndMigrateDB()
-		if err != nil {
-			log.Fatalln(err)
 		}
 
 		if !dbExists {
