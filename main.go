@@ -6,9 +6,11 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/W-Floyd/corrugation/backend"
 	"github.com/danielgtaylor/huma/v2"
@@ -27,12 +29,15 @@ type Options struct {
 	OIDCInsecureSkipVerify     bool   `help:"Skip TLS certificate verification for OIDC discovery and JWKS requests"`
 	LogLevel                   string `help:"Log level: silent, error, warn, info" default:"warn"`
 	GenerateEmbeddingsOnStart  bool   `help:"Run embedding backfill on server startup" default:"false"`
+	EmbeddingConcurrency       int    `help:"Max parallel embedding requests" default:"4"`
 	InfinityAddress            string `help:"Infinity embeddings server address" default:"http://localhost:8002"`
 	InfinityTextModel          string `help:"Infinity text embeddings model ID" default:"BAAI/bge-large-en-v1.5"`
 	InfinityImageModel         string `help:"Infinity image embeddings model ID" default:"openai/clip-vit-large-patch14"`
 	InfinityTextQueryPrefix    string `help:"Prefix prepended to text search queries before embedding" default:"Represent this sentence for searching relevant passages: "`
 	InfinityTextDocumentPrefix string `help:"Prefix prepended to text documents before embedding" default:""`
+	SearchTimeout              int    `help:"Maximum seconds to wait for embedding search before returning 503" default:"30"`
 	LegacyImportUser           string `help:"Username for legacy imports" default:"legacy"`
+	PprofAddr                  string `help:"pprof HTTP listener address; empty to disable" default:""`
 }
 
 func main() {
@@ -41,6 +46,16 @@ func main() {
 
 		backend.Log.Info("init backend")
 		backend.SetInfinityConfig(options.InfinityAddress, options.InfinityTextModel, options.InfinityImageModel, options.InfinityTextQueryPrefix, options.InfinityTextDocumentPrefix)
+		backend.SetEmbeddingConcurrency(options.EmbeddingConcurrency)
+		backend.SetSearchTimeout(time.Duration(options.SearchTimeout) * time.Second)
+		if options.PprofAddr != "" {
+			go func() {
+				backend.Log.Infof("pprof listening on %s", options.PprofAddr)
+				if err := http.ListenAndServe(options.PprofAddr, nil); err != nil {
+					backend.Log.Errorw("pprof server error", "error", err)
+				}
+			}()
+		}
 
 		if _, err := os.Stat(options.Data); os.IsNotExist(err) {
 			err := os.Mkdir(options.Data, 0755)
@@ -126,6 +141,7 @@ func main() {
 
 		// Tell the CLI how to start your router.
 		hooks.OnStart(func() {
+			backend.StartEmbeddingWorkers()
 			if backend.ShouldGenerateEmbeddingsOnStart() {
 				go backend.BackfillEmbeddings()
 			}

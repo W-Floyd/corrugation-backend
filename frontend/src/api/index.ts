@@ -1,41 +1,8 @@
-import type {
-  Entity,
-  Artifact,
-  FullState,
-  Metadata,
-  BackendRecord,
-} from "./types";
+import type { Entity, BackendRecord, RecordBody } from "./types";
 import { recordToEntity } from "./types";
 import router from "../router";
 import { useAuthStore } from "../stores/auth";
 import { useToastsStore } from "../stores/toasts";
-
-export interface EntityCreate {
-  id?: number;
-  name: string | null;
-  description: string | null;
-  artifacts: number[] | null;
-  location: number;
-  metadata: {
-    quantity: number | null;
-    owner: string | null;
-    tags: string[] | null;
-    islabeled: boolean | null;
-  };
-}
-
-export interface EntityUpdate {
-  name?: string | null;
-  description?: string | null;
-  artifacts?: number[] | null;
-  location?: number;
-  metadata?: {
-    quantity?: number | null;
-    owner?: string | null;
-    tags?: string[] | null;
-    islabeled?: boolean | null;
-  };
-}
 
 export async function apiFetch(
   url: string,
@@ -89,101 +56,144 @@ export async function withErrorToast<T>(
 }
 
 export const api = {
-  async getFullState(): Promise<FullState> {
-    const response = await apiFetch("/api/store");
+  // Fetch records at a location. id=0 → top-level. global=true → all.
+  async getRecords(
+    locationId: number,
+    opts: {
+      childrenDepth?: number;
+      parentDepth?: number;
+      global?: boolean;
+      timestamps?: boolean;
+    } = {},
+  ): Promise<BackendRecord[]> {
+    const params = new URLSearchParams();
+    if (opts.global) {
+      params.set("global", "true");
+    } else {
+      params.set("id", String(locationId));
+    }
+    if (opts.childrenDepth !== undefined)
+      params.set("childrenDepth", String(opts.childrenDepth));
+    if (opts.parentDepth !== undefined)
+      params.set("parentDepth", String(opts.parentDepth));
+    if (opts.timestamps) params.set("timestamps", "true");
+    const response = await apiFetch(`/api/v2/records?${params}`);
     return response.json();
   },
 
-  async createEntity(entity: Partial<Entity>): Promise<number> {
-    const response = await apiFetch("/api/entity", {
+  async createRecord(body: RecordBody): Promise<BackendRecord> {
+    const response = await apiFetch("/api/v2/record", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(entity),
-    });
-    const id = await response.json();
-    return parseInt(id, 10);
-  },
-
-  async updateEntity(id: number, entity: Entity): Promise<void> {
-    await apiFetch(`/api/entity/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(entity),
-    });
-  },
-
-  async patchEntity(id: number, patch: Partial<Entity>): Promise<Entity> {
-    const response = await apiFetch(`/api/entity/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(patch),
+      body: JSON.stringify(body),
     });
     return response.json();
   },
 
-  async deleteEntity(id: number): Promise<void> {
-    await apiFetch(`/api/entity/${id}`, { method: "DELETE" });
+  async updateRecord(id: number, body: RecordBody): Promise<BackendRecord> {
+    const response = await apiFetch(`/api/v2/record/${id}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    return response.json();
   },
 
-  async moveEntity(id: number, location: number): Promise<void> {
-    await apiFetch(`/api/entity/${id}`, {
-      method: "PATCH",
+  async deleteRecord(id: number): Promise<void> {
+    await apiFetch(`/api/v2/record/${id}`, { method: "DELETE" });
+  },
+
+  async moveRecord(id: number, locationId: number): Promise<void> {
+    await apiFetch(`/api/v2/record/${id}`, {
+      method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ location }),
+      body: JSON.stringify({ ParentID: locationId || null }),
     });
+  },
+
+  async searchRecords(
+    query: string,
+    opts: {
+      parentId?: number;
+      searchImage?: boolean;
+      searchTextEmbedded?: boolean;
+      searchTextSubstring?: boolean;
+    } = {},
+  ): Promise<{ results: { entity: Entity; imageScore?: number; textScore?: number }[]; partial: boolean; searchId: string | null }> {
+    const params = new URLSearchParams({ search: query });
+    if (opts.parentId != null) {
+      params.set("id", String(opts.parentId));
+      params.set("childrenDepth", "-1");
+    } else {
+      params.set("global", "true");
+    }
+    if (opts.searchImage !== false) params.set("searchImage", "true");
+    if (opts.searchTextEmbedded !== false)
+      params.set("searchTextEmbedded", "true");
+    if (opts.searchTextSubstring !== false)
+      params.set("searchTextSubstring", "true");
+    const response = await apiFetch(`/api/v2/records?${params}`);
+    const partial = response.status === 207;
+    const searchId = response.headers.get("X-Search-ID");
+    const records: BackendRecord[] = await response.json();
+    return {
+      partial,
+      searchId,
+      results: records.map((r) => ({
+        entity: recordToEntity(r),
+        imageScore: r.SearchConfidenceImage,
+        textScore: r.SearchConfidenceText,
+      })),
+    };
   },
 
   async uploadArtifact(file: File): Promise<number> {
     const formData = new FormData();
     formData.append("file", file);
-    const response = await apiFetch("/api/artifact", {
+    const response = await apiFetch("/api/v2/artifact", {
       method: "POST",
       body: formData,
     });
     const id = await response.json();
-    return parseInt(id, 10);
+    return typeof id === "number" ? id : parseInt(id, 10);
   },
 
   async deleteArtifact(id: number): Promise<void> {
-    await apiFetch(`/api/artifact/${id}`, { method: "DELETE" });
+    await apiFetch(`/api/v2/artifact/${id}`, { method: "DELETE" });
   },
 
-  async searchEntities(
-    query: string,
-    parentId?: number,
-    searchImage = true,
-    searchTextEmbedded = true,
-    searchTextSubstring = true,
-  ): Promise<{ entity: Entity; imageScore?: number; textScore?: number }[]> {
-    const params = new URLSearchParams({ search: query });
-    if (parentId != null) {
-      params.set("id", String(parentId));
-      params.set("childrenDepth", "-1");
-    }
-    if (searchImage) params.set("searchImage", "true");
-    if (searchTextEmbedded) params.set("searchTextEmbedded", "true");
-    if (searchTextSubstring) params.set("searchTextSubstring", "true");
-    const response = await apiFetch(`/api/v2/records?${params}`);
-    const records: BackendRecord[] = await response.json();
-    return records.map((r) => ({
-      entity: recordToEntity(r),
-      imageScore: r.SearchConfidenceImage,
-      textScore: r.SearchConfidenceText,
-    }));
-  },
-
-  async firstFreeId(): Promise<number> {
+  // Next free record ID (for assigning a specific DB id — legacy use)
+  async nextFreeId(): Promise<number> {
     const response = await apiFetch("/api/entity/find/firstfreeid");
     return response.json();
   },
 
-  async firstAvailableId(): Promise<number> {
-    const response = await apiFetch("/api/entity/find/firstid");
+  // Next available reference number not held by any labeled record
+  async nextReferenceNumber(): Promise<number> {
+    const response = await apiFetch("/api/v2/records/nextid?labeled=true");
     return response.json();
   },
 
-  async quickCapture(_location: number): Promise<number | null> {
-    return 0;
+  async getSearchEmbeddingProgress(opts: {
+    id?: number;
+    global?: boolean;
+    childrenDepth?: number;
+    searchImage?: boolean;
+    searchTextEmbedded?: boolean;
+  }): Promise<{ indexed: number; pending: number; total: number; ready: boolean }> {
+    const params = new URLSearchParams();
+    if (opts.global) params.set("global", "true");
+    else if (opts.id != null) params.set("id", String(opts.id));
+    if (opts.childrenDepth != null) params.set("childrenDepth", String(opts.childrenDepth));
+    if (opts.searchImage) params.set("searchImage", "true");
+    if (opts.searchTextEmbedded) params.set("searchTextEmbedded", "true");
+    const response = await apiFetch(`/api/v2/embeddings/search-progress?${params}`);
+    return response.json();
+  },
+
+  async getStoreVersion(): Promise<number> {
+    const response = await apiFetch("/api/store/version");
+    return response.json();
   },
 };
 

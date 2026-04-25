@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-echarts/go-echarts/v2/charts"
@@ -36,51 +37,19 @@ func NewRecordQuery(query string) RecordQuery {
 	}
 }
 
-func GetRecordsFriendly(ctx context.Context, inputID uint, search *RecordQuery) (records []Record, err error) {
-	var ID *uint
-	var ChildrenDepth, ParentDepth *int
-	if inputID != 0 {
-		ID = &inputID
-	}
-	if search != nil && search.ChildrenDepth != 0 {
-		ChildrenDepth = &search.ChildrenDepth
-	}
-	if search != nil && search.ParentDepth != 0 {
-		ParentDepth = &search.ParentDepth
-	}
-	records, err = GetRecords(ctx, ID, ChildrenDepth, ParentDepth, search, []struct {
-		q string
-		h func(db gorm.PreloadBuilder) error
-	}{
-		{
-			q: "Artifacts",
-			h: func(db gorm.PreloadBuilder) error {
-				db.Select("id", "record_id")
-				return nil
-			},
-		},
-	}, nil, false)
-	return
-}
-
 func GetRecords(ctx context.Context, ID *uint, childrenDepth *int, parentDepth *int, search *RecordQuery, preload []struct {
 	q string
 	h func(db gorm.PreloadBuilder) error
-}, selects []string, ignoreUser bool) (records []Record, err error) {
-	UsernameFromContext(ctx)
-	user, err := loadUser(UsernameFromContext(ctx))
-	if err != nil {
-		return nil, err
+}, selects []string) (records []Record, partial bool, err error) {
+	username := UsernameFromContext(ctx)
+	authed := username != ""
+	var user User
+	if authed {
+		user, err = loadUser(username)
+		if err != nil {
+			return nil, false, err
+		}
 	}
-	preload = append([]struct {
-		q string
-		h func(db gorm.PreloadBuilder) error
-	}{
-		{
-			q: "Owner",
-			h: nil,
-		},
-	}, preload...)
 	if ID == nil {
 		if childrenDepth != nil {
 			err = errors.New("childrenDepth provided without an ID")
@@ -101,7 +70,7 @@ func GetRecords(ctx context.Context, ID *uint, childrenDepth *int, parentDepth *
 				v = q.Preload(s.q, s.h)
 			}
 		}
-		if !ignoreUser {
+		if authed {
 			if v != nil {
 				v = v.Where("owner_id = ?", user.ID)
 			} else {
@@ -116,6 +85,50 @@ func GetRecords(ctx context.Context, ID *uint, childrenDepth *int, parentDepth *
 
 		if err != nil {
 			return
+		}
+
+	} else if *ID == 0 {
+		// Top-level: records with no parent
+		q := gorm.G[Record](db)
+		var v gorm.ChainInterface[Record]
+		if len(selects) > 1 {
+			v = q.Select(selects[0], selects[1:])
+		} else if len(selects) == 1 {
+			v = q.Select(selects[0])
+		}
+		for _, s := range preload {
+			if v != nil {
+				v = v.Preload(s.q, s.h)
+			} else {
+				v = q.Preload(s.q, s.h)
+			}
+		}
+		if authed {
+			if v != nil {
+				v = v.Where("owner_id = ?", user.ID)
+			} else {
+				v = q.Where("owner_id = ?", user.ID)
+			}
+		}
+		if v != nil {
+			records, err = v.Where("parent_id IS NULL").Find(dbCtx)
+		} else {
+			records, err = q.Where("parent_id IS NULL").Find(dbCtx)
+		}
+		if err != nil {
+			return
+		}
+		if childrenDepth != nil {
+			for _, r := range records {
+				var sub []*Record
+				sub, err = GetChildrenRecurse(r.ID, *childrenDepth, 1)
+				if err != nil {
+					return
+				}
+				for _, s := range sub {
+					records = append(records, *s)
+				}
+			}
 		}
 
 	} else {
@@ -135,7 +148,7 @@ func GetRecords(ctx context.Context, ID *uint, childrenDepth *int, parentDepth *
 				v = q.Preload(s.q, s.h)
 			}
 		}
-		if !ignoreUser {
+		if authed {
 			if v != nil {
 				v = v.Where("owner_id = ?", user.ID)
 			} else {
@@ -197,28 +210,52 @@ func GetRecords(ctx context.Context, ID *uint, childrenDepth *int, parentDepth *
 
 	}
 
-	if search != nil {
-		scopedIDs := make([]uint, 0, len(records))
+	if search != nil && search.Query != "" {
+		scopedRecordIDs := make([]uint, 0, len(records))
+		artifactRecordMap := map[uint]*uint{}
 		for _, r := range records {
-			scopedIDs = append(scopedIDs, r.ID)
+			scopedRecordIDs = append(scopedRecordIDs, r.ID)
+			for _, a := range r.Artifacts {
+				if a != nil {
+					artifactRecordMap[a.ID] = a.RecordID
+				}
+			}
 		}
+
+		searchCtx, searchCancel := context.WithTimeout(ctx, searchTimeout)
+		defer searchCancel()
 
 		var artifactSearch, recordSearch []struct {
 			id    uint
 			score float64
 		}
+		var artifactErr, recordErr error
+		var artifactPartial, recordPartial bool
+		var wg sync.WaitGroup
 		if search.SearchImage {
-			artifactSearch, err = SearchByArtifact(ctx, search.Query, scopedIDs)
-			if err != nil {
-				return
-			}
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				artifactSearch, artifactPartial, artifactErr = SearchByArtifact(searchCtx, search.Query, artifactRecordMap)
+			}()
 		}
 		if search.SearchTextEmbedded {
-			recordSearch, err = SearchByRecord(ctx, search.Query)
-			if err != nil {
-				return
-			}
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				recordSearch, recordPartial, recordErr = SearchByRecord(searchCtx, search.Query, scopedRecordIDs)
+			}()
 		}
+		wg.Wait()
+		if artifactErr != nil {
+			err = artifactErr
+			return
+		}
+		if recordErr != nil {
+			err = recordErr
+			return
+		}
+		partial = artifactPartial || recordPartial
 
 		textScore := map[uint]float64{}
 		bestImageScore := map[uint]float64{}
@@ -246,7 +283,7 @@ func GetRecords(ctx context.Context, ID *uint, childrenDepth *int, parentDepth *
 			if !search.SearchTextSubstring {
 				continue
 			}
-			score := maxFieldScore(searchLower, r.Title, r.Label, r.Description)
+			score := maxFieldScore(searchLower, r.Title, r.ReferenceNumber, r.Description)
 			if score > textScore[r.ID] {
 				textScore[r.ID] = score
 			}
@@ -343,7 +380,19 @@ func GetChildrenRecurse(parentID uint, searchDepth int, currentDepth int) (recor
 
 func GetRecordsGraphFriendly(ctx context.Context, inputID uint, inputChildrenDepth int, inputParentDepth int) (graphOutput string, err error) {
 	var records []Record
-	records, err = GetRecordsFriendly(ctx, inputID, &RecordQuery{ChildrenDepth: inputChildrenDepth, ParentDepth: inputParentDepth})
+	var childrenDepth, parentDepth *int
+	if inputChildrenDepth != 0 {
+		childrenDepth = &inputChildrenDepth
+	}
+	if inputParentDepth != 0 {
+		parentDepth = &inputParentDepth
+	}
+	records, _, err = GetRecords(ctx, &inputID, childrenDepth, parentDepth, nil, []struct {
+		q string
+		h func(db gorm.PreloadBuilder) error
+	}{
+		{q: "Artifacts", h: func(db gorm.PreloadBuilder) error { db.Select("id", "record_id"); return nil }},
+	}, nil)
 
 	recordMap := make(map[uint]*Record)
 
@@ -374,7 +423,19 @@ func GetRecordsGraphFriendly(ctx context.Context, inputID uint, inputChildrenDep
 
 func GetRecordsGraphFriendlyNative(ctx context.Context, inputID uint, inputChildrenDepth int, inputParentDepth int) (graphOutput string, err error) {
 	var records []Record
-	records, err = GetRecordsFriendly(ctx, inputID, &RecordQuery{ChildrenDepth: inputChildrenDepth, ParentDepth: inputParentDepth})
+	var childrenDepth, parentDepth *int
+	if inputChildrenDepth != 0 {
+		childrenDepth = &inputChildrenDepth
+	}
+	if inputParentDepth != 0 {
+		parentDepth = &inputParentDepth
+	}
+	records, _, err = GetRecords(ctx, &inputID, childrenDepth, parentDepth, nil, []struct {
+		q string
+		h func(db gorm.PreloadBuilder) error
+	}{
+		{q: "Artifacts", h: func(db gorm.PreloadBuilder) error { db.Select("id", "record_id"); return nil }},
+	}, nil)
 	if err != nil {
 		return
 	}

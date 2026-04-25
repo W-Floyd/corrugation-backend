@@ -54,10 +54,14 @@ func RegisterHandlers(api huma.API) {
 	huma.Register(api, ListRecordsOperation, ListRecords)
 	huma.Register(api, GetRecordOperation, GetRecord)
 	huma.Register(api, CreateRecordOperation, CreateRecord)
+	huma.Register(api, UpdateRecordOperation, UpdateRecord)
 	huma.Register(api, DeleteRecordOperation, DeleteRecord)
+	huma.Register(api, GetNextReferenceNumberOperation, GetNextReferenceNumber)
 
 	huma.Register(api, VisualizeGraphRecordsOperation, VisualizeGraphRecords)
 	huma.Register(api, FlushStaleEmbeddingsOperation, FlushStaleEmbeddings)
+	huma.Register(api, GetEmbeddingProgressOperation, GetEmbeddingProgress)
+	huma.Register(api, GetSearchEmbeddingProgressOperation, GetSearchEmbeddingProgress)
 
 	huma.Register(api, CreateArtifactOperation, CreateArtifact)
 	huma.Register(api, GetArtifactOperation, GetArtifact)

@@ -85,7 +85,7 @@ const handleDrop = async (e: DragEvent): Promise<void> => {
     if (isNaN(draggedId) || draggedId === props.entity.id) return;
     if (isDescendantOf(props.entity.id, draggedId)) return;
     try {
-        await api.moveEntity(draggedId, props.entity.id);
+        await api.moveRecord(draggedId, props.entity.id);
         await entitiesStore.reload();
         toastsStore.add("Entity moved");
     } catch {
@@ -100,7 +100,7 @@ const isDescendantOf = (entityId: number, ancestorId: number): boolean => {
     let current = entityId;
     while (current !== 0) {
         if (current === ancestorId) return true;
-        const parent = entitiesStore.fullstate.entities[current];
+        const parent = entitiesStore.entityMap[current];
         if (!parent) break;
         current = parent.location;
     }
@@ -110,7 +110,7 @@ const isDescendantOf = (entityId: number, ancestorId: number): boolean => {
 const moveUp = (): void => {
     if (entitiesStore.currentEntity !== 0) {
         const currentEntity =
-            entitiesStore.fullstate.entities[entitiesStore.currentEntity];
+            entitiesStore.entityMap[entitiesStore.currentEntity];
         if (currentEntity?.location !== undefined) {
             emit("moveConfirmed", currentEntity.location);
         }
@@ -130,11 +130,12 @@ const filteredMoveEntities = computed(() => {
             owner: null,
             tags: null,
             lastModified: null,
-            islabeled: false,
+            labeled: false,
+            referenceNumber: null,
         },
     };
     const candidates: Entity[] = [
-        ...Object.values(entitiesStore.fullstate.entities).filter(
+        ...Object.values(entitiesStore.entityMap).filter(
             (e) =>
                 e.id !== props.entity.id &&
                 !isDescendantOf(e.id, props.entity.id),
@@ -152,8 +153,7 @@ const filteredMoveEntities = computed(() => {
 
 const currentLocationName = computed(() => {
     if (entitiesStore.currentEntity === 0) return "World";
-    const e = entitiesStore.fullstate.entities[entitiesStore.currentEntity];
-    return e?.name || entitiesStore.currentEntity.toString();
+    return entitiesStore.readname(entitiesStore.currentEntity);
 });
 
 const isAtCurrentLocation = computed((): boolean => {
@@ -212,25 +212,32 @@ watch(filteredMoveEntities, (results) => {
     }
 });
 
-const formatOption = (entityId: number): string => {
-    const tree: string[] = [];
+const formatOptionSegments = (
+    entityId: number,
+): { text: string; labeled: boolean }[] => {
+    const tree: { text: string; labeled: boolean }[] = [];
     let target = entityId;
     while (target !== 0) {
-        const elem = entitiesStore.fullstate.entities[target];
+        const elem = entitiesStore.entityMap[target];
         if (!elem) {
-            tree.push(target.toString());
+            tree.push({ text: target.toString(), labeled: false });
             break;
         }
-        if (!elem.name) {
-            tree.push(target.toString());
+        if (elem.name) {
+            tree.push({ text: elem.name, labeled: false });
+        } else if (elem.metadata.referenceNumber) {
+            tree.push({
+                text: `#${elem.metadata.referenceNumber}`,
+                labeled: true,
+            });
         } else {
-            tree.push(elem.name);
+            tree.push({ text: target.toString(), labeled: false });
         }
         target = elem.location;
     }
-    tree.push("World");
+    tree.push({ text: "World", labeled: false });
     tree.reverse();
-    return tree.join("/");
+    return tree;
 };
 
 watch(
@@ -306,9 +313,15 @@ const handleUpdate = async (): Promise<void> => {
         const artifacts = (localEntity.value.artifacts ?? []).filter(
             (id) => !pendingDeletions.value.has(id),
         );
-        await api.patchEntity(props.entity.id, {
-            ...localEntity.value,
-            artifacts,
+        const e = localEntity.value;
+        await api.updateRecord(props.entity.id, {
+            Title: e.metadata.labeled ? null : e.name,
+            ReferenceNumber: e.metadata.labeled ? e.metadata.referenceNumber : null,
+            Labeled: e.metadata.labeled,
+            Description: e.description,
+            Quantity: e.metadata.quantity ?? undefined,
+            ParentID: e.location || undefined,
+            Artifacts: artifacts,
         });
         pendingDeletions.value = new Set();
         await entitiesStore.reload();
@@ -323,7 +336,7 @@ const handleUpdate = async (): Promise<void> => {
 
 const handleDelete = async (): Promise<void> => {
     try {
-        await api.deleteEntity(props.entity.id);
+        await api.deleteRecord(props.entity.id);
         await entitiesStore.reload();
         toastsStore.add("Entity deleted");
     } catch (error) {
@@ -346,7 +359,7 @@ const handleQuickCaptureCallback = async (files: File[]): Promise<void> => {
     try {
         const artifactId = await api.uploadArtifact(files[0]);
         const artifacts = [...(props.entity.artifacts ?? []), artifactId];
-        await api.patchEntity(props.entity.id, { artifacts });
+        await api.updateRecord(props.entity.id, { Artifacts: artifacts });
         await entitiesStore.reload();
         editMode.value = false;
         emit("entityUpdated", props.entity);
@@ -366,18 +379,9 @@ const handleQuickCaptureNewChild = async (): Promise<void> => {
             }
             try {
                 const artifactId = await api.uploadArtifact(files[0]);
-                await api.createEntity({
-                    name: null,
-                    description: null,
-                    artifacts: [artifactId],
-                    location: props.entity.id,
-                    metadata: {
-                        quantity: null,
-                        owner: null,
-                        tags: null,
-                        islabeled: false,
-                        lastModified: null,
-                    },
+                await api.createRecord({
+                    ParentID: props.entity.id,
+                    Artifacts: [artifactId],
                 });
                 await entitiesStore.reload();
                 toastsStore.add("Entity created from photo");
@@ -422,27 +426,21 @@ const toggleArtifactDeletion = (artifactId: number): void => {
     pendingDeletions.value = next;
 };
 
-const isImageArtifact = (artifactId: number): boolean => {
-    return Boolean(entitiesStore.fullstate.artifacts[artifactId]?.image);
-};
-
 const images = computed(() => {
     const artifacts = editMode.value
         ? localEntity.value.artifacts
         : props.entity.artifacts;
-    if (!artifacts) return [];
-    return artifacts.filter(isImageArtifact);
+    return artifacts ?? [];
 });
 
 const handleEditArtifact = async (file: File): Promise<void> => {
     try {
         const artifactId = await api.uploadArtifact(file);
-        const updatedEntity = { ...localEntity.value };
-        if (!updatedEntity.artifacts) updatedEntity.artifacts = [];
-        updatedEntity.artifacts.push(artifactId);
-        await api.patchEntity(props.entity.id, updatedEntity);
+        const artifacts = [...(localEntity.value.artifacts ?? []), artifactId];
+        localEntity.value = { ...localEntity.value, artifacts };
+        await api.updateRecord(props.entity.id, { Artifacts: artifacts });
         await entitiesStore.reload();
-        emit("entityUpdated", updatedEntity);
+        emit("entityUpdated", localEntity.value);
         toastsStore.add("Artifact uploaded");
     } catch (error) {
         console.error("Failed to upload artifact:", error);
@@ -533,7 +531,7 @@ defineExpose({ cardEl });
                     :key="loc.id"
                     :value="loc.id"
                 >
-                    {{ formatOption(loc.id) }}
+                    {{ formatOptionSegments(loc.id).map(s => s.text).join("/") }}
                 </option>
             </select>
             <div class="flex gap-2 flex-wrap items-center">
@@ -617,20 +615,34 @@ defineExpose({ cardEl });
                     class="flex list-reset space-x-3 items-baseline mb-2 cursor-pointer"
                     @click.stop="entitiesStore.setCurrentEntity(entity.id)"
                 >
-                    <div
-                        class="text-xl w-min font-medium text-gray-500 dark:text-gray-400"
-                    >
-                        ({{ entity.id }})
+                    <div class="text-xl font-bold" :title="`ID: ${entity.id}`">
+                        <template v-if="entitiesStore.searchtext.trim()">
+                            <template
+                                v-for="(seg, i) in formatOptionSegments(entity.id)"
+                                :key="i"
+                            ><span v-if="i > 0">/</span><span
+                                    :class="
+                                        seg.labeled
+                                            ? 'font-mono text-blue-600 dark:text-blue-400'
+                                            : ''
+                                    "
+                                    >{{ seg.text }}</span
+                                ></template
+                            >
+                        </template>
+                        <template v-else>{{
+                            entity.name
+                                ? entity.metadata.quantity
+                                    ? `${entity.name} (x${entity.metadata.quantity})`
+                                    : entity.name
+                                : ""
+                        }}</template>
                     </div>
-                    <div class="text-xl font-bold">
-                        {{
-                            entitiesStore.searchtext.trim()
-                                ? formatOption(entity.id)
-                                : entity.metadata.quantity !== null &&
-                                    entity.metadata.quantity !== 0
-                                  ? `${entity.name || ""} (x${entity.metadata.quantity})`
-                                  : entity.name || ""
-                        }}
+                    <div
+                        v-if="!entitiesStore.searchtext.trim() && entity.metadata.labeled && entity.metadata.referenceNumber"
+                        class="text-xl font-mono text-blue-600 dark:text-blue-400"
+                    >
+                        #{{ entity.metadata.referenceNumber }}
                     </div>
                 </div>
             </div>
@@ -640,11 +652,6 @@ defineExpose({ cardEl });
                 <div
                     class="flex-auto flex list-reset space-x-2 items-baseline mb-2"
                 >
-                    <div
-                        class="text-xl w-min font-medium text-gray-500 dark:text-gray-400"
-                    >
-                        ({{ entity.id }})
-                    </div>
                     <input
                         ref="nameInputEl"
                         type="text"
@@ -664,11 +671,18 @@ defineExpose({ cardEl });
                     >
                         <input
                             type="checkbox"
-                            v-model="localEntity.metadata.islabeled"
+                            v-model="localEntity.metadata.labeled"
                             class="w-4 h-4"
                         />
                         Labeled
                     </label>
+                    <input
+                        v-if="localEntity.metadata.labeled"
+                        type="text"
+                        v-model="localEntity.metadata.referenceNumber"
+                        class="bg-white rounded-sm dark:bg-gray-900 ring-1 w-16"
+                        placeholder="Ref#"
+                    />
                 </div>
             </div>
 

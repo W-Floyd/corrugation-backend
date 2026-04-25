@@ -60,7 +60,7 @@ const handleMoveConfirmed = async (
     confirmMoveId.value = null;
     selectedEntityId.value = null;
     try {
-        await api.moveEntity(entityId, newLocation);
+        await api.moveRecord(entityId, newLocation);
         await entitiesStore.reload();
         toastsStore.add("Entity moved");
         if (newLocation === entitiesStore.currentEntity) {
@@ -84,18 +84,9 @@ const handleFabCapture = async (): Promise<void> => {
     if (!capturedFiles[0]) return;
     try {
         const artifactId = await api.uploadArtifact(capturedFiles[0]);
-        await api.createEntity({
-            name: null,
-            description: null,
-            artifacts: [artifactId],
-            location: entitiesStore.currentEntity,
-            metadata: {
-                quantity: null,
-                owner: null,
-                tags: null,
-                islabeled: false,
-                lastModified: null,
-            },
+        await api.createRecord({
+            ParentID: entitiesStore.currentEntity || undefined,
+            Artifacts: [artifactId],
         });
         await entitiesStore.reload();
         toastsStore.add("Entity created from photo");
@@ -114,7 +105,7 @@ const confirmDeleteEntity = async (entityId: number): Promise<void> => {
     deleteConfirmId.value = null;
     selectedEntityId.value = null;
     try {
-        await api.deleteEntity(entityId);
+        await api.deleteRecord(entityId);
         await entitiesStore.reload();
         toastsStore.add("Entity deleted");
         if (nextId !== null) {
@@ -136,9 +127,9 @@ const handleQuickCaptureOnEntity = async (entityId: number): Promise<void> => {
     if (!capturedFiles[0]) return;
     try {
         const artifactId = await api.uploadArtifact(capturedFiles[0]);
-        const entity = entitiesStore.fullstate.entities[entityId];
+        const entity = entitiesStore.entityMap[entityId];
         const artifacts = [...(entity?.artifacts ?? []), artifactId];
-        await api.patchEntity(entityId, { artifacts });
+        await api.updateRecord(entityId, { Artifacts: artifacts });
         await entitiesStore.reload();
         toastsStore.add("Artifact captured and added");
     } catch {
@@ -157,18 +148,9 @@ const handleQuickCaptureNewChild = async (parentId: number): Promise<void> => {
     if (!capturedFiles[0]) return;
     try {
         const artifactId = await api.uploadArtifact(capturedFiles[0]);
-        await api.createEntity({
-            name: null,
-            description: null,
-            artifacts: [artifactId],
-            location: parentId,
-            metadata: {
-                quantity: null,
-                owner: null,
-                tags: null,
-                islabeled: false,
-                lastModified: null,
-            },
+        await api.createRecord({
+            ParentID: parentId || undefined,
+            Artifacts: [artifactId],
         });
         await entitiesStore.reload();
         toastsStore.add("Entity created from photo");
@@ -339,8 +321,9 @@ const handleKeydown = (e: KeyboardEvent): void => {
                 const cur = entitiesStore.currentEntity;
                 if (cur === 0) break;
                 const prevId = cur;
-                const ent = entitiesStore.fullstate.entities[cur];
-                entitiesStore.setCurrentEntity(ent?.location ?? 0).then(() => {
+                const tree = entitiesStore.locationtree;
+                const parentId = tree.length >= 2 ? tree[tree.length - 2]! : 0;
+                entitiesStore.setCurrentEntity(parentId).then(() => {
                     nextTick(() => {
                         selectedEntityId.value = prevId;
                     });
@@ -504,7 +487,7 @@ watch(
         >
             <!-- Loading state -->
             <div
-                v-if="entitiesStore.isLoading"
+                v-if="entitiesStore.isLoading && entitiesStore.allRecords.length === 0"
                 class="flex items-center justify-center h-screen"
             >
                 <span class="text-2xl text-gray-500">Loading...</span>

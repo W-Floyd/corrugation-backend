@@ -165,7 +165,8 @@ func ImportFromReader(ctx context.Context, r io.Reader, reset bool, legacyImport
 		r.Description = strPtr(le.Description)
 
 		if le.Metadata.IsLabeled {
-			r.Label = strPtr(le.Name)
+			r.ReferenceNumber = strPtr(le.Name)
+			r.Labeled = true
 		} else {
 			r.Title = strPtr(le.Name)
 		}

@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"sync"
 )
 
 type infinityEmbeddingsRequest struct {
@@ -37,11 +38,7 @@ type infinityEmbeddingsReponse struct {
 
 type Embeddings []float64
 
-var embeddingsCache map[string]Embeddings
-
-func init() {
-	embeddingsCache = make(map[string]Embeddings)
-}
+var embeddingsCache sync.Map // hash string → Embeddings
 
 func (i *infinityEmbeddingsRequest) GenerateEmbeddings() (e Embeddings, err error) {
 
@@ -179,9 +176,7 @@ func (e *Embeddings) MarshalEmbeddings(input string) (hash string, jsonData []by
 
 	hash = InputHash(input)
 
-	if _, ok := embeddingsCache[hash]; !ok {
-		embeddingsCache[hash] = *e
-	}
+	embeddingsCache.LoadOrStore(hash, *e)
 
 	return
 }

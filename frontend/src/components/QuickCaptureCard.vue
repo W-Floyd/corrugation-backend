@@ -4,7 +4,7 @@ import { useCameraStore } from "@/stores/camera";
 import { useEntitiesStore } from "@/stores/entities";
 import { useToastsStore } from "@/stores/toasts";
 import { api } from "@/api";
-import type { Entity } from "@/api/types";
+import { entityToRecordBody } from "@/api/types";
 
 const entitiesStore = useEntitiesStore();
 const cameraStore = useCameraStore();
@@ -23,8 +23,7 @@ const handleQuickCapture = async (entityId: number): Promise<void> => {
                     // Upload artifact
                     const artifactId = await api.uploadArtifact(files[0]);
 
-                    // Create entity at current location
-                    const entity: Entity = {
+                    await api.createRecord(entityToRecordBody({
                         id: 0,
                         name: null,
                         description: null,
@@ -34,12 +33,11 @@ const handleQuickCapture = async (entityId: number): Promise<void> => {
                             quantity: null,
                             owner: null,
                             tags: null,
-                            islabeled: false,
+                            labeled: false,
+                            referenceNumber: null,
                             lastModified: null,
                         },
-                    };
-
-                    await api.createEntity(entity);
+                    }));
                     await entitiesStore.reload();
                     toastsStore.add("Entity created from photo");
                 } catch (error) {

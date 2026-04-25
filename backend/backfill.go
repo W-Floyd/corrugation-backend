@@ -12,7 +12,7 @@ func BackfillEmbeddings() {
 }
 
 func backfillRecordEmbeddings() {
-	records, err := GetRecords(dbCtx, nil, nil, nil, nil, nil, []string{"id", "title", "label", "description", "owner_id"}, false)
+	records, _, err := GetRecords(dbCtx, nil, nil, nil, nil, nil, []string{"id", "title", "reference_number", "description", "owner_id"})
 	if err != nil {
 		Log.Errorw("backfill: failed to fetch records", "error", err)
 		return
@@ -92,7 +92,7 @@ func backfillRecordEmbeddingsForUser(ctx context.Context, textModel, docPrefix s
 		}
 	}
 
-	generateMissingRecordEmbeddings(ctx, recordIDs, embeddedIDs)
+	generateMissingRecordEmbeddings(ctx, recordIDs, embeddedIDs, "backfill")
 }
 
 func backfillArtifactEmbeddings() {
@@ -118,5 +118,5 @@ func backfillArtifactEmbeddings() {
 		artifactIDs[i] = a.ID
 	}
 
-	generateMissingArtifactEmbeddings(artifactIDs, embeddedIDs)
+	generateMissingArtifactEmbeddings(dbCtx, artifactIDs, embeddedIDs, "backfill")
 }

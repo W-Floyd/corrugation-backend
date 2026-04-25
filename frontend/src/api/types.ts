@@ -3,7 +3,8 @@ export interface Metadata {
   owner: string | null;
   tags: string[] | null;
   lastModified: string | null;
-  islabeled: boolean | null;
+  labeled: boolean;
+  referenceNumber: string | null;
 }
 
 export interface Entity {
@@ -23,12 +24,6 @@ export interface Artifact {
 
 export type EntityCreate = Omit<Entity, "id">;
 
-export interface FullState {
-  entities: Record<number, Entity>;
-  artifacts: Record<number, Artifact>;
-  storeversion: number;
-}
-
 export interface BackendArtifactRef {
   ID: number;
 }
@@ -42,7 +37,8 @@ export interface BackendRecord {
   ID: number;
   CreatedAt?: string;
   UpdatedAt?: string;
-  Label?: string;
+  ReferenceNumber?: string;
+  Labeled: boolean;
   Title?: string;
   Description?: string;
   Quantity?: number;
@@ -53,10 +49,20 @@ export interface BackendRecord {
   SearchConfidenceText?: number;
 }
 
+export interface RecordBody {
+  Title?: string | null;
+  ReferenceNumber?: string | null;
+  Labeled?: boolean;
+  Description?: string | null;
+  Quantity?: number | null;
+  ParentID?: number | null;
+  Artifacts?: number[];
+}
+
 export function recordToEntity(r: BackendRecord): Entity {
   return {
     id: r.ID,
-    name: r.Label ?? r.Title ?? null,
+    name: r.Title ?? null,
     description: r.Description ?? null,
     artifacts: r.Artifacts?.map((a) => a.ID) ?? null,
     location: r.ParentID ?? 0,
@@ -64,8 +70,21 @@ export function recordToEntity(r: BackendRecord): Entity {
       quantity: r.Quantity ?? null,
       owner: null,
       tags: r.Tags?.map((t) => t.Title) ?? null,
-      islabeled: r.Label != null,
+      labeled: r.Labeled ?? false,
+      referenceNumber: r.ReferenceNumber ?? null,
       lastModified: r.UpdatedAt ?? null,
     },
+  };
+}
+
+export function entityToRecordBody(e: Entity | EntityCreate): RecordBody {
+  return {
+    Title: e.name ?? null,
+    ReferenceNumber: e.metadata.labeled ? e.metadata.referenceNumber : null,
+    Labeled: e.metadata.labeled,
+    Description: e.description,
+    Quantity: e.metadata.quantity ?? undefined,
+    ParentID: e.location || undefined,
+    Artifacts: e.artifacts ?? undefined,
   };
 }

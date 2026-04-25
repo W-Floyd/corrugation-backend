@@ -43,12 +43,12 @@ const moveEntityTarget = ref<number>(0);
 // Filtered entities for move dialog
 const filteredEntities = computed(() => {
     if (!moveEntitySearch.value.trim()) {
-        return Object.values(entitiesStore.fullstate.entities).filter(
+        return Object.values(entitiesStore.entityMap).filter(
             (e) => e.id !== 0 && e.location !== 0,
         );
     }
     const term = moveEntitySearch.value.toLowerCase();
-    return Object.values(entitiesStore.fullstate.entities).filter(
+    return Object.values(entitiesStore.entityMap).filter(
         (e) =>
             e.id !== 0 &&
             e.location !== 0 &&
@@ -61,20 +61,12 @@ const filteredEntities = computed(() => {
 const handleNewEntitySubmit = async (): Promise<void> => {
     if (!newEntityTemp.value.name || !newEntityTemp.value.name.trim()) return;
     try {
-        const entity = {
-            name: newEntityTemp.value.name,
-            description: newEntityTemp.value.description || null,
-            artifacts: null,
-            location: entitiesStore.currentEntity,
-            metadata: {
-                quantity: null,
-                owner: null,
-                tags: null,
-                islabeled: false,
-                lastModified: null,
-            },
-        };
-        const entityId = await api.createEntity(entity);
+        const record = await api.createRecord({
+            Title: newEntityTemp.value.name,
+            Description: newEntityTemp.value.description || null,
+            ParentID: entitiesStore.currentEntity || undefined,
+        });
+        const entityId = record.ID;
         await entitiesStore.reload();
         await entitiesStore.setCurrentEntity(entityId);
         newEntityVisible.value = false;
@@ -90,7 +82,7 @@ function openNewEntityDialog(_entityId?: number): void {
 const handleMoveEntitySubmit = async (): Promise<void> => {
     if (!moveEntityTarget.value || moveEntityTarget.value === 0) return;
     try {
-        await api.moveEntity(
+        await api.moveRecord(
             Number(route.query.entity ?? entitiesStore.currentEntity),
             moveEntityTarget.value,
         );

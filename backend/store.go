@@ -56,8 +56,8 @@ func (record *Record) ToEntity() (output *EntityInput, err error) {
 		&EntityInput{
 			ID: oldbackend.EntityID(record.ID),
 			Name: func() *string {
-				if record.Label != nil {
-					return record.Label
+				if record.ReferenceNumber != nil {
+					return record.ReferenceNumber
 				} else if record.Title != nil {
 					return record.Title
 				} else {
@@ -118,7 +118,7 @@ func (record *Record) ToEntity() (output *EntityInput, err error) {
 					return &v
 				}(),
 				IsLabeled: func() *bool {
-					v := record.Label != nil
+					v := record.Labeled
 					return &v
 				}(),
 			},
@@ -137,10 +137,11 @@ func GetStore(ctx context.Context, input *struct{}) (output *StoreOutput, err er
 
 	output.Body.Entities = make(map[oldbackend.EntityID]*EntityInput)
 
-	records, err := GetRecords(ctx, nil, nil, nil, nil, []struct {
+	records, _, err := GetRecords(ctx, nil, nil, nil, nil, []struct {
 		q string
 		h func(db gorm.PreloadBuilder) error
 	}{
+		{q: "Owner", h: nil},
 		{
 			q: "Artifacts",
 			h: func(db gorm.PreloadBuilder) error {
@@ -152,7 +153,7 @@ func GetStore(ctx context.Context, input *struct{}) (output *StoreOutput, err er
 			q: "Tags",
 			h: func(db gorm.PreloadBuilder) error { return nil },
 		},
-	}, nil, false)
+	}, nil)
 	if err != nil {
 		return
 	}
@@ -296,7 +297,8 @@ func CreateEntity(ctx context.Context, input *struct {
 	record := &Record{}
 
 	if input.Body.Metadata.IsLabeled != nil && *input.Body.Metadata.IsLabeled {
-		record.Label = input.Body.Name
+		record.ReferenceNumber = input.Body.Name
+		record.Labeled = true
 	} else {
 		record.Title = input.Body.Name
 	}
@@ -431,7 +433,7 @@ type EntityIDListOutput struct {
 }
 
 func ListEntityIDs(ctx context.Context, input *struct{}) (output *EntityIDListOutput, err error) {
-	records, err := GetRecords(ctx, nil, nil, nil, nil, nil, []string{"id"}, false)
+	records, _, err := GetRecords(ctx, nil, nil, nil, nil, nil, []string{"id"})
 	if err != nil {
 		return
 	}
@@ -452,7 +454,7 @@ type AllEntitiesOutput struct {
 }
 
 func GetAllEntities(ctx context.Context, input *struct{}) (output *AllEntitiesOutput, err error) {
-	records, err := GetRecords(ctx, nil, nil, nil, nil, []struct {
+	records, _, err := GetRecords(ctx, nil, nil, nil, nil, []struct {
 		q string
 		h func(db gorm.PreloadBuilder) error
 	}{
@@ -467,7 +469,7 @@ func GetAllEntities(ctx context.Context, input *struct{}) (output *AllEntitiesOu
 			q: "Tags",
 			h: func(db gorm.PreloadBuilder) error { return nil },
 		},
-	}, nil, false)
+	}, nil)
 	if err != nil {
 		return
 	}
@@ -498,7 +500,7 @@ func GetEntity(ctx context.Context, input *struct {
 		err = huma.Error500InternalServerError("id must not be 0")
 	}
 
-	records, err := GetRecords(ctx, &input.ID, nil, nil, nil, []struct {
+	records, _, err := GetRecords(ctx, &input.ID, nil, nil, nil, []struct {
 		q string
 		h func(db gorm.PreloadBuilder) error
 	}{
@@ -513,7 +515,7 @@ func GetEntity(ctx context.Context, input *struct {
 			q: "Tags",
 			h: func(db gorm.PreloadBuilder) error { return nil },
 		},
-	}, nil, false)
+	}, nil)
 	if err != nil {
 		return
 	}
@@ -588,13 +590,13 @@ func PatchEntity(ctx context.Context, input *struct {
 	Body EntityPatch
 }) (output *EntityOutput, err error) {
 
-	records, err := GetRecords(ctx, &input.ID, nil, nil, nil, []struct {
+	records, _, err := GetRecords(ctx, &input.ID, nil, nil, nil, []struct {
 		q string
 		h func(db gorm.PreloadBuilder) error
 	}{
 		{q: "Artifacts", h: func(db gorm.PreloadBuilder) error { return nil }},
 		{q: "Tags", h: func(db gorm.PreloadBuilder) error { return nil }},
-	}, nil, false)
+	}, nil)
 	if err != nil {
 		return
 	}
@@ -603,8 +605,8 @@ func PatchEntity(ctx context.Context, input *struct {
 	r := records[0]
 
 	if i.Name != nil {
-		if r.Label != nil {
-			r.Label = i.Name
+		if r.Labeled {
+			r.ReferenceNumber = i.Name
 		} else {
 			r.Title = i.Name
 		}
@@ -732,7 +734,7 @@ var GetFirstLabeledIDOperation = huma.Operation{
 
 func GetFirstLabeledID(ctx context.Context, _ *struct{}) (output *UIntOutput, err error) {
 	var labeledIDs []uint
-	if tx := db.Model(&Record{}).Where("label IS NOT NULL").Order("id ASC").Pluck("id", &labeledIDs); tx.Error != nil {
+	if tx := db.Model(&Record{}).Where("labeled = true").Order("id ASC").Pluck("id", &labeledIDs); tx.Error != nil {
 		err = tx.Error
 		return
 	}
@@ -914,15 +916,13 @@ func ReplaceEntity(ctx context.Context, input *struct {
 	Body EntityInput
 }) (output *EntityOutput, err error) {
 
-	records, err := GetRecords(ctx, &input.ID, nil, nil, nil, []struct {
+	records, _, err := GetRecords(ctx, &input.ID, nil, nil, nil, []struct {
 		q string
 		h func(db gorm.PreloadBuilder) error
 	}{
 		{q: "Artifacts", h: func(db gorm.PreloadBuilder) error { return nil }},
 		{q: "Tags", h: func(db gorm.PreloadBuilder) error { return nil }},
-	}, nil,
-		true, // TOOD: This is unsafe and is an auth hole, but works of the sake of "moving" an entity. Once new UI is in place with Reference Number
-	)
+	}, nil)
 	if err != nil {
 		return
 	}
@@ -931,11 +931,13 @@ func ReplaceEntity(ctx context.Context, input *struct {
 	i := input.Body
 
 	if i.Metadata != nil && i.Metadata.IsLabeled != nil && *i.Metadata.IsLabeled {
-		r.Label = i.Name
+		r.ReferenceNumber = i.Name
+		r.Labeled = true
 		r.Title = nil
 	} else {
 		r.Title = i.Name
-		r.Label = nil
+		r.ReferenceNumber = nil
+		r.Labeled = false
 	}
 
 	r.Description = i.Description

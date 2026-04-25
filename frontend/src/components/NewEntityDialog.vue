@@ -5,7 +5,6 @@ import { useEntitiesStore } from "@/stores/entities";
 import { useCameraStore } from "@/stores/camera";
 import { useToastsStore } from "@/stores/toasts";
 import { api } from "@/api";
-import type { Entity, EntityCreate } from "@/api/types";
 
 const entitiesStore = useEntitiesStore();
 const cameraStore = useCameraStore();
@@ -31,93 +30,64 @@ const emit = defineEmits<{
 
 const dialogVisible = ref(false);
 const nameInput = ref<HTMLInputElement | null>(null);
-const entity = ref<EntityCreate>({
-    name: null,
-    description: null,
-    artifacts: null,
-    location: 0,
-    metadata: {
-        quantity: null,
-        owner: null,
-        tags: null,
-        islabeled: false,
-        lastModified: null,
-    },
-});
+const title = ref<string>("");
+const description = ref<string>("");
+const quantity = ref<number | null>(null);
+const labeled = ref(false);
+const referenceNumber = ref<string>("");
 const files = ref<File[]>([]);
-const freeId = ref<number>(0);
-const availableId = ref<number>(0);
+const nextRefNumber = ref<number>(0);
 
 watch(
     () => props.visible,
     async (visible) => {
         dialogVisible.value = visible;
         if (visible) {
-            await resetDialog();
-            await fetchIds();
+            resetDialog();
             nextTick(() => nameInput.value?.focus());
         }
     },
     { immediate: true },
 );
 
-watch(
-    () => props.location,
-    (location) => {
-        entity.value.location = location ?? 0;
-    },
-);
-
-watch(
-    () => entity.value.metadata.islabeled,
-    () => fetchIds(),
-);
-
-const resetDialog = async (): Promise<void> => {
-    entity.value = {
-        name: null,
-        description: null,
-        artifacts: null,
-        location: props.location ?? 0,
-        metadata: {
-            quantity: null,
-            owner: null,
-            tags: null,
-            islabeled: false,
-            lastModified: null,
-        },
-    };
-    files.value = [];
-    freeId.value = 0;
-    availableId.value = 0;
-};
-
-const fetchIds = async (): Promise<void> => {
-    if (entity.value.metadata.islabeled) {
-        availableId.value = await api.firstAvailableId();
+watch(labeled, async (val) => {
+    if (val) {
+        nextRefNumber.value = await api.nextReferenceNumber();
+        referenceNumber.value = String(nextRefNumber.value);
     } else {
-        freeId.value = await api.firstFreeId();
+        referenceNumber.value = "";
     }
+});
+
+const resetDialog = (): void => {
+    title.value = "";
+    description.value = "";
+    quantity.value = null;
+    labeled.value = false;
+    referenceNumber.value = "";
+    files.value = [];
+    nextRefNumber.value = 0;
 };
 
 const handleSubmit = async (): Promise<void> => {
-    if (!entity.value.name || !entity.value.name.trim()) {
-        toastsStore.add("Name is required");
-        return;
-    }
-
     try {
-        const location = props.location || 0;
-        entity.value.location = location;
-        const targetId = entity.value.metadata.islabeled
-            ? availableId.value
-            : freeId.value;
-        const entityId = await api.createEntity({
-            ...entity.value,
-            id: targetId,
+        let artifactIds: number[] = [];
+        for (const file of files.value) {
+            const id = await api.uploadArtifact(file);
+            artifactIds.push(id);
+        }
+
+        const record = await api.createRecord({
+            Title: title.value || null,
+            ReferenceNumber: labeled.value ? referenceNumber.value || null : null,
+            Labeled: labeled.value,
+            Description: description.value || null,
+            Quantity: quantity.value ?? undefined,
+            ParentID: props.location || undefined,
+            Artifacts: artifactIds.length ? artifactIds : undefined,
         });
         await entitiesStore.reload();
-        emit("created", entityId);
+        emit("created", record.ID);
         emit("update:visible", false);
         dialogVisible.value = false;
         toastsStore.add("Entity created");
@@ -142,7 +112,7 @@ const handleCameraOpen = async (): Promise<void> => {
 };
 
 onMounted(() => {
-    fetchIds();
+    // nothing needed on mount; ids fetched when dialog opens
 });
 </script>
 
@@ -177,38 +147,39 @@ onMounted(() => {
                         class="grid grid-cols-[8rem_1fr] gap-x-4 gap-y-3 items-center"
                     >
                         <label for="name">Name</label>
-                        <div class="flex items-center gap-2">
-                            <input
-                                id="name"
-                                ref="nameInput"
-                                type="text"
-                                v-model="entity.name"
-                                class="flex-1 bg-white rounded-sm dark:bg-gray-900 ring-1 px-2 py-1"
-                                @keydown.enter.prevent="handleSubmit"
-                            />
-                            <span
-                                class="text-lg font-medium text-gray-400 dark:text-white/50 shrink-0"
-                            >
-                                ({{
-                                    entity.metadata.islabeled
-                                        ? availableId
-                                        : freeId
-                                }})
-                            </span>
-                        </div>
-
-                        <label for="islabeled">Is Labeled</label>
                         <input
-                            id="islabeled"
+                            id="name"
+                            ref="nameInput"
+                            type="text"
+                            v-model="title"
+                            class="bg-white rounded-sm dark:bg-gray-900 ring-1 px-2 py-1"
+                            @keydown.enter.prevent="handleSubmit"
+                        />
+
+                        <label for="labeled">Labeled</label>
+                        <input
+                            id="labeled"
                             type="checkbox"
-                            v-model="entity.metadata.islabeled"
+                            v-model="labeled"
                             class="w-4 h-4 justify-self-start"
                         />
+
+                        <template v-if="labeled">
+                            <label for="refnum">Reference #</label>
+                            <input
+                                id="refnum"
+                                type="text"
+                                v-model="referenceNumber"
+                                class="bg-white rounded-sm dark:bg-gray-900 ring-1 px-2 py-1"
+                                :placeholder="String(nextRefNumber)"
+                                @keydown.enter.prevent="handleSubmit"
+                            />
+                        </template>
 
                         <label for="description">Description</label>
                         <textarea
                             id="description"
-                            v-model="entity.description"
+                            v-model="description"
                             class="bg-white rounded-sm dark:bg-gray-900 ring-1 px-2 py-1"
                             rows="3"
                         ></textarea>
@@ -218,7 +189,7 @@ onMounted(() => {
                             id="quantity"
                             type="number"
                             min="0"
-                            v-model.number="entity.metadata.quantity"
+                            v-model.number="quantity"
                             class="bg-white rounded-sm dark:bg-gray-900 ring-1 px-2 py-1"
                         />
 

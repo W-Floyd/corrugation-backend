@@ -23,13 +23,13 @@ func Export(ctx context.Context, _ *struct{}) (output *BytesOutput, err error) {
 	zw := zip.NewWriter(buf)
 
 	// --- Records ---
-	records, err := GetRecords(ctx, nil, nil, nil, nil, []struct {
+	records, _, err := GetRecords(ctx, nil, nil, nil, nil, []struct {
 		q string
 		h func(db gorm.PreloadBuilder) error
 	}{
 		{q: "Artifacts", h: func(db gorm.PreloadBuilder) error { return nil }},
 		{q: "Tags", h: func(db gorm.PreloadBuilder) error { return nil }},
-	}, nil, false)
+	}, nil)
 	if err != nil {
 		return
 	}

@@ -14,23 +14,25 @@ import (
 const maxSearchDepth = 100
 
 type RecordInput struct {
-	Quantity    *uint       `required:"false"`
-	Label       *string     `required:"false"`
-	Title       *string     `required:"false"`
-	Description *string     `required:"false"`
-	Tags        []*TagInput `required:"false"`
-	ParentID    *uint       `required:"false"`
-	Artifacts   []*uint     `required:"false"`
+	Quantity        *uint       `required:"false"`
+	ReferenceNumber *string     `required:"false"`
+	Labeled         *bool       `required:"false"`
+	Title           *string     `required:"false"`
+	Description     *string     `required:"false"`
+	Tags            []*TagInput `required:"false"`
+	ParentID        *uint       `required:"false"`
+	Artifacts       []*uint     `required:"false"`
 }
 
 type Record struct {
 	gorm.Model
 
-	Quantity    *uint   `json:",omitempty"`
-	Label       *string `json:",omitempty" gorm:"uniqueIndex"`
-	Title       *string `json:",omitempty" gorm:"index"`
-	Description *string `json:",omitempty"`
-	Tags        []*Tag  `json:",omitempty" gorm:"many2many:record_tags;"`
+	Quantity        *uint   `json:",omitempty"`
+	ReferenceNumber *string `json:",omitempty" gorm:"uniqueIndex"`
+	Labeled         bool    `json:"Labeled"`
+	Title           *string `json:",omitempty" gorm:"index"`
+	Description     *string `json:",omitempty"`
+	Tags            []*Tag  `json:",omitempty" gorm:"many2many:record_tags;"`
 
 	Artifacts []*Artifact `json:",omitempty"`
 
@@ -46,7 +48,10 @@ type Record struct {
 
 func (i *RecordInput) Convert() (o Record, err error) {
 	o.Quantity = i.Quantity
-	o.Label = i.Label
+	o.ReferenceNumber = i.ReferenceNumber
+	if i.Labeled != nil {
+		o.Labeled = *i.Labeled
+	}
 	o.Title = i.Title
 	o.Description = i.Description
 
@@ -107,18 +112,21 @@ func (i *RecordInput) Convert() (o Record, err error) {
 
 func (record *Record) PrettyString() (output string) {
 	output = strconv.FormatUint(uint64(record.ID), 10)
-	if record.Label != nil && *record.Label != "" {
-		output += " (" + *record.Label + ")"
+	if record.ReferenceNumber != nil && *record.ReferenceNumber != "" {
+		output += " (" + *record.ReferenceNumber + ")"
 	}
 	return
 }
 
-func GetRecordEmbeddings(ctx context.Context) (e map[uint][]float64, err error) {
+// GetRecordEmbeddings returns text embeddings for the given record IDs.
+// Only jobs for those specific IDs are enqueued and waited on, so partial
+// reflects completeness within the requested scope only.
+func GetRecordEmbeddings(ctx context.Context, scopedIDs []uint) (e map[uint][]float64, partial bool, err error) {
 	uc, _ := loadUser(UsernameFromContext(ctx))
 	textModel, _, _, _ := effectiveInfinityConfig(uc)
 
-	embeddings, err := gorm.G[Embedding](db).Where("record_id IS NOT NULL AND embed_model = ?", textModel).Find(dbCtx)
-	if err != nil {
+	var embeddings []Embedding
+	if err = db.Where("record_id IN ? AND embed_model = ?", scopedIDs, textModel).Find(&embeddings).Error; err != nil {
 		return
 	}
 
@@ -130,85 +138,64 @@ func GetRecordEmbeddings(ctx context.Context) (e map[uint][]float64, err error) 
 			continue
 		}
 		var vec []float64
-		if cached, ok := embeddingsCache[emb.Hash]; ok {
-			vec = cached
+		if cached, ok := embeddingsCache.Load(emb.Hash); ok {
+			vec = cached.(Embeddings)
 		} else {
 			if err = json.Unmarshal(emb.Data, &vec); err != nil {
 				return
 			}
-			embeddingsCache[emb.Hash] = vec
+			embeddingsCache.Store(emb.Hash, Embeddings(vec))
 		}
 		e[*emb.RecordID] = vec
 		embeddedIDs[*emb.RecordID] = true
 	}
 
-	records, err := GetRecords(dbCtx, nil, nil, nil, nil, nil, []string{"id", "title", "label", "description"}, false)
-	if err != nil {
-		return
-	}
-
-	recordIDs := make([]uint, len(records))
-	for i, r := range records {
-		recordIDs[i] = r.ID
-	}
-	generateMissingRecordEmbeddings(ctx, recordIDs, embeddedIDs)
-
-	for _, record := range records {
-		if e[record.ID] != nil {
-			continue
-		}
-		reloaded, reloadErr := gorm.G[Embedding](db).Where("record_id = ? AND embed_model = ?", record.ID, textModel).Find(dbCtx)
-		if reloadErr != nil || len(reloaded) == 0 {
-			continue
-		}
-		var vec []float64
-		if cached, ok := embeddingsCache[reloaded[0].Hash]; ok {
-			vec = cached
-		} else {
-			if jsonErr := json.Unmarshal(reloaded[0].Data, &vec); jsonErr != nil {
-				continue
+	enqueuedIDs := generateMissingRecordEmbeddings(ctx, scopedIDs, embeddedIDs, "search")
+	if len(enqueuedIDs) > 0 {
+		if WaitForEmbeddingJobs(ctx, JobTypeRecord, enqueuedIDs, textModel) {
+			for _, id := range enqueuedIDs {
+				reloaded, reloadErr := gorm.G[Embedding](db).Where("record_id = ? AND embed_model = ?", id, textModel).Find(dbCtx)
+				if reloadErr != nil || len(reloaded) == 0 {
+					continue
+				}
+				var vec []float64
+				if cached, ok := embeddingsCache.Load(reloaded[0].Hash); ok {
+					vec = cached.(Embeddings)
+				} else if jsonErr := json.Unmarshal(reloaded[0].Data, &vec); jsonErr == nil {
+					embeddingsCache.Store(reloaded[0].Hash, Embeddings(vec))
+				}
+				if vec != nil {
+					e[id] = vec
+				}
 			}
-			embeddingsCache[reloaded[0].Hash] = vec
+		} else {
+			partial = true
 		}
-		e[record.ID] = vec
 	}
 
 	return
 }
 
-// generateMissingRecordEmbeddings generates text embeddings for record IDs not in embeddedIDs.
-// Pass nil recordIDs to process all records.
-func generateMissingRecordEmbeddings(ctx context.Context, recordIDs []uint, embeddedIDs map[uint]bool) {
-	var candidates []uint
+// generateMissingRecordEmbeddings enqueues embedding jobs for record IDs not in embeddedIDs.
+// Returns the IDs that were enqueued.
+func generateMissingRecordEmbeddings(ctx context.Context, recordIDs []uint, embeddedIDs map[uint]bool, source string) []uint {
+	uc, _ := loadUser(UsernameFromContext(ctx))
+	textModel, _, _, _ := effectiveInfinityConfig(uc)
+	var ownerID *uint
+	if uc.ID > 0 {
+		ownerID = &uc.ID
+	}
+	username := UsernameFromContext(ctx)
+	searchID := SearchIDFromContext(ctx)
+	var enqueued []uint
 	for _, id := range recordIDs {
 		if !embeddedIDs[id] {
-			candidates = append(candidates, id)
+			EnqueueEmbeddingJob(JobTypeRecord, id, ownerID, username, textModel, searchID, source)
+			enqueued = append(enqueued, id)
 		}
 	}
-
-	if len(candidates) == 0 {
-		return
-	}
-
-	records, err := GetRecords(dbCtx, nil, nil, nil, nil, nil, []string{"id", "title", "label", "description"}, false)
-	if err != nil {
-		Log.Errorw("embedding generation: failed to fetch records", "error", err)
-		return
-	}
-	recordMap := map[uint]Record{}
-	for _, r := range records {
-		recordMap[r.ID] = r
-	}
-
-	for _, id := range candidates {
-		r, ok := recordMap[id]
-		if !ok {
-			continue
-		}
-		if _, genErr := r.GenerateEmbeddings(ctx); genErr != nil {
-			Log.Errorw("embedding generation failed", "recordID", id, "error", genErr)
-		}
-	}
+	Log.Infow("generateMissingRecordEmbeddings", "source", source, "username", username, "searchID", searchID, "total", len(recordIDs), "enqueued", len(enqueued))
+	return enqueued
 }
 
 type RecordResponse struct {
@@ -216,7 +203,8 @@ type RecordResponse struct {
 	CreatedAt             *time.Time  `json:"CreatedAt,omitempty"`
 	UpdatedAt             *time.Time  `json:"UpdatedAt,omitempty"`
 	Quantity              *uint       `json:",omitempty"`
-	Label                 *string     `json:",omitempty"`
+	ReferenceNumber       *string     `json:",omitempty"`
+	Labeled               bool        `json:"Labeled"`
 	Title                 *string     `json:",omitempty"`
 	Description           *string     `json:",omitempty"`
 	Tags                  []*Tag      `json:",omitempty"`
@@ -230,7 +218,8 @@ func toRecordResponse(r Record, timestamps bool) RecordResponse {
 	resp := RecordResponse{
 		ID:                    r.ID,
 		Quantity:              r.Quantity,
-		Label:                 r.Label,
+		ReferenceNumber:       r.ReferenceNumber,
+		Labeled:               r.Labeled,
 		Title:                 r.Title,
 		Description:           r.Description,
 		Tags:                  r.Tags,
@@ -251,8 +240,8 @@ func recordEmbeddingText(r Record) string {
 	if r.Title != nil && *r.Title != "" {
 		parts = append(parts, *r.Title)
 	}
-	if r.Label != nil && *r.Label != "" {
-		parts = append(parts, *r.Label)
+	if r.ReferenceNumber != nil && *r.ReferenceNumber != "" {
+		parts = append(parts, *r.ReferenceNumber)
 	}
 	if r.Description != nil && *r.Description != "" {
 		parts = append(parts, *r.Description)

@@ -110,11 +110,13 @@ func (i *Image) Store(ctx context.Context, file huma.FormFile) (err error) {
 
 	*i = Image(a)
 
-	go func() {
-		if genErr := i.GenerateEmbeddings(ctx); genErr != nil {
-			Log.Errorw("embedding generation failed", "error", genErr)
-		}
-	}()
+	uc, _ := loadUser(UsernameFromContext(ctx))
+	_, imageModel, _, _ := effectiveInfinityConfig(uc)
+	var ownerID *uint
+	if uc.ID > 0 {
+		ownerID = &uc.ID
+	}
+	EnqueueEmbeddingJob(JobTypeArtifact, i.ID, ownerID, UsernameFromContext(ctx), imageModel, "", "store")
 
 	return
 }
@@ -291,106 +293,78 @@ type artifactEmbedding struct {
 	recordID  *uint
 }
 
-func GetArtifactEmbeddings(recordIDs []uint) (e map[uint]*artifactEmbedding, err error) {
-	var artifacts []Artifact
-	if len(recordIDs) > 0 {
-		artifacts, err = gorm.G[Artifact](db).Where("record_id IN ?", recordIDs).Select("id", "record_id").Find(dbCtx)
-	} else {
-		artifacts, err = gorm.G[Artifact](db).Select("id", "record_id").Find(dbCtx)
-	}
-	if err != nil {
-		return
-	}
-	artifactRecordMap := map[uint]*uint{}
-	for _, a := range artifacts {
-		artifactRecordMap[a.ID] = a.RecordID
-	}
+func GetArtifactEmbeddings(ctx context.Context, artifactRecordMap map[uint]*uint) (e map[uint]*artifactEmbedding, partial bool, err error) {
 
 	artifactIDs := make([]uint, 0, len(artifactRecordMap))
 	for id := range artifactRecordMap {
 		artifactIDs = append(artifactIDs, id)
 	}
 
-	embeddings, err := gorm.G[Embedding](db).Where("artifact_id IN ? AND embed_model = ?", artifactIDs, infinityImageModel).Find(dbCtx)
-	if err != nil {
+	loadEmbeddings := func(ids []uint) error {
+		embeddings, fetchErr := gorm.G[Embedding](db).Where("artifact_id IN ? AND embed_model = ?", ids, infinityImageModel).Find(dbCtx)
+		if fetchErr != nil {
+			return fetchErr
+		}
+		for _, emb := range embeddings {
+			if emb.ArtifactID == nil || e[*emb.ArtifactID] != nil {
+				continue
+			}
+			var vec []float64
+			if cached, ok := embeddingsCache.Load(emb.Hash); ok {
+				vec = cached.(Embeddings)
+			} else {
+				if jsonErr := json.Unmarshal(emb.Data, &vec); jsonErr != nil {
+					continue
+				}
+				embeddingsCache.Store(emb.Hash, Embeddings(vec))
+			}
+			e[*emb.ArtifactID] = &artifactEmbedding{
+				embedding: vec,
+				recordID:  artifactRecordMap[*emb.ArtifactID],
+			}
+		}
+		return nil
+	}
+
+	e = map[uint]*artifactEmbedding{}
+	if err = loadEmbeddings(artifactIDs); err != nil {
 		return
 	}
 
 	embeddedIDs := map[uint]bool{}
-	e = map[uint]*artifactEmbedding{}
-	for _, emb := range embeddings {
-		if emb.ArtifactID == nil {
-			continue
-		}
-		var vec []float64
-		if cached, ok := embeddingsCache[emb.Hash]; ok {
-			vec = cached
-		} else {
-			if err = json.Unmarshal(emb.Data, &vec); err != nil {
-				return
-			}
-			embeddingsCache[emb.Hash] = vec
-		}
-		e[*emb.ArtifactID] = &artifactEmbedding{
-			embedding: vec,
-			recordID:  artifactRecordMap[*emb.ArtifactID],
-		}
-		embeddedIDs[*emb.ArtifactID] = true
+	for id := range e {
+		embeddedIDs[id] = true
 	}
 
-	generateMissingArtifactEmbeddings(artifactIDs, embeddedIDs)
-
-	newEmbeddings, err := gorm.G[Embedding](db).Where("artifact_id IN ? AND embed_model = ?", artifactIDs, infinityImageModel).Find(dbCtx)
-	if err != nil {
-		return
-	}
-	for _, emb := range newEmbeddings {
-		if emb.ArtifactID == nil || e[*emb.ArtifactID] != nil {
-			continue
-		}
-		var vec []float64
-		if cached, ok := embeddingsCache[emb.Hash]; ok {
-			vec = cached
+	enqueuedIDs := generateMissingArtifactEmbeddings(ctx, artifactIDs, embeddedIDs, "search")
+	if len(enqueuedIDs) > 0 {
+		if WaitForEmbeddingJobs(ctx, JobTypeArtifact, enqueuedIDs, infinityImageModel) {
+			err = loadEmbeddings(enqueuedIDs)
 		} else {
-			if jsonErr := json.Unmarshal(emb.Data, &vec); jsonErr != nil {
-				continue
-			}
-			embeddingsCache[emb.Hash] = vec
-		}
-		e[*emb.ArtifactID] = &artifactEmbedding{
-			embedding: vec,
-			recordID:  artifactRecordMap[*emb.ArtifactID],
+			partial = true
 		}
 	}
 
 	return
 }
 
-// generateMissingArtifactEmbeddings generates image embeddings for artifact IDs not in embeddedIDs.
-// Pass nil artifactIDs to process all artifacts.
-func generateMissingArtifactEmbeddings(artifactIDs []uint, embeddedIDs map[uint]bool) {
-	var candidates []uint
+// generateMissingArtifactEmbeddings enqueues embedding jobs for artifact IDs not in embeddedIDs.
+// Returns the IDs that were enqueued.
+func generateMissingArtifactEmbeddings(ctx context.Context, artifactIDs []uint, embeddedIDs map[uint]bool, source string) []uint {
+	uc, _ := loadUser(UsernameFromContext(ctx))
+	_, imageModel, _, _ := effectiveInfinityConfig(uc)
+	var ownerID *uint
+	if uc.ID > 0 {
+		ownerID = &uc.ID
+	}
+	username := UsernameFromContext(ctx)
+	searchID := SearchIDFromContext(ctx)
+	var enqueued []uint
 	for _, id := range artifactIDs {
 		if !embeddedIDs[id] {
-			candidates = append(candidates, id)
+			EnqueueEmbeddingJob(JobTypeArtifact, id, ownerID, username, imageModel, searchID, source)
+			enqueued = append(enqueued, id)
 		}
 	}
-	for _, id := range candidates {
-		a, fetchErr := GetArtifactFromDB(id)
-		if fetchErr != nil {
-			Log.Errorw("embedding generation failed", "artifactID", id, "error", fetchErr)
-			continue
-		}
-		iface, ifaceErr := a.GetInterface()
-		if ifaceErr != nil {
-			continue
-		}
-		img, ok := iface.(*Image)
-		if !ok {
-			continue
-		}
-		if genErr := img.GenerateEmbeddings(dbCtx); genErr != nil {
-			Log.Errorw("embedding generation failed", "artifactID", id, "error", genErr)
-		}
-	}
+	return enqueued
 }

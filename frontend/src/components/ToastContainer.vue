@@ -1,56 +1,63 @@
 <script setup lang="ts" name="ToastContainer">
-import { ref, onMounted, onUnmounted } from "vue";
+import { ref, watch } from "vue";
 import { useToastsStore } from "@/stores/toasts";
+import type { ToastLevel } from "@/stores/toasts";
 
 const toastsStore = useToastsStore();
-
 const visibleToasts = ref(new Map<number, boolean>());
 
-onMounted(() => {
-    toastsStore.items.forEach((toast) => {
-        visibleToasts.value.set(toast.id, true);
-    });
-});
+// Watch for new toasts and mark them visible immediately
+watch(
+    () => toastsStore.items,
+    (items) => {
+        for (const toast of items) {
+            if (!visibleToasts.value.has(toast.id)) {
+                visibleToasts.value.set(toast.id, true);
+            }
+        }
+    },
+    { immediate: true, deep: true },
+);
 
-const hideToast = (toastId: number): void => {
-    visibleToasts.value.set(toastId, false);
+const hideToast = (id: number): void => {
+    visibleToasts.value.set(id, false);
     setTimeout(() => {
-        toastsStore.remove(toastId);
-        visibleToasts.value.delete(toastId);
+        toastsStore.remove(id);
+        visibleToasts.value.delete(id);
     }, 300);
 };
 
-const showToast = (toastId: number): void => {
-    visibleToasts.value.set(toastId, true);
+const levelClasses: Record<ToastLevel, string> = {
+    error: "bg-red-50 dark:bg-red-900/40 text-red-700 dark:text-red-300 ring-red-200 dark:ring-red-700",
+    warn: "bg-amber-50 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 ring-amber-200 dark:ring-amber-700",
+    info: "bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 ring-blue-200 dark:ring-blue-700",
+};
+
+const dismissClasses: Record<ToastLevel, string> = {
+    error: "text-red-400 hover:text-red-600 dark:hover:text-red-200",
+    warn: "text-amber-400 hover:text-amber-600 dark:hover:text-amber-200",
+    info: "text-blue-400 hover:text-blue-600 dark:hover:text-blue-200",
 };
 </script>
 
 <template>
-    <div
-        class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 items-end pointer-events-none"
-    >
-        <TransitionGroup
-            name="toast"
-            tag="div"
-            class="flex flex-col gap-2 items-end"
-        >
+    <div class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 items-end pointer-events-none">
+        <TransitionGroup name="toast" tag="div" class="flex flex-col gap-2 items-end">
             <div
                 v-for="toast in toastsStore.items"
                 :key="toast.id"
                 v-show="visibleToasts.get(toast.id)"
                 @mouseenter="visibleToasts.set(toast.id, true)"
                 @mouseleave="hideToast(toast.id)"
-                class="flex items-start gap-2 max-w-sm px-4 py-3 bg-red-50 dark:bg-red-900/40 text-red-700 dark:text-red-300 rounded-lg shadow-lg ring-1 ring-red-200 dark:ring-red-700 pointer-events-auto"
+                :class="['flex items-start gap-2 max-w-sm px-4 py-3 rounded-lg shadow-lg ring-1 pointer-events-auto', levelClasses[toast.level]]"
             >
                 <span class="text-sm break-words">{{ toast.message }}</span>
                 <button
                     type="button"
                     @click="hideToast(toast.id)"
-                    class="shrink-0 text-red-400 hover:text-red-600 dark:hover:text-red-200"
+                    :class="['shrink-0', dismissClasses[toast.level]]"
                     title="Dismiss"
-                >
-                    &times;
-                </button>
+                >&times;</button>
             </div>
         </TransitionGroup>
     </div>
@@ -59,16 +66,12 @@ const showToast = (toastId: number): void => {
 <style scoped>
 .toast-enter-active,
 .toast-leave-active {
-    transition:
-        opacity 0.3s ease-out,
-        transform 0.3s ease-out;
+    transition: opacity 0.3s ease-out, transform 0.3s ease-out;
 }
-
 .toast-enter-from {
     opacity: 0;
     transform: translateY(0.5rem);
 }
-
 .toast-leave-to {
     opacity: 0;
     transform: translateY(0.5rem);

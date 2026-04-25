@@ -36,5 +36,6 @@ func InitAndMigrateDB() (err error) {
 	db.AutoMigrate(&Embedding{})
 	db.AutoMigrate(&GlobalConfig{})
 	db.AutoMigrate(&User{})
+	db.AutoMigrate(&EmbeddingJob{})
 	return nil
 }

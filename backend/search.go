@@ -21,11 +21,11 @@ func dotProduct(v1 []float64, v2 []float64) (dotProduct float64, err error) {
 	return
 }
 
-func SearchByArtifact(ctx context.Context, search string, recordIDs []uint) (recordResults []struct {
+func SearchByArtifact(ctx context.Context, search string, artifactRecordMap map[uint]*uint) (recordResults []struct {
 	id    uint
 	score float64
-}, err error) {
-	es, err := GetArtifactEmbeddings(recordIDs)
+}, partial bool, err error) {
+	es, partial, err := GetArtifactEmbeddings(ctx, artifactRecordMap)
 	if err != nil {
 		return
 	}
@@ -53,11 +53,11 @@ func SearchByArtifact(ctx context.Context, search string, recordIDs []uint) (rec
 	return
 }
 
-func SearchByRecord(ctx context.Context, search string) (recordResults []struct {
+func SearchByRecord(ctx context.Context, search string, scopedIDs []uint) (recordResults []struct {
 	id    uint
 	score float64
-}, err error) {
-	es, err := GetRecordEmbeddings(ctx)
+}, partial bool, err error) {
+	es, partial, err := GetRecordEmbeddings(ctx, scopedIDs)
 	if err != nil {
 		return
 	}

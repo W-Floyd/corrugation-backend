@@ -2,17 +2,21 @@ package backend
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 	"gorm.io/gorm"
 )
 
 type ListRecordsInput struct {
-	ID                  uint    `query:"id" example:"1" doc:"ID to get" required:"false"`
-	ChildrenDepth       int     `query:"childrenDepth" example:"2" doc:"Depth to search for children, negative values mean unlimited search" required:"false" dependentRequired:"id"`
-	ParentDepth         int     `query:"parentDepth" example:"2" doc:"Depth to search for parents, negative values mean unlimited search" required:"false" dependentRequired:"id"`
+	ID                  int     `query:"id" example:"1" doc:"Record ID; 0 = top-level (parent IS NULL); -1 = omitted (use global flag for all)" required:"false" default:"-1"`
+	Global              bool    `query:"global" doc:"Return all records regardless of location" required:"false"`
+	ChildrenDepth       int     `query:"childrenDepth" example:"2" doc:"Depth to search for children, negative values mean unlimited search" required:"false"`
+	ParentDepth         int     `query:"parentDepth" example:"2" doc:"Depth to search for parents, negative values mean unlimited search" required:"false"`
 	Search              string  `query:"search" example:"Lamp" doc:"String to search embeddings with" required:"false"`
 	SearchImage         bool    `query:"searchImage" doc:"Use image embeddings in search" required:"false"`
 	SearchTextEmbedded  bool    `query:"searchTextEmbedded" doc:"Use text embeddings in search" required:"false"`
@@ -27,7 +31,9 @@ type RecordOutput struct {
 }
 
 type RecordsOutput struct {
-	Body []RecordResponse
+	Status   int    `yaml:"-"`
+	SearchID string `header:"X-Search-ID"`
+	Body     []RecordResponse
 }
 
 var GetRecordOperation = huma.Operation{
@@ -40,7 +46,7 @@ func GetRecord(ctx context.Context, input *struct {
 	Timestamps bool `query:"timestamps" doc:"Include CreatedAt and UpdatedAt in response" required:"false"`
 }) (output *RecordOutput, err error) {
 	var records []Record
-	records, err = GetRecords(ctx, &input.ID, nil, nil, nil, []struct {
+	records, _, err = GetRecords(ctx, &input.ID, nil, nil, nil, []struct {
 		q string
 		h func(db gorm.PreloadBuilder) error
 	}{
@@ -51,7 +57,7 @@ func GetRecord(ctx context.Context, input *struct {
 				return nil
 			},
 		},
-	}, nil, false)
+	}, nil)
 	if err != nil {
 		return
 	}
@@ -81,12 +87,47 @@ func ListRecords(ctx context.Context, input *ListRecordsInput) (output *RecordsO
 	if input.MinTextScore > 0 {
 		s.MinTextScore = input.MinTextScore
 	}
-	records, err = GetRecordsFriendly(ctx, input.ID, search)
+	var ID *uint
+	if !input.Global {
+		if input.ID >= 0 {
+			v := uint(input.ID)
+			ID = &v
+		} else {
+			var zero uint = 0
+			ID = &zero
+		}
+	}
+	var childrenDepth, parentDepth *int
+	if s.ChildrenDepth != 0 {
+		childrenDepth = &s.ChildrenDepth
+	}
+	if s.ParentDepth != 0 {
+		parentDepth = &s.ParentDepth
+	}
+	searchID := fmt.Sprintf("%d", time.Now().UnixMilli())
+	searchCtx := WithSearchID(ctx, searchID)
+
+	var partial bool
+	records, partial, err = GetRecords(searchCtx, ID, childrenDepth, parentDepth, search, []struct {
+		q string
+		h func(db gorm.PreloadBuilder) error
+	}{
+		{q: "Artifacts", h: func(db gorm.PreloadBuilder) error { db.Select("id", "record_id"); return nil }},
+	}, nil)
+	if err != nil {
+		return
+	}
 	responses := make([]RecordResponse, len(records))
 	for i, r := range records {
 		responses[i] = toRecordResponse(r, input.Timestamps)
 	}
-	output = &RecordsOutput{Body: responses}
+	status := http.StatusOK
+	if !partial {
+		searchID = ""
+	} else {
+		status = http.StatusMultiStatus
+	}
+	output = &RecordsOutput{Status: status, SearchID: searchID, Body: responses}
 	return
 }
 
@@ -95,13 +136,50 @@ var CreateRecordOperation = huma.Operation{
 	Path:   "/api/v2/record",
 }
 
+// stealReferenceNumber clears ReferenceNumber from any unlabeled record holding it,
+// or returns an error if a labeled record owns it.
+func stealReferenceNumber(refNum string, excludeID *uint) error {
+	var existing Record
+	q := db.Where("reference_number = ?", refNum)
+	if excludeID != nil {
+		q = q.Where("id != ?", *excludeID)
+	}
+	if err := q.First(&existing).Error; errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil
+	} else if err != nil {
+		return err
+	}
+	if existing.Labeled {
+		return huma.Error409Conflict("reference number is held by a labeled record")
+	}
+	return db.Model(&existing).Update("reference_number", nil).Error
+}
+
 func CreateRecord(ctx context.Context, input *struct {
 	Body RecordInput
 }) (output *RecordOutput, err error) {
+	username := UsernameFromContext(ctx)
+	var userID *uint
+	if username != "" {
+		var user User
+		user, err = loadUser(username)
+		if err != nil {
+			return
+		}
+		userID = &user.ID
+	}
+
+	if input.Body.ReferenceNumber != nil {
+		if err = stealReferenceNumber(*input.Body.ReferenceNumber, nil); err != nil {
+			return
+		}
+	}
+
 	record, err := input.Body.Convert()
 	if err != nil {
 		return
 	}
+	record.OwnerID = userID
 
 	err = gorm.G[Record](db).Create(dbCtx, &record)
 	if err != nil {
@@ -117,6 +195,107 @@ func CreateRecord(ctx context.Context, input *struct {
 	return
 }
 
+var UpdateRecordOperation = huma.Operation{
+	Method: http.MethodPost,
+	Path:   "/api/v2/record/{id}",
+}
+
+func UpdateRecord(ctx context.Context, input *struct {
+	ID   uint `path:"id"`
+	Body RecordInput
+}) (output *RecordOutput, err error) {
+	records, _, err := GetRecords(ctx, &input.ID, nil, nil, nil, []struct {
+		q string
+		h func(db gorm.PreloadBuilder) error
+	}{
+		{q: "Artifacts", h: func(db gorm.PreloadBuilder) error { db.Select("id", "record_id"); return nil }},
+		{q: "Tags", h: func(db gorm.PreloadBuilder) error { return nil }},
+	}, nil)
+	if err != nil {
+		return
+	}
+
+	r := records[0]
+
+	if input.Body.ReferenceNumber != nil {
+		if err = stealReferenceNumber(*input.Body.ReferenceNumber, &r.ID); err != nil {
+			return
+		}
+	}
+
+	updated, err := input.Body.Convert()
+	if err != nil {
+		return
+	}
+
+	r.Quantity = updated.Quantity
+	r.ReferenceNumber = updated.ReferenceNumber
+	r.Labeled = updated.Labeled
+	r.Title = updated.Title
+	r.Description = updated.Description
+	r.ParentID = updated.ParentID
+
+	if updated.Artifacts != nil {
+		r.Artifacts = updated.Artifacts
+	}
+
+	if input.Body.Tags != nil {
+		if err = db.Model(&r).Association("Tags").Replace(updated.Tags); err != nil {
+			return
+		}
+		r.Tags = updated.Tags
+	}
+
+	_, err = gorm.G[Record](db).Where("id = ?", r.ID).Updates(dbCtx, r)
+	if err != nil {
+		return
+	}
+	if updated.ParentID == nil {
+		err = db.Model(&r).Update("parent_id", nil).Error
+		if err != nil {
+			return
+		}
+	}
+
+	if _, genErr := r.GenerateEmbeddings(ctx); genErr != nil {
+		Log.Errorw("embedding generation failed", "error", genErr)
+	}
+
+	output = &RecordOutput{Body: toRecordResponse(r, true)}
+	return
+}
+
+var GetNextReferenceNumberOperation = huma.Operation{
+	Method: http.MethodGet,
+	Path:   "/api/v2/records/nextid",
+}
+
+func GetNextReferenceNumber(_ context.Context, input *struct {
+	Labeled bool `query:"labeled" doc:"Only count labeled records as blocking a reference number" required:"false"`
+}) (output *UIntOutput, err error) {
+	var refs []string
+	q := db.Model(&Record{}).Where("reference_number IS NOT NULL")
+	if input.Labeled {
+		q = q.Where("labeled = true")
+	}
+	if tx := q.Pluck("reference_number", &refs); tx.Error != nil {
+		err = tx.Error
+		return
+	}
+	taken := map[uint]bool{}
+	for _, s := range refs {
+		if n, parseErr := strconv.ParseUint(s, 10, 64); parseErr == nil {
+			taken[uint(n)] = true
+		}
+	}
+	var next uint = 1
+	for taken[next] {
+		next++
+	}
+	output = &UIntOutput{Body: next}
+	return
+}
+
 var DeleteRecordOperation = huma.Operation{
 	Method: http.MethodDelete,
 	Path:   "/api/v2/record/{id}",
@@ -125,8 +304,16 @@ var DeleteRecordOperation = huma.Operation{
 func DeleteRecord(ctx context.Context, input *struct {
 	ID uint `path:"id" example:"1" doc:"ID to delete"`
 }) (output *EmptyOutput, err error) {
-
+	username := UsernameFromContext(ctx)
 	chain := gorm.G[Record](db).Where("id = ?", input.ID)
+	if username != "" {
+		var user User
+		user, err = loadUser(username)
+		if err != nil {
+			return
+		}
+		chain = gorm.G[Record](db).Where("id = ? AND owner_id = ?", input.ID, user.ID)
+	}
 
 	records, err := chain.Find(dbCtx)
 	if err != nil {
@@ -155,11 +342,12 @@ func DeleteRecord(ctx context.Context, input *struct {
 		}
 	}
 
-	rowsAffected, err := gorm.G[Record](db).Where("id = ?", input.ID).Delete(dbCtx)
-	if err != nil {
+	tx := db.Unscoped().Where("id = ?", input.ID).Delete(&Record{})
+	if tx.Error != nil {
+		err = tx.Error
 		return
 	}
-	if rowsAffected == 0 {
+	if tx.RowsAffected == 0 {
 		err = huma.Error404NotFound(errorRecordNotFound + " " + strconv.Itoa(int(input.ID)))
 	}
 	output = &EmptyOutput{}
@@ -211,7 +399,11 @@ var VisualizeGraphRecordsOperation = huma.Operation{
 func VisualizeGraphRecords(ctx context.Context, input *ListRecordsInput) (output *BytesOutput, err error) {
 
 	var graph string
-	graph, err = GetRecordsGraphFriendlyNative(ctx, input.ID, input.ChildrenDepth, input.ParentDepth)
+	var visID uint
+	if input.ID > 0 {
+		visID = uint(input.ID)
+	}
+	graph, err = GetRecordsGraphFriendlyNative(ctx, visID, input.ChildrenDepth, input.ParentDepth)
 	if err != nil {
 		return
 	}

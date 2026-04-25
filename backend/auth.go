@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -70,10 +71,20 @@ func RegisterAuthHandlers(api huma.API) {
 type contextKey string
 
 const usernameContextKey contextKey = "username"
+const searchIDContextKey contextKey = "searchID"
 
 func UsernameFromContext(ctx context.Context) string {
 	v, _ := ctx.Value(usernameContextKey).(string)
 	return v
+}
+
+func SearchIDFromContext(ctx context.Context) string {
+	v, _ := ctx.Value(searchIDContextKey).(string)
+	return v
+}
+
+func WithSearchID(ctx context.Context, searchID string) context.Context {
+	return context.WithValue(ctx, searchIDContextKey, searchID)
 }
 
 func newJWKSet(jwksURL string, insecureSkipVerify bool) jwk.Set {
@@ -97,9 +108,44 @@ func newJWKSet(jwksURL string, insecureSkipVerify bool) jwk.Set {
 	return jwk.NewCachedSet(cache, jwksURL)
 }
 
+type cachedToken struct {
+	username  string
+	expiresAt time.Time
+}
+
+// ValidateToken resolves a raw JWT string to a username. Set by NewAuthMiddleware;
+// nil when auth is disabled (all connections are anonymous).
+var ValidateToken func(token string) (username string, err error)
+
 // NewAuthMiddleware guards all /api/ paths (except /api/auth/) with OIDC JWT validation.
 func NewAuthMiddleware(api huma.API, issuer, jwksURL string, insecureSkipVerify bool) func(huma.Context, func(huma.Context)) {
 	keySet := newJWKSet(jwksURL, insecureSkipVerify)
+	var tokenCache sync.Map // token string → cachedToken
+
+	resolve := func(token string) (string, error) {
+		if v, ok := tokenCache.Load(token); ok {
+			cached := v.(cachedToken)
+			if time.Now().Before(cached.expiresAt) {
+				return cached.username, nil
+			}
+			tokenCache.Delete(token)
+		}
+		parsed, err := jwt.ParseString(token,
+			jwt.WithKeySet(keySet),
+			jwt.WithValidate(true),
+			jwt.WithIssuer(issuer),
+		)
+		if err != nil {
+			return "", err
+		}
+		username, _ := parsed.Get("preferred_username")
+		usernameStr, _ := username.(string)
+		tokenCache.Store(token, cachedToken{username: usernameStr, expiresAt: parsed.Expiration()})
+		return usernameStr, nil
+	}
+
+	ValidateToken = resolve
+
 	return func(ctx huma.Context, next func(huma.Context)) {
 		path := ctx.URL().Path
 		if !strings.HasPrefix(path, "/api/") || strings.HasPrefix(path, "/api/auth/") {
@@ -119,17 +165,11 @@ func NewAuthMiddleware(api huma.API, issuer, jwksURL string, insecureSkipVerify 
 			huma.WriteErr(api, ctx, http.StatusUnauthorized, "Unauthorized")
 			return
 		}
-		parsed, err := jwt.ParseString(token,
-			jwt.WithKeySet(keySet),
-			jwt.WithValidate(true),
-			jwt.WithIssuer(issuer),
-		)
+		usernameStr, err := resolve(token)
 		if err != nil {
 			huma.WriteErr(api, ctx, http.StatusUnauthorized, "Unauthorized")
 			return
 		}
-		username, _ := parsed.Get("preferred_username")
-		usernameStr, _ := username.(string)
 		ctx = huma.WithValue(ctx, usernameContextKey, usernameStr)
 		next(ctx)
 	}

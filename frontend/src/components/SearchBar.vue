@@ -90,27 +90,6 @@ onBeforeUnmount(() => {
             </label>
         </div>
 
-        <!-- Image embedding toggle -->
-        <div class="flex items-center">
-            <label
-                class="relative flex items-center cursor-pointer"
-                title="Use image embeddings in search"
-            >
-                <input
-                    type="checkbox"
-                    v-model="entitiesStore.searchImage"
-                    class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-                <span
-                    class="relative ml-1 text-sm text-gray-600 dark:text-gray-400"
-                    >Emb. Image<KbdHint
-                        shortcut="I"
-                        :show="props.showShortcuts"
-                        :center="true"
-                /></span>
-            </label>
-        </div>
-
         <!-- Text embedding toggle -->
         <div class="flex items-center">
             <label
@@ -147,6 +126,27 @@ onBeforeUnmount(() => {
                     class="relative ml-1 text-sm text-gray-600 dark:text-gray-400"
                     >Sub. Text<KbdHint
                         shortcut="T"
+                        :show="props.showShortcuts"
+                        :center="true"
+                /></span>
+            </label>
+        </div>
+
+        <!-- Image embedding toggle -->
+        <div class="flex items-center">
+            <label
+                class="relative flex items-center cursor-pointer"
+                title="Use image embeddings in search"
+            >
+                <input
+                    type="checkbox"
+                    v-model="entitiesStore.searchImage"
+                    class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span
+                    class="relative ml-1 text-sm text-gray-600 dark:text-gray-400"
+                    >Emb. Image<KbdHint
+                        shortcut="I"
                         :show="props.showShortcuts"
                         :center="true"
                 /></span>

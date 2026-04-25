@@ -9,21 +9,12 @@ const entitiesStore = useEntitiesStore();
 
 const emit = defineEmits<{ openNewEntity: [] }>();
 
-const locationTree = computed(() => {
-    const treeIds = entitiesStore.locationtree;
-    return treeIds
-        .map((id: number) => {
-            if (id === 0) return { id: 0, name: "World" };
-            const entity = entitiesStore.fullstate.entities[id];
-            if (!entity) return null;
-            return { id, name: entity.name || id.toString() };
-        })
-        .filter(
-            (
-                item: { id: number; name: string } | null,
-            ): item is { id: number; name: string } => item !== null,
-        );
-});
+const locationTree = computed(() =>
+    entitiesStore.locationtree.map((id: number) => ({
+        id,
+        name: entitiesStore.readname(id),
+    })),
+);
 
 const navigateTo = async (entityId: number): Promise<void> => {
     await entitiesStore.setCurrentEntity(entityId);
