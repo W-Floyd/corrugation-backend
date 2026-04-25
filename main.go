@@ -26,6 +26,7 @@ type Options struct {
 	OIDCDiscoveryURL           string `help:"OIDC discovery URL (e.g. https://authentik.example.com/application/o/<slug>/.well-known/openid-configuration); omit to disable auth"`
 	OIDCClientID               string `help:"OAuth2 client ID registered in Authentik"`
 	OIDCInsecureSkipVerify     bool   `help:"Skip TLS certificate verification for OIDC discovery and JWKS requests"`
+	LogLevel                   string `help:"Log level: silent, error, warn, info" default:"warn"`
 	InfinityAddress            string `help:"Infinity embeddings server address" default:"http://localhost:8002"`
 	InfinityTextModel          string `help:"Infinity text embeddings model ID" default:"BAAI/bge-large-en-v1.5"`
 	InfinityImageModel         string `help:"Infinity image embeddings model ID" default:"openai/clip-vit-large-patch14"`
@@ -55,6 +56,7 @@ func main() {
 		dbExists := fileExists(dbPath)
 
 		err := backend.ConnectDB(dbPath)
+		backend.SetInitialLogLevel(options.LogLevel)
 		if err != nil {
 			log.Fatalln(err)
 		}

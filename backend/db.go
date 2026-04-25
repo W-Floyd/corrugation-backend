@@ -30,9 +30,9 @@ func ConnectDB(dbFilePath string) (err error) {
 		log.New(os.Stdout, "\r\n", log.LstdFlags), // io writer
 		logger.Config{
 			SlowThreshold:             100 * time.Millisecond, // Slow SQL threshold
-			LogLevel:                  logger.Info,            // Log level
+			LogLevel:                  logger.Warn,            // Log level (overridden by SetInitialLogLevel)
 			IgnoreRecordNotFoundError: false,                  // Ignore ErrRecordNotFound error for logger
-			Colorful:                  true,                   // Disable color
+			Colorful:                  true,                   // Enable color
 		},
 	)
 
