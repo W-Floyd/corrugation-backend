@@ -52,5 +52,7 @@ func InitAndMigrateDB() (err error) {
 	db.AutoMigrate(&Tag{})
 	db.AutoMigrate(&Artifact{})
 	db.AutoMigrate(&Embedding{})
+	db.AutoMigrate(&GlobalConfig{})
+	db.AutoMigrate(&UserConfig{})
 	return nil
 }

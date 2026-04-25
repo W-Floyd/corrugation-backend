@@ -27,6 +27,7 @@ type Options struct {
 	OIDCClientID               string `help:"OAuth2 client ID registered in Authentik"`
 	OIDCInsecureSkipVerify     bool   `help:"Skip TLS certificate verification for OIDC discovery and JWKS requests"`
 	LogLevel                   string `help:"Log level: silent, error, warn, info" default:"warn"`
+	GenerateEmbeddingsOnStart  bool   `help:"Run embedding backfill on server startup" default:"false"`
 	InfinityAddress            string `help:"Infinity embeddings server address" default:"http://localhost:8002"`
 	InfinityTextModel          string `help:"Infinity text embeddings model ID" default:"BAAI/bge-large-en-v1.5"`
 	InfinityImageModel         string `help:"Infinity image embeddings model ID" default:"openai/clip-vit-large-patch14"`
@@ -56,7 +57,12 @@ func main() {
 		dbExists := fileExists(dbPath)
 
 		err := backend.ConnectDB(dbPath)
-		backend.SetInitialLogLevel(options.LogLevel)
+		if err = backend.SetInitialLogLevel(options.LogLevel); err != nil {
+			log.Fatalf("failed to persist log level: %v", err)
+		}
+		if err = backend.SetInitialGenerateEmbeddingsOnStart(options.GenerateEmbeddingsOnStart); err != nil {
+			log.Fatalf("failed to persist generate-embeddings-on-start: %v", err)
+		}
 		if err != nil {
 			log.Fatalln(err)
 		}
@@ -125,7 +131,9 @@ func main() {
 
 		// Tell the CLI how to start your router.
 		hooks.OnStart(func() {
-			go backend.BackfillEmbeddings()
+			if backend.ShouldGenerateEmbeddingsOnStart() {
+				go backend.BackfillEmbeddings()
+			}
 			err := http.ListenAndServe(fmt.Sprintf("%s:%d", options.Address, options.Port), router)
 			if err != nil {
 				log.Fatalln(err)

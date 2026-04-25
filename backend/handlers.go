@@ -62,8 +62,10 @@ func RegisterHandlers(api huma.API) {
 	huma.Register(api, CreateArtifactOperation, CreateArtifact)
 	huma.Register(api, GetArtifactOperation, GetArtifact)
 
-	huma.Register(api, GetConfigOperation, GetConfig)
-	huma.Register(api, PutConfigOperation, PutConfig)
+	huma.Register(api, GetGlobalConfigOperation, GetGlobalConfig)
+	huma.Register(api, PutGlobalConfigOperation, PutGlobalConfig)
+	huma.Register(api, GetUserConfigOperation, GetUserConfig)
+	huma.Register(api, PutUserConfigOperation, PutUserConfig)
 
 	huma.Register(api, ListTagsOperation, ListTags)
 	huma.Register(api, GetTagOperation, GetTag)

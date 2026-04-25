@@ -8,12 +8,16 @@ import (
 	"gorm.io/gorm/logger"
 )
 
-type Config struct {
-	LogLevel string `json:"logLevel" doc:"Log level: silent, error, warn, info"`
+type GlobalConfigBody struct {
+	LogLevel                  string `json:"logLevel" doc:"Log level: silent, error, warn, info"`
+	GenerateEmbeddingsOnStart bool   `json:"generateEmbeddingsOnStart" doc:"Run embedding backfill on server startup"`
 }
 
-var runtimeConfig = Config{
-	LogLevel: "warn",
+type UserConfigBody struct {
+	InfinityTextModel          *string `json:"infinityTextModel,omitempty" doc:"Override Infinity text embeddings model ID"`
+	InfinityImageModel         *string `json:"infinityImageModel,omitempty" doc:"Override Infinity image embeddings model ID"`
+	InfinityTextQueryPrefix    *string `json:"infinityTextQueryPrefix,omitempty" doc:"Override prefix prepended to text search queries"`
+	InfinityTextDocumentPrefix *string `json:"infinityTextDocumentPrefix,omitempty" doc:"Override prefix prepended to text documents"`
 }
 
 func parseLogLevel(s string) logger.LogLevel {
@@ -30,36 +34,99 @@ func parseLogLevel(s string) logger.LogLevel {
 }
 
 func applyLogLevel(level string) {
-	runtimeConfig.LogLevel = level
 	db.Logger = db.Logger.LogMode(parseLogLevel(level))
 }
 
-// SetInitialLogLevel is called at startup with the flag value.
-func SetInitialLogLevel(level string) {
+// SetInitialLogLevel is called at startup with the flag value. Always persists to DB.
+func SetInitialLogLevel(level string) error {
 	applyLogLevel(level)
+	cfg, err := loadGlobalConfig()
+	if err != nil {
+		return err
+	}
+	cfg.LogLevel = level
+	return saveGlobalConfig(cfg)
 }
 
-var GetConfigOperation = huma.Operation{
-	Method:      http.MethodGet,
-	Path:        "/api/v2/config",
+// --- Global config ---
+
+var GetGlobalConfigOperation = huma.Operation{
+	Method:        http.MethodGet,
+	Path:          "/api/v2/config/global",
 	DefaultStatus: http.StatusOK,
 }
 
-func GetConfig(_ context.Context, _ *struct{}) (output *struct{ Body Config }, err error) {
-	output = &struct{ Body Config }{Body: runtimeConfig}
+func GetGlobalConfig(_ context.Context, _ *struct{}) (output *struct{ Body GlobalConfigBody }, err error) {
+	cfg, err := loadGlobalConfig()
+	if err != nil {
+		return
+	}
+	output = &struct{ Body GlobalConfigBody }{Body: GlobalConfigBody{
+		LogLevel:                  cfg.LogLevel,
+		GenerateEmbeddingsOnStart: cfg.GenerateEmbeddingsOnStart,
+	}}
 	return
 }
 
-var PutConfigOperation = huma.Operation{
+var PutGlobalConfigOperation = huma.Operation{
 	Method:        http.MethodPut,
-	Path:          "/api/v2/config",
+	Path:          "/api/v2/config/global",
 	DefaultStatus: http.StatusOK,
 }
 
-func PutConfig(_ context.Context, input *struct {
-	Body Config
-}) (output *struct{ Body Config }, err error) {
-	applyLogLevel(input.Body.LogLevel)
-	output = &struct{ Body Config }{Body: runtimeConfig}
+func PutGlobalConfig(_ context.Context, input *struct {
+	Body GlobalConfigBody
+}) (output *struct{ Body GlobalConfigBody }, err error) {
+	cfg := GlobalConfig{LogLevel: input.Body.LogLevel, GenerateEmbeddingsOnStart: input.Body.GenerateEmbeddingsOnStart}
+	if err = saveGlobalConfig(cfg); err != nil {
+		return
+	}
+	applyLogLevel(cfg.LogLevel)
+	output = &struct{ Body GlobalConfigBody }{Body: input.Body}
+	return
+}
+
+// --- User config ---
+
+var GetUserConfigOperation = huma.Operation{
+	Method:        http.MethodGet,
+	Path:          "/api/v2/config/user",
+	DefaultStatus: http.StatusOK,
+}
+
+func GetUserConfig(ctx context.Context, _ *struct{}) (output *struct{ Body UserConfigBody }, err error) {
+	uc, err := loadUserConfig(UsernameFromContext(ctx))
+	if err != nil {
+		return
+	}
+	output = &struct{ Body UserConfigBody }{Body: UserConfigBody{
+		InfinityTextModel:          uc.InfinityTextModel,
+		InfinityImageModel:         uc.InfinityImageModel,
+		InfinityTextQueryPrefix:    uc.InfinityTextQueryPrefix,
+		InfinityTextDocumentPrefix: uc.InfinityTextDocumentPrefix,
+	}}
+	return
+}
+
+var PutUserConfigOperation = huma.Operation{
+	Method:        http.MethodPut,
+	Path:          "/api/v2/config/user",
+	DefaultStatus: http.StatusOK,
+}
+
+func PutUserConfig(ctx context.Context, input *struct {
+	Body UserConfigBody
+}) (output *struct{ Body UserConfigBody }, err error) {
+	uc := UserConfig{
+		Username:                   UsernameFromContext(ctx),
+		InfinityTextModel:          input.Body.InfinityTextModel,
+		InfinityImageModel:         input.Body.InfinityImageModel,
+		InfinityTextQueryPrefix:    input.Body.InfinityTextQueryPrefix,
+		InfinityTextDocumentPrefix: input.Body.InfinityTextDocumentPrefix,
+	}
+	if err = saveUserConfig(uc); err != nil {
+		return
+	}
+	output = &struct{ Body UserConfigBody }{Body: input.Body}
 	return
 }
