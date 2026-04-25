@@ -1,0 +1,30 @@
+info:
+  name: Grandparent Contains Child
+  type: http
+  seq: 6
+
+http:
+  method: GET
+  url: "{{baseUrl}}/api/entity/{{reparentGrandparentId}}/contains"
+  headers:
+    - name: accept
+      value: application/json
+  auth:
+    type: bearer
+    token: "{{authToken}}"
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        const ids = res.body.map(String);
+
+        test("Returns 200", function() {
+          expect(res.status).to.equal(200);
+        });
+        test("Grandparent directly contains child after parent deleted", function() {
+          expect(ids).to.include(bru.getVar("reparentChildId"));
+        });
+        test("Parent no longer present", function() {
+          expect(ids).to.not.include(bru.getVar("reparentParentId"));
+        });
