@@ -142,7 +142,7 @@ func GetRecordEmbeddings(ctx context.Context) (e map[uint][]float64, err error) 
 		embeddedIDs[*emb.RecordID] = true
 	}
 
-	records, err := GetRecords(dbCtx, nil, nil, nil, nil, nil, []string{"id", "title", "label", "description"})
+	records, err := GetRecords(dbCtx, nil, nil, nil, nil, nil, []string{"id", "title", "label", "description"}, false)
 	if err != nil {
 		return
 	}
@@ -190,7 +190,7 @@ func generateMissingRecordEmbeddings(ctx context.Context, recordIDs []uint, embe
 		return
 	}
 
-	records, err := GetRecords(dbCtx, nil, nil, nil, nil, nil, []string{"id", "title", "label", "description"})
+	records, err := GetRecords(dbCtx, nil, nil, nil, nil, nil, []string{"id", "title", "label", "description"}, false)
 	if err != nil {
 		Log.Errorw("embedding generation: failed to fetch records", "error", err)
 		return

@@ -29,7 +29,7 @@ func Export(ctx context.Context, _ *struct{}) (output *BytesOutput, err error) {
 	}{
 		{q: "Artifacts", h: func(db gorm.PreloadBuilder) error { return nil }},
 		{q: "Tags", h: func(db gorm.PreloadBuilder) error { return nil }},
-	}, nil)
+	}, nil, false)
 	if err != nil {
 		return
 	}

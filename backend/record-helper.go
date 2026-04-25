@@ -59,14 +59,14 @@ func GetRecordsFriendly(ctx context.Context, inputID uint, search *RecordQuery) 
 				return nil
 			},
 		},
-	}, nil)
+	}, nil, false)
 	return
 }
 
 func GetRecords(ctx context.Context, ID *uint, childrenDepth *int, parentDepth *int, search *RecordQuery, preload []struct {
 	q string
 	h func(db gorm.PreloadBuilder) error
-}, selects []string) (records []Record, err error) {
+}, selects []string, ignoreUser bool) (records []Record, err error) {
 	UsernameFromContext(ctx)
 	user, err := loadUser(UsernameFromContext(ctx))
 	if err != nil {
@@ -101,10 +101,12 @@ func GetRecords(ctx context.Context, ID *uint, childrenDepth *int, parentDepth *
 				v = q.Preload(s.q, s.h)
 			}
 		}
-		if v != nil {
-			v = v.Where("owner_id = ?", user.ID)
-		} else {
-			v = q.Where("owner_id = ?", user.ID)
+		if !ignoreUser {
+			if v != nil {
+				v = v.Where("owner_id = ?", user.ID)
+			} else {
+				v = q.Where("owner_id = ?", user.ID)
+			}
 		}
 		if v != nil {
 			records, err = v.Find(dbCtx)
@@ -133,10 +135,12 @@ func GetRecords(ctx context.Context, ID *uint, childrenDepth *int, parentDepth *
 				v = q.Preload(s.q, s.h)
 			}
 		}
-		if v != nil {
-			v = v.Where("owner_id = ?", user.ID)
-		} else {
-			v = q.Where("owner_id = ?", user.ID)
+		if !ignoreUser {
+			if v != nil {
+				v = v.Where("owner_id = ?", user.ID)
+			} else {
+				v = q.Where("owner_id = ?", user.ID)
+			}
 		}
 		if v != nil {
 			recordsSearched, err = v.Where("id = ?", *ID).Find(dbCtx)

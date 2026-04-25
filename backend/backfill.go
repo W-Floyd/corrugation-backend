@@ -12,7 +12,7 @@ func BackfillEmbeddings() {
 }
 
 func backfillRecordEmbeddings() {
-	records, err := GetRecords(dbCtx, nil, nil, nil, nil, nil, []string{"id", "title", "label", "description", "owner_id"})
+	records, err := GetRecords(dbCtx, nil, nil, nil, nil, nil, []string{"id", "title", "label", "description", "owner_id"}, false)
 	if err != nil {
 		Log.Errorw("backfill: failed to fetch records", "error", err)
 		return

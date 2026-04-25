@@ -152,7 +152,7 @@ func GetStore(ctx context.Context, input *struct{}) (output *StoreOutput, err er
 			q: "Tags",
 			h: func(db gorm.PreloadBuilder) error { return nil },
 		},
-	}, nil)
+	}, nil, false)
 	if err != nil {
 		return
 	}
@@ -295,17 +295,6 @@ func CreateEntity(ctx context.Context, input *struct {
 
 	record := &Record{}
 
-	if input.Body.ID == 0 {
-		var maxID *uint
-		maxID, err = getFirstFreeID()
-		if err != nil {
-			return
-		}
-		record.ID = *maxID
-	} else {
-		record.ID = uint(input.Body.ID)
-	}
-
 	if input.Body.Metadata.IsLabeled != nil && *input.Body.Metadata.IsLabeled {
 		record.Label = input.Body.Name
 	} else {
@@ -368,9 +357,59 @@ func CreateEntity(ctx context.Context, input *struct {
 		}
 	}
 
-	err = gorm.G[Record](db).Create(dbCtx, record)
-	if err != nil {
-		return
+	alreadyExists := false
+
+	if input.Body.ID != 0 {
+		var existing Record
+		tx := db.Where("id = ?", input.Body.ID).First(&existing)
+		if tx.Error == nil {
+			alreadyExists = true
+			// Record exists - move it to new ID
+			var newID *uint
+			newID, err = getFirstFreeID()
+			if err != nil {
+				return
+			}
+			existing.ID = *newID
+			if err := db.Create(&existing).Error; err != nil {
+				return nil, err
+			}
+			// Update any records that had ParentID = existing input ID
+			var parentID uint = uint(input.Body.ID)
+			tx = db.Model(&Record{}).Where("parent_id = ?", parentID).UpdateColumn("parent_id", *newID)
+			if tx.Error != nil {
+				return nil, tx.Error
+			}
+		} else if tx.Error != gorm.ErrRecordNotFound {
+			return nil, tx.Error
+		}
+		record.ID = uint(input.Body.ID)
+	} else {
+		var maxID *uint
+		maxID, err = getFirstFreeID()
+		if err != nil {
+			return
+		}
+		record.ID = *maxID
+	}
+
+	if alreadyExists {
+		v := &struct {
+			ID   uint `path:"id" example:"1" doc:"ID to replace"`
+			Body EntityInput
+		}{
+			ID:   uint(input.Body.ID),
+			Body: input.Body,
+		}
+		_, err = ReplaceEntity(ctx, v)
+		if err != nil {
+			return
+		}
+	} else {
+		err = gorm.G[Record](db).Create(dbCtx, record)
+		if err != nil {
+			return
+		}
 	}
 
 	Broadcast()
@@ -392,7 +431,7 @@ type EntityIDListOutput struct {
 }
 
 func ListEntityIDs(ctx context.Context, input *struct{}) (output *EntityIDListOutput, err error) {
-	records, err := GetRecords(ctx, nil, nil, nil, nil, nil, []string{"id"})
+	records, err := GetRecords(ctx, nil, nil, nil, nil, nil, []string{"id"}, false)
 	if err != nil {
 		return
 	}
@@ -428,7 +467,7 @@ func GetAllEntities(ctx context.Context, input *struct{}) (output *AllEntitiesOu
 			q: "Tags",
 			h: func(db gorm.PreloadBuilder) error { return nil },
 		},
-	}, nil)
+	}, nil, false)
 	if err != nil {
 		return
 	}
@@ -474,7 +513,7 @@ func GetEntity(ctx context.Context, input *struct {
 			q: "Tags",
 			h: func(db gorm.PreloadBuilder) error { return nil },
 		},
-	}, nil)
+	}, nil, false)
 	if err != nil {
 		return
 	}
@@ -555,7 +594,7 @@ func PatchEntity(ctx context.Context, input *struct {
 	}{
 		{q: "Artifacts", h: func(db gorm.PreloadBuilder) error { return nil }},
 		{q: "Tags", h: func(db gorm.PreloadBuilder) error { return nil }},
-	}, nil)
+	}, nil, false)
 	if err != nil {
 		return
 	}
@@ -881,7 +920,9 @@ func ReplaceEntity(ctx context.Context, input *struct {
 	}{
 		{q: "Artifacts", h: func(db gorm.PreloadBuilder) error { return nil }},
 		{q: "Tags", h: func(db gorm.PreloadBuilder) error { return nil }},
-	}, nil)
+	}, nil,
+		true, // TOOD: This is unsafe and is an auth hole, but works of the sake of "moving" an entity. Once new UI is in place with Reference Number
+	)
 	if err != nil {
 		return
 	}

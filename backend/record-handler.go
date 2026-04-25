@@ -51,7 +51,7 @@ func GetRecord(ctx context.Context, input *struct {
 				return nil
 			},
 		},
-	}, nil)
+	}, nil, false)
 	if err != nil {
 		return
 	}
