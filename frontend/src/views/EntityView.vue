@@ -26,7 +26,9 @@ onMounted(() => {
 watch(
     () => route.query.entity,
     async (newId) => {
-        await entitiesStore.setCurrentEntity(newId ? parseInt(newId as string, 10) : 0);
+        await entitiesStore.setCurrentEntity(
+            newId ? parseInt(newId as string, 10) : 0,
+        );
     },
     { immediate: true },
 );
@@ -66,11 +68,10 @@ const handleNewEntitySubmit = async (): Promise<void> => {
             location: entitiesStore.currentEntity,
             metadata: {
                 quantity: null,
-                owners: null,
+                owner: null,
                 tags: null,
                 islabeled: false,
                 lastModified: null,
-                lastModifiedBy: null,
             },
         };
         const entityId = await api.createEntity(entity);

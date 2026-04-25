@@ -2,7 +2,6 @@ package backend
 
 import (
 	"context"
-	"log"
 
 	"gorm.io/gorm"
 )
@@ -15,7 +14,7 @@ func BackfillEmbeddings() {
 func backfillRecordEmbeddings() {
 	records, err := GetRecords(dbCtx, nil, nil, nil, nil, nil, []string{"id", "title", "label", "description", "owner_id"})
 	if err != nil {
-		log.Printf("backfill: failed to fetch records: %v", err)
+		Log.Errorw("backfill: failed to fetch records", "error", err)
 		return
 	}
 
@@ -72,7 +71,7 @@ func backfillRecordEmbeddingsForUser(ctx context.Context, textModel, docPrefix s
 
 	embeddings, err := gorm.G[Embedding](db).Where("record_id IN ? AND embed_model = ?", recordIDs, textModel).Find(dbCtx)
 	if err != nil {
-		log.Printf("backfill: failed to fetch embeddings for model %q: %v", textModel, err)
+		Log.Errorw("backfill: failed to fetch embeddings", "model", textModel, "error", err)
 		return
 	}
 	storedHash := map[uint]string{}
@@ -99,7 +98,7 @@ func backfillRecordEmbeddingsForUser(ctx context.Context, textModel, docPrefix s
 func backfillArtifactEmbeddings() {
 	embeddings, err := gorm.G[Embedding](db).Where("artifact_id IS NOT NULL AND embed_model = ?", infinityImageModel).Find(dbCtx)
 	if err != nil {
-		log.Printf("backfill: failed to fetch artifact embeddings: %v", err)
+		Log.Errorw("backfill: failed to fetch artifact embeddings", "error", err)
 		return
 	}
 	embeddedIDs := map[uint]bool{}
@@ -111,7 +110,7 @@ func backfillArtifactEmbeddings() {
 
 	artifacts, err := gorm.G[Artifact](db).Select("id").Find(dbCtx)
 	if err != nil {
-		log.Printf("backfill: failed to fetch artifacts: %v", err)
+		Log.Errorw("backfill: failed to fetch artifacts", "error", err)
 		return
 	}
 	artifactIDs := make([]uint, len(artifacts))

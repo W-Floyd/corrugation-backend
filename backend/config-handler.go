@@ -5,11 +5,10 @@ import (
 	"net/http"
 
 	"github.com/danielgtaylor/huma/v2"
-	"gorm.io/gorm/logger"
 )
 
 type GlobalConfigBody struct {
-	LogLevel                  string `json:"logLevel" doc:"Log level: silent, error, warn, info"`
+	LogLevel                  string `json:"logLevel" doc:"Log level: silent, panic, error, warn, info, debug"`
 	GenerateEmbeddingsOnStart bool   `json:"generateEmbeddingsOnStart" doc:"Run embedding backfill on server startup"`
 }
 
@@ -20,26 +19,9 @@ type UserConfigBody struct {
 	InfinityTextDocumentPrefix *string `json:"infinityTextDocumentPrefix,omitempty" doc:"Override prefix prepended to text documents"`
 }
 
-func parseLogLevel(s string) logger.LogLevel {
-	switch s {
-	case "silent":
-		return logger.Silent
-	case "error":
-		return logger.Error
-	case "info":
-		return logger.Info
-	default:
-		return logger.Warn
-	}
-}
-
-func applyLogLevel(level string) {
-	db.Logger = db.Logger.LogMode(parseLogLevel(level))
-}
-
 // SetInitialLogLevel is called at startup with the flag value. Always persists to DB.
 func SetInitialLogLevel(level string) error {
-	applyLogLevel(level)
+	SetLogLevel(level)
 	cfg, err := loadGlobalConfig()
 	if err != nil {
 		return err
@@ -81,7 +63,7 @@ func PutGlobalConfig(_ context.Context, input *struct {
 	if err = saveGlobalConfig(cfg); err != nil {
 		return
 	}
-	applyLogLevel(cfg.LogLevel)
+	SetLogLevel(cfg.LogLevel)
 	output = &struct{ Body GlobalConfigBody }{Body: input.Body}
 	return
 }

@@ -5,7 +5,6 @@ import (
 	"compress/gzip"
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -35,21 +34,18 @@ type Options struct {
 	InfinityTextDocumentPrefix string `help:"Prefix prepended to text documents before embedding" default:""`
 }
 
-func init() {
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
-}
 
 func main() {
 
 	cli := humacli.New(func(hooks humacli.Hooks, options *Options) {
 
-		log.Println("init backend")
+		backend.Log.Info("init backend")
 		backend.SetInfinityConfig(options.InfinityAddress, options.InfinityTextModel, options.InfinityImageModel, options.InfinityTextQueryPrefix, options.InfinityTextDocumentPrefix)
 
 		if _, err := os.Stat(options.Data); os.IsNotExist(err) {
 			err := os.Mkdir(options.Data, 0755)
 			if err != nil {
-				log.Fatalln(err)
+				backend.Log.Fatal(err)
 			}
 		}
 
@@ -58,21 +54,21 @@ func main() {
 
 		err := backend.ConnectDB(dbPath)
 		if err != nil {
-			log.Fatalln(err)
+			backend.Log.Fatal(err)
 		}
 		if err = backend.InitAndMigrateDB(); err != nil {
-			log.Fatalln(err)
+			backend.Log.Fatal(err)
 		}
 		if err = backend.SetInitialLogLevel(options.LogLevel); err != nil {
-			log.Fatalf("failed to persist log level: %v", err)
+			backend.Log.Fatalf("failed to persist log level: %v", err)
 		}
 		if err = backend.SetInitialGenerateEmbeddingsOnStart(options.GenerateEmbeddingsOnStart); err != nil {
-			log.Fatalf("failed to persist generate-embeddings-on-start: %v", err)
+			backend.Log.Fatalf("failed to persist generate-embeddings-on-start: %v", err)
 		}
 
 		if !dbExists {
 			if err := runLegacyMigration(options.Data); err != nil {
-				log.Printf("legacy migration failed: %v", err)
+				backend.Log.Infof("legacy migration failed: %v", err)
 			}
 		}
 
@@ -85,7 +81,7 @@ func main() {
 			var err error
 			oidcCfg, err = backend.FetchOIDCConfig(options.OIDCDiscoveryURL, options.OIDCInsecureSkipVerify)
 			if err != nil {
-				log.Fatalf("fetch OIDC config: %v", err)
+				backend.Log.Fatalf("fetch OIDC config: %v", err)
 			}
 			config.Components.SecuritySchemes = map[string]*huma.SecurityScheme{
 				"authentik": {
@@ -100,7 +96,7 @@ func main() {
 				TokenEndpoint:         oidcCfg.TokenEndpoint,
 				ClientID:              options.OIDCClientID,
 			})
-			log.Printf("OIDC auth enabled, issuer: %s", oidcCfg.Issuer)
+			backend.Log.Infof("OIDC auth enabled, issuer: %s", oidcCfg.Issuer)
 		}
 
 		api := humago.New(router, config)
@@ -135,7 +131,7 @@ func main() {
 			}
 			err := http.ListenAndServe(fmt.Sprintf("%s:%d", options.Address, options.Port), router)
 			if err != nil {
-				log.Fatalln(err)
+				backend.Log.Fatal(err)
 			}
 		})
 
@@ -152,12 +148,12 @@ func runLegacyMigration(dataPath string) error {
 
 	switch {
 	case fileExists(storeJSON):
-		log.Println("legacy store.json found, running migration")
+		backend.Log.Info("legacy store.json found, running migration")
 		if err := buildLegacyTarGz(dataPath, tarPath); err != nil {
 			return fmt.Errorf("build tar.gz: %w", err)
 		}
 	case fileExists(tarPath):
-		log.Println("legacy.tar.gz found, running migration")
+		backend.Log.Info("legacy.tar.gz found, running migration")
 	default:
 		return nil
 	}
@@ -173,7 +169,7 @@ func runLegacyMigration(dataPath string) error {
 		return fmt.Errorf("import: %w", err)
 	}
 
-	log.Printf("legacy migration complete: %d entities, %d artifacts imported", result.EntitiesImported, result.ArtifactsImported)
+	backend.Log.Infof("legacy migration complete: %d entities, %d artifacts imported", result.EntitiesImported, result.ArtifactsImported)
 	return nil
 }
 
@@ -226,7 +222,7 @@ func buildLegacyTarGz(dataPath, tarPath string) error {
 		}
 		src := filepath.Join(artifactsDir, e.Name())
 		if err := addFile(src, "artifacts/"+e.Name()); err != nil {
-			log.Printf("skipping artifact %s: %v", e.Name(), err)
+			backend.Log.Infof("skipping artifact %s: %v", e.Name(), err)
 		}
 	}
 

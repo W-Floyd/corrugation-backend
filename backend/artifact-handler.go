@@ -3,7 +3,6 @@ package backend
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -42,7 +41,7 @@ func CreateArtifact(ctx context.Context, input *struct {
 
 	err = a.Store(ctx, f)
 	if err != nil {
-		log.Println(err)
+		Log.Error(err)
 		return
 	}
 
@@ -83,7 +82,7 @@ func GetArtifact(ctx context.Context, input *struct {
 		existing, _ := gorm.G[Embedding](db).Where("artifact_id = ? AND embed_model = ?", artifact.ID, infinityImageModel).Find(dbCtx)
 		if len(existing) == 0 {
 			if genErr := img.GenerateEmbeddings(embedCtx); genErr != nil {
-				log.Println("embedding generation failed:", genErr)
+				Log.Errorw("embedding generation failed", "error", genErr)
 			}
 		}
 	}()

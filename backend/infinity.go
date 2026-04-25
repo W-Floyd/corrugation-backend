@@ -139,6 +139,9 @@ func (i *Image) GenerateEmbeddings(ctx context.Context) (err error) {
 
 	id := i.ID
 	err = saveEmbedding(nil, &id, e, imageModel, base64Image)
+	if err == nil {
+		Log.Infof("embedding: artifact %d indexed with model %s", id, imageModel)
+	}
 	return
 }
 

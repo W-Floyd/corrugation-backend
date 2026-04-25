@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"log"
 	"math"
 	"net/http"
 	"path/filepath"
@@ -87,7 +86,7 @@ func (i *Image) Store(ctx context.Context, file huma.FormFile) (err error) {
 
 	b, err := io.ReadAll(file)
 	if err != nil {
-		log.Println(err)
+		Log.Error(err)
 		return
 	}
 
@@ -97,7 +96,7 @@ func (i *Image) Store(ctx context.Context, file huma.FormFile) (err error) {
 
 	err = i.ComputePreviews()
 	if err != nil {
-		log.Println(err)
+		Log.Error(err)
 		return
 	}
 
@@ -105,7 +104,7 @@ func (i *Image) Store(ctx context.Context, file huma.FormFile) (err error) {
 
 	err = gorm.G[Artifact](db).Create(dbCtx, &a)
 	if err != nil {
-		log.Println(err)
+		Log.Error(err)
 		return
 	}
 
@@ -113,7 +112,7 @@ func (i *Image) Store(ctx context.Context, file huma.FormFile) (err error) {
 
 	go func() {
 		if genErr := i.GenerateEmbeddings(ctx); genErr != nil {
-			log.Println("embedding generation failed:", genErr)
+			Log.Errorw("embedding generation failed", "error", genErr)
 		}
 	}()
 
@@ -379,7 +378,7 @@ func generateMissingArtifactEmbeddings(artifactIDs []uint, embeddedIDs map[uint]
 	for _, id := range candidates {
 		a, fetchErr := GetArtifactFromDB(id)
 		if fetchErr != nil {
-			log.Printf("embedding generation failed for artifact %d: %v", id, fetchErr)
+			Log.Errorw("embedding generation failed", "artifactID", id, "error", fetchErr)
 			continue
 		}
 		iface, ifaceErr := a.GetInterface()
@@ -391,7 +390,7 @@ func generateMissingArtifactEmbeddings(artifactIDs []uint, embeddedIDs map[uint]
 			continue
 		}
 		if genErr := img.GenerateEmbeddings(dbCtx); genErr != nil {
-			log.Printf("embedding generation failed for artifact %d: %v", id, genErr)
+			Log.Errorw("embedding generation failed", "artifactID", id, "error", genErr)
 		}
 	}
 }

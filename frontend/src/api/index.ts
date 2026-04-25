@@ -1,4 +1,10 @@
-import type { Entity, Artifact, FullState, Metadata, BackendRecord } from "./types";
+import type {
+  Entity,
+  Artifact,
+  FullState,
+  Metadata,
+  BackendRecord,
+} from "./types";
 import { recordToEntity } from "./types";
 import router from "../router";
 import { useAuthStore } from "../stores/auth";
@@ -12,7 +18,7 @@ export interface EntityCreate {
   location: number;
   metadata: {
     quantity: number | null;
-    owners: string[] | null;
+    owner: string | null;
     tags: string[] | null;
     islabeled: boolean | null;
   };
@@ -25,13 +31,16 @@ export interface EntityUpdate {
   location?: number;
   metadata?: {
     quantity?: number | null;
-    owners?: string[] | null;
+    owner?: string | null;
     tags?: string[] | null;
     islabeled?: boolean | null;
   };
 }
 
-export async function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
+export async function apiFetch(
+  url: string,
+  options: RequestInit = {},
+): Promise<Response> {
   const token = localStorage.getItem("auth_token");
   const headers = new Headers(options.headers as HeadersInit);
   if (token) {
@@ -42,7 +51,14 @@ export async function apiFetch(url: string, options: RequestInit = {}): Promise<
 
   if (response.status === 401) {
     const currentRoute = router.currentRoute.value.name;
-    DEBUG && console.warn("[apiFetch] 401 on", url, "current route:", currentRoute, new Error().stack?.split("\n")[2]?.trim());
+    DEBUG &&
+      console.warn(
+        "[apiFetch] 401 on",
+        url,
+        "current route:",
+        currentRoute,
+        new Error().stack?.split("\n")[2]?.trim(),
+      );
     if (currentRoute !== "callback") {
       useAuthStore().clearToken();
       router.push({ name: "login" });
@@ -61,7 +77,9 @@ export async function apiFetch(url: string, options: RequestInit = {}): Promise<
   return response;
 }
 
-export async function withErrorToast<T>(fn: () => Promise<T>): Promise<T | undefined> {
+export async function withErrorToast<T>(
+  fn: () => Promise<T>,
+): Promise<T | undefined> {
   try {
     return await fn();
   } catch (e) {
@@ -118,7 +136,10 @@ export const api = {
   async uploadArtifact(file: File): Promise<number> {
     const formData = new FormData();
     formData.append("file", file);
-    const response = await apiFetch("/api/artifact", { method: "POST", body: formData });
+    const response = await apiFetch("/api/artifact", {
+      method: "POST",
+      body: formData,
+    });
     const id = await response.json();
     return parseInt(id, 10);
   },
@@ -127,7 +148,13 @@ export const api = {
     await apiFetch(`/api/artifact/${id}`, { method: "DELETE" });
   },
 
-  async searchEntities(query: string, parentId?: number, searchImage = true, searchTextEmbedded = true, searchTextSubstring = true): Promise<{ entity: Entity; imageScore?: number; textScore?: number }[]> {
+  async searchEntities(
+    query: string,
+    parentId?: number,
+    searchImage = true,
+    searchTextEmbedded = true,
+    searchTextSubstring = true,
+  ): Promise<{ entity: Entity; imageScore?: number; textScore?: number }[]> {
     const params = new URLSearchParams({ search: query });
     if (parentId != null) {
       params.set("id", String(parentId));

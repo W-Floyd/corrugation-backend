@@ -38,11 +38,10 @@ const entity = ref<EntityCreate>({
     location: 0,
     metadata: {
         quantity: null,
-        owners: null,
+        owner: null,
         tags: null,
         islabeled: false,
         lastModified: null,
-        lastModifiedBy: null,
     },
 });
 const files = ref<File[]>([]);
@@ -82,11 +81,10 @@ const resetDialog = async (): Promise<void> => {
         location: props.location ?? 0,
         metadata: {
             quantity: null,
-            owners: null,
+            owner: null,
             tags: null,
             islabeled: false,
             lastModified: null,
-            lastModifiedBy: null,
         },
     };
     files.value = [];

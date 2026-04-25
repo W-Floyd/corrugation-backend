@@ -2,7 +2,6 @@ package backend
 
 import (
 	"context"
-	"log"
 	"net/http"
 	"strconv"
 
@@ -109,7 +108,7 @@ func CreateRecord(ctx context.Context, input *struct {
 		return
 	}
 	if _, genErr := record.GenerateEmbeddings(ctx); genErr != nil {
-		log.Println("embedding generation failed:", genErr)
+		Log.Errorw("embedding generation failed", "error", genErr)
 	}
 	err = nil
 	output = &RecordOutput{

@@ -3,7 +3,6 @@ package backend
 import (
 	"context"
 	"errors"
-	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -16,7 +15,7 @@ import (
 
 type Metadata struct {
 	Quantity     *int      `json:"quantity" required:"false"`
-	Owners       []*string `json:"owners" required:"false"`
+	Owner        *string   `json:"owner" required:"false"`
 	Tags         []*string `json:"tags" required:"false"`
 	LastModified *string   `json:"lastmodified" required:"false"`
 	IsLabeled    *bool     `json:"islabeled" required:"false"`
@@ -89,7 +88,15 @@ func (record *Record) ToEntity() (output *EntityInput, err error) {
 				return
 			}(),
 			Metadata: &Metadata{
-				Owners: []*string{},
+				Owner: func() *string {
+					var r *string
+					if record.Owner != nil {
+						var v string
+						v = record.Owner.Username
+						r = &v
+					}
+					return r
+				}(),
 				Quantity: func() *int {
 					var v int
 					if record.Quantity == nil {
@@ -320,7 +327,7 @@ func CreateEntity(ctx context.Context, input *struct {
 
 	for _, a := range input.Body.Artifacts {
 		if a == nil {
-			log.Println("empty artifact!")
+			Log.Warn("empty artifact")
 			continue
 		}
 		var artifact Artifact

@@ -17,7 +17,6 @@ import CheckIcon from "vue-material-design-icons/Check.vue";
 import CloseIcon from "vue-material-design-icons/Close.vue";
 import ArrowUpIcon from "vue-material-design-icons/ArrowUp.vue";
 
-
 const props = defineProps<{
     entity: Entity;
     isSelected?: boolean;
@@ -128,10 +127,9 @@ const filteredMoveEntities = computed(() => {
         location: 0,
         metadata: {
             quantity: null,
-            owners: null,
+            owner: null,
             tags: null,
             lastModified: null,
-            lastModifiedBy: null,
             islabeled: false,
         },
     };
@@ -375,11 +373,10 @@ const handleQuickCaptureNewChild = async (): Promise<void> => {
                     location: props.entity.id,
                     metadata: {
                         quantity: null,
-                        owners: null,
+                        owner: null,
                         tags: null,
                         islabeled: false,
                         lastModified: null,
-                        lastModifiedBy: null,
                     },
                 });
                 await entitiesStore.reload();
@@ -590,14 +587,25 @@ defineExpose({ cardEl });
                 class="text-xs text-gray-400 px-1 rounded bg-gray-100 dark:bg-gray-700 cursor-default"
                 :title="`Text search: ${(entitiesStore.apiSearchScores[entity.id]!.text! * 100).toFixed(1)}%`"
             >
-                {{ Math.round(entitiesStore.apiSearchScores[entity.id]!.text! * 100) }}%T
+                {{
+                    Math.round(
+                        entitiesStore.apiSearchScores[entity.id]!.text! * 100,
+                    )
+                }}%T
             </div>
             <div
-                v-if="entitiesStore.apiSearchScores[entity.id]?.image != null && entitiesStore.apiSearchScores[entity.id]!.image! > 0"
+                v-if="
+                    entitiesStore.apiSearchScores[entity.id]?.image != null &&
+                    entitiesStore.apiSearchScores[entity.id]!.image! > 0
+                "
                 class="text-xs text-gray-400 px-1 rounded bg-gray-100 dark:bg-gray-700 cursor-default"
                 :title="`Image search: ${(entitiesStore.apiSearchScores[entity.id]!.image! * 100).toFixed(1)}%`"
             >
-                {{ Math.round(entitiesStore.apiSearchScores[entity.id]!.image! * 100) }}%I
+                {{
+                    Math.round(
+                        entitiesStore.apiSearchScores[entity.id]!.image! * 100,
+                    )
+                }}%I
             </div>
         </div>
 

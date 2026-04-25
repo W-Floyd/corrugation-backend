@@ -3,7 +3,6 @@ package backend
 import (
 	"context"
 	"encoding/json"
-	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -193,7 +192,7 @@ func generateMissingRecordEmbeddings(ctx context.Context, recordIDs []uint, embe
 
 	records, err := GetRecords(dbCtx, nil, nil, nil, nil, nil, []string{"id", "title", "label", "description"})
 	if err != nil {
-		log.Printf("embedding generation: failed to fetch records: %v", err)
+		Log.Errorw("embedding generation: failed to fetch records", "error", err)
 		return
 	}
 	recordMap := map[uint]Record{}
@@ -207,7 +206,7 @@ func generateMissingRecordEmbeddings(ctx context.Context, recordIDs []uint, embe
 			continue
 		}
 		if _, genErr := r.GenerateEmbeddings(ctx); genErr != nil {
-			log.Printf("embedding generation failed for record %d: %v", id, genErr)
+			Log.Errorw("embedding generation failed", "recordID", id, "error", genErr)
 		}
 	}
 }
@@ -278,5 +277,8 @@ func (r *Record) GenerateEmbeddings(ctx context.Context) (vec Embeddings, err er
 
 	id := r.ID
 	err = saveEmbedding(&id, nil, vec, textModel, fullInput)
+	if err == nil {
+		Log.Infof("embedding: record %d indexed with model %s", id, textModel)
+	}
 	return
 }

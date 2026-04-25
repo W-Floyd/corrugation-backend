@@ -1,9 +1,8 @@
 export interface Metadata {
   quantity: number | null;
-  owners: string[] | null;
+  owner: string | null;
   tags: string[] | null;
   lastModified: string | null;
-  lastModifiedBy: string | null;
   islabeled: boolean | null;
 }
 
@@ -50,7 +49,6 @@ export interface BackendRecord {
   Tags?: BackendTag[];
   Artifacts?: BackendArtifactRef[];
   ParentID?: number;
-  LastModifiedBy?: string;
   SearchConfidenceImage?: number;
   SearchConfidenceText?: number;
 }
@@ -64,11 +62,10 @@ export function recordToEntity(r: BackendRecord): Entity {
     location: r.ParentID ?? 0,
     metadata: {
       quantity: r.Quantity ?? null,
-      owners: null,
+      owner: null,
       tags: r.Tags?.map((t) => t.Title) ?? null,
       islabeled: r.Label != null,
       lastModified: r.UpdatedAt ?? null,
-      lastModifiedBy: r.LastModifiedBy ?? null,
     },
   };
 }
