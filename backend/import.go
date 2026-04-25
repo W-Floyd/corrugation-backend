@@ -58,7 +58,8 @@ func Import(ctx context.Context, input *struct {
 
 	f := input.RawBody.Data().File
 
-	result, err := ImportFromReader(ctx, f, input.Reset)
+	username := UsernameFromContext(ctx)
+	result, err := ImportFromReader(ctx, f, input.Reset, username)
 	if err != nil {
 		return
 	}
@@ -68,7 +69,7 @@ func Import(ctx context.Context, input *struct {
 }
 
 // ImportFromReader imports legacy data from a tar.gz reader.
-func ImportFromReader(ctx context.Context, r io.Reader, reset bool) (result ImportResult, err error) {
+func ImportFromReader(ctx context.Context, r io.Reader, reset bool, legacyImportUser string) (result ImportResult, err error) {
 	gz, err := gzip.NewReader(r)
 	if err != nil {
 		err = huma.Error400BadRequest("not a gzip file: " + err.Error())
@@ -200,6 +201,14 @@ func ImportFromReader(ctx context.Context, r io.Reader, reset bool) (result Impo
 				if e := gorm.G[Tag](db).Create(dbCtx, &t); e == nil {
 					r.Tags = append(r.Tags, &t)
 				}
+			}
+		}
+
+		// Set Owner to legacy import user if specified
+		if legacyImportUser != "" {
+			if user, err := loadUser(legacyImportUser); err == nil {
+				r.OwnerID = &user.ID
+				r.Owner = &user
 			}
 		}
 

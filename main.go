@@ -32,8 +32,8 @@ type Options struct {
 	InfinityImageModel         string `help:"Infinity image embeddings model ID" default:"openai/clip-vit-large-patch14"`
 	InfinityTextQueryPrefix    string `help:"Prefix prepended to text search queries before embedding" default:"Represent this sentence for searching relevant passages: "`
 	InfinityTextDocumentPrefix string `help:"Prefix prepended to text documents before embedding" default:""`
+	LegacyImportUser           string `help:"Username for legacy imports" default:"legacy"`
 }
-
 
 func main() {
 
@@ -67,7 +67,7 @@ func main() {
 		}
 
 		if !dbExists {
-			if err := runLegacyMigration(options.Data); err != nil {
+			if err := runLegacyMigration(options.Data, options.LegacyImportUser); err != nil {
 				backend.Log.Infof("legacy migration failed: %v", err)
 			}
 		}
@@ -142,7 +142,7 @@ func main() {
 
 }
 
-func runLegacyMigration(dataPath string) error {
+func runLegacyMigration(dataPath string, legacyImportUser string) error {
 	tarPath := filepath.Join(dataPath, "legacy.tar.gz")
 	storeJSON := filepath.Join(dataPath, "store.json")
 
@@ -164,7 +164,7 @@ func runLegacyMigration(dataPath string) error {
 	}
 	defer f.Close()
 
-	result, err := backend.ImportFromReader(context.Background(), f, false)
+	result, err := backend.ImportFromReader(context.Background(), f, false, legacyImportUser)
 	if err != nil {
 		return fmt.Errorf("import: %w", err)
 	}

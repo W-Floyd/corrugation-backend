@@ -67,6 +67,20 @@ func GetRecords(ctx context.Context, ID *uint, childrenDepth *int, parentDepth *
 	q string
 	h func(db gorm.PreloadBuilder) error
 }, selects []string) (records []Record, err error) {
+	UsernameFromContext(ctx)
+	user, err := loadUser(UsernameFromContext(ctx))
+	if err != nil {
+		return nil, err
+	}
+	preload = append([]struct {
+		q string
+		h func(db gorm.PreloadBuilder) error
+	}{
+		{
+			q: "Owner",
+			h: nil,
+		},
+	}, preload...)
 	if ID == nil {
 		if childrenDepth != nil {
 			err = errors.New("childrenDepth provided without an ID")
@@ -86,6 +100,11 @@ func GetRecords(ctx context.Context, ID *uint, childrenDepth *int, parentDepth *
 			} else {
 				v = q.Preload(s.q, s.h)
 			}
+		}
+		if v != nil {
+			v = v.Where("owner_id = ?", user.ID)
+		} else {
+			v = q.Where("owner_id = ?", user.ID)
 		}
 		if v != nil {
 			records, err = v.Find(dbCtx)
@@ -113,6 +132,11 @@ func GetRecords(ctx context.Context, ID *uint, childrenDepth *int, parentDepth *
 			} else {
 				v = q.Preload(s.q, s.h)
 			}
+		}
+		if v != nil {
+			v = v.Where("owner_id = ?", user.ID)
+		} else {
+			v = q.Where("owner_id = ?", user.ID)
 		}
 		if v != nil {
 			recordsSearched, err = v.Where("id = ?", *ID).Find(dbCtx)
