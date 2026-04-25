@@ -14,8 +14,13 @@ type ListRecordsInput struct {
 	ID                uint   `query:"id" example:"1" doc:"ID to get" required:"false"`
 	ChildrenDepth     int    `query:"childrenDepth" example:"2" doc:"Depth to search for children, negative values mean unlimited search" required:"false" dependentRequired:"id"`
 	ParentDepth       int    `query:"parentDepth" example:"2" doc:"Depth to search for parents, negative values mean unlimited search" required:"false" dependentRequired:"id"`
-	Search     string `query:"search" example:"Lamp" doc:"String to search embeddings with" required:"false"`
-	Timestamps bool   `query:"timestamps" doc:"Include CreatedAt and UpdatedAt in response" required:"false"`
+	Search              string  `query:"search" example:"Lamp" doc:"String to search embeddings with" required:"false"`
+	SearchImage         bool    `query:"searchImage" doc:"Use image embeddings in search" required:"false"`
+	SearchTextEmbedded  bool    `query:"searchTextEmbedded" doc:"Use text embeddings in search" required:"false"`
+	SearchTextSubstring bool    `query:"searchTextSubstring" doc:"Use substring matching in search" required:"false"`
+	MinImageScore       float64 `query:"minImageScore" doc:"Minimum image embedding score threshold" required:"false"`
+	MinTextScore        float64 `query:"minTextScore" doc:"Minimum text score threshold" required:"false"`
+	Timestamps          bool    `query:"timestamps" doc:"Include CreatedAt and UpdatedAt in response" required:"false"`
 }
 
 type RecordOutput struct {
@@ -64,10 +69,18 @@ var ListRecordsOperation = huma.Operation{
 
 func ListRecords(ctx context.Context, input *ListRecordsInput) (output *RecordsOutput, err error) {
 	var records []Record
-	search := &RecordQuery{
-		Query:         input.Search,
-		ChildrenDepth: input.ChildrenDepth,
-		ParentDepth:   input.ParentDepth,
+	s := NewRecordQuery(input.Search)
+	search := &s
+	s.SearchImage = input.SearchImage
+	s.SearchTextEmbedded = input.SearchTextEmbedded
+	s.SearchTextSubstring = input.SearchTextSubstring
+	s.ChildrenDepth = input.ChildrenDepth
+	s.ParentDepth = input.ParentDepth
+	if input.MinImageScore > 0 {
+		s.MinImageScore = input.MinImageScore
+	}
+	if input.MinTextScore > 0 {
+		s.MinTextScore = input.MinTextScore
 	}
 	records, err = GetRecordsFriendly(ctx, input.ID, search)
 	responses := make([]RecordResponse, len(records))

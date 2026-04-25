@@ -18,9 +18,22 @@ import (
 )
 
 type RecordQuery struct {
-	Query         string
-	ChildrenDepth int
-	ParentDepth   int
+	Query                    string
+	SearchImage              bool
+	SearchTextEmbedded       bool
+	SearchTextSubstring      bool
+	MinImageScore            float64
+	MinTextScore             float64
+	ChildrenDepth            int
+	ParentDepth              int
+}
+
+func NewRecordQuery(query string) RecordQuery {
+	return RecordQuery{
+		Query:         query,
+		MinImageScore: minimumImageSearchConfidence,
+		MinTextScore:  minimumTextSearchConfidence,
+	}
 }
 
 func GetRecordsFriendly(ctx context.Context, inputID uint, search *RecordQuery) (records []Record, err error) {
@@ -166,14 +179,17 @@ func GetRecords(ID *uint, childrenDepth *int, parentDepth *int, search *RecordQu
 			id    uint
 			score float64
 		}
-		artifactSearch, err = SearchByArtifact(search.Query, scopedIDs)
-		if err != nil {
-			return
+		if search.SearchImage {
+			artifactSearch, err = SearchByArtifact(search.Query, scopedIDs)
+			if err != nil {
+				return
+			}
 		}
-
-		recordSearch, err = SearchByRecord(search.Query)
-		if err != nil {
-			return
+		if search.SearchTextEmbedded {
+			recordSearch, err = SearchByRecord(search.Query)
+			if err != nil {
+				return
+			}
 		}
 
 		textScore := map[uint]float64{}
@@ -199,6 +215,9 @@ func GetRecords(ID *uint, childrenDepth *int, parentDepth *int, search *RecordQu
 
 		searchLower := strings.ToLower(search.Query)
 		for _, r := range records {
+			if !search.SearchTextSubstring {
+				continue
+			}
 			score := maxFieldScore(searchLower, r.Title, r.Label, r.Description)
 			if score > textScore[r.ID] {
 				textScore[r.ID] = score
@@ -215,7 +234,7 @@ func GetRecords(ID *uint, childrenDepth *int, parentDepth *int, search *RecordQu
 
 		recordIDs := []uint{}
 		for id := range bestScore {
-			if bestImageScore[id] >= minimumImageSearchConfidence || textScore[id] >= minimumTextSearchConfidence {
+			if bestImageScore[id] >= search.MinImageScore || textScore[id] >= search.MinTextScore {
 				recordIDs = append(recordIDs, id)
 			}
 		}

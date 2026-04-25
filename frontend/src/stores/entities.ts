@@ -26,6 +26,9 @@ export const useEntitiesStore = defineStore("entities", () => {
   const filterworld = ref(false);
   const apiSearchResults = ref<Entity[]>([]);
   const apiSearchScores = ref<Record<number, { image?: number; text?: number }>>({});
+  const searchImage = ref(true);
+  const searchTextEmbedded = ref(true);
+  const searchTextSubstring = ref(true);
   const currentEntity = ref<number>(0);
   const locationtree = ref<number[]>([]);
 
@@ -133,7 +136,7 @@ export const useEntitiesStore = defineStore("entities", () => {
     searchtext.value = searchtextpredebounce.value;
   }
 
-  watch([searchtext, filterworld, currentEntity], async ([text]) => {
+  watch([searchtext, filterworld, currentEntity, searchImage, searchTextEmbedded, searchTextSubstring], async ([text]) => {
     if (!text.trim()) {
       searching.value = false;
       apiSearchResults.value = [];
@@ -154,7 +157,7 @@ export const useEntitiesStore = defineStore("entities", () => {
         const scopeId = !filterworld.value && currentEntity.value !== 0
           ? currentEntity.value
           : undefined;
-        const results = await api.searchEntities(query, scopeId);
+        const results = await api.searchEntities(query, scopeId, searchImage.value, searchTextEmbedded.value, searchTextSubstring.value);
         apiSearchResults.value = results.map((r) => r.entity);
         const scores: Record<number, { image?: number; text?: number }> = {};
         for (const r of results) {
@@ -251,6 +254,9 @@ export const useEntitiesStore = defineStore("entities", () => {
     searching,
     filterworld,
     apiSearchScores,
+    searchImage,
+    searchTextEmbedded,
+    searchTextSubstring,
     currentEntity,
     locationtree,
     isLoading,

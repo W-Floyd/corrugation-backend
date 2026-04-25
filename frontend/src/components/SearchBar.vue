@@ -71,7 +71,7 @@ onBeforeUnmount(() => {
         <!-- Filter world checkbox -->
         <div class="flex items-center">
             <label
-                class="flex items-center cursor-pointer"
+                class="relative flex items-center cursor-pointer"
                 title="Only search in current entity"
             >
                 <input
@@ -80,9 +80,76 @@ onBeforeUnmount(() => {
                     class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                     @change="onWorldChange"
                 />
-                <span class="ml-1 text-sm text-gray-600 dark:text-gray-400"
-                    >World</span
-                >
+                <span
+                    class="relative ml-1 text-sm text-gray-600 dark:text-gray-400"
+                    >Global<KbdHint
+                        shortcut="G"
+                        :show="props.showShortcuts"
+                        :center="true"
+                /></span>
+            </label>
+        </div>
+
+        <!-- Image embedding toggle -->
+        <div class="flex items-center">
+            <label
+                class="relative flex items-center cursor-pointer"
+                title="Use image embeddings in search"
+            >
+                <input
+                    type="checkbox"
+                    v-model="entitiesStore.searchImage"
+                    class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span
+                    class="relative ml-1 text-sm text-gray-600 dark:text-gray-400"
+                    >Emb. Image<KbdHint
+                        shortcut="I"
+                        :show="props.showShortcuts"
+                        :center="true"
+                /></span>
+            </label>
+        </div>
+
+        <!-- Text embedding toggle -->
+        <div class="flex items-center">
+            <label
+                class="relative flex items-center cursor-pointer"
+                title="Use text embeddings in search"
+            >
+                <input
+                    type="checkbox"
+                    v-model="entitiesStore.searchTextEmbedded"
+                    class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span
+                    class="relative ml-1 text-sm text-gray-600 dark:text-gray-400"
+                    >Emb. Text<KbdHint
+                        shortcut="W"
+                        :show="props.showShortcuts"
+                        :center="true"
+                /></span>
+            </label>
+        </div>
+
+        <!-- String matching toggle -->
+        <div class="flex items-center">
+            <label
+                class="relative flex items-center cursor-pointer"
+                title="Use substring matching in search"
+            >
+                <input
+                    type="checkbox"
+                    v-model="entitiesStore.searchTextSubstring"
+                    class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span
+                    class="relative ml-1 text-sm text-gray-600 dark:text-gray-400"
+                    >Sub. Text<KbdHint
+                        shortcut="T"
+                        :show="props.showShortcuts"
+                        :center="true"
+                /></span>
             </label>
         </div>
 

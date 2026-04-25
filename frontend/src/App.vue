@@ -270,10 +270,34 @@ const handleKeydown = (e: KeyboardEvent): void => {
             commandDialogVisible.value = true;
             break;
 
-        case "w":
-        case "W":
+        case "g":
+        case "G":
             e.preventDefault();
             entitiesStore.filterworld = !entitiesStore.filterworld;
+            break;
+
+        case "i":
+        case "I":
+            if (!e.shiftKey && !e.metaKey && !e.ctrlKey) {
+                e.preventDefault();
+                entitiesStore.searchImage = !entitiesStore.searchImage;
+            }
+            break;
+
+        case "w":
+        case "W":
+            if (!e.shiftKey && !e.metaKey && !e.ctrlKey) {
+                e.preventDefault();
+                entitiesStore.searchTextEmbedded = !entitiesStore.searchTextEmbedded;
+            }
+            break;
+
+        case "t":
+        case "T":
+            if (!e.shiftKey && !e.metaKey && !e.ctrlKey) {
+                e.preventDefault();
+                entitiesStore.searchTextSubstring = !entitiesStore.searchTextSubstring;
+            }
             break;
 
         case "ArrowDown":
