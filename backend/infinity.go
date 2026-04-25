@@ -2,6 +2,7 @@ package backend
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
@@ -77,16 +78,22 @@ func (i *infinityEmbeddingsRequest) GenerateEmbeddings() (e Embeddings, err erro
 
 }
 
-func GenerateTextQueryEmbeddings(input string) (e Embeddings, err error) {
-	return generateTextEmbeddings(infinityTextQueryPrefix+input, infinityTextModel)
+func GenerateTextDocumentEmbeddingsCtx(ctx context.Context, input string) (Embeddings, error) {
+	uc, _ := loadUserConfig(UsernameFromContext(ctx))
+	textModel, _, _, docPrefix := effectiveInfinityConfig(uc)
+	return generateTextEmbeddings(docPrefix+input, textModel)
 }
 
-func GenerateTextDocumentEmbeddings(input string) (e Embeddings, err error) {
-	return generateTextEmbeddings(infinityTextDocumentPrefix+input, infinityTextModel)
+func GenerateTextQueryEmbeddingsCtx(ctx context.Context, input string) (Embeddings, error) {
+	uc, _ := loadUserConfig(UsernameFromContext(ctx))
+	textModel, _, queryPrefix, _ := effectiveInfinityConfig(uc)
+	return generateTextEmbeddings(queryPrefix+input, textModel)
 }
 
-func GenerateImageQueryEmbeddings(input string) (e Embeddings, err error) {
-	return generateTextEmbeddings(input, infinityImageModel)
+func GenerateImageQueryEmbeddingsCtx(ctx context.Context, input string) (Embeddings, error) {
+	uc, _ := loadUserConfig(UsernameFromContext(ctx))
+	_, imageModel, _, _ := effectiveInfinityConfig(uc)
+	return generateTextEmbeddings(input, imageModel)
 }
 
 func generateTextEmbeddings(input string, model string) (e Embeddings, err error) {
@@ -100,7 +107,7 @@ func generateTextEmbeddings(input string, model string) (e Embeddings, err error
 	return
 }
 
-func (i *Image) GenerateEmbeddings() (err error) {
+func (i *Image) GenerateEmbeddings(ctx context.Context) (err error) {
 	if i.ID == 0 {
 		err = errors.New("artifact must be persisted before generating embeddings")
 		return
@@ -110,11 +117,14 @@ func (i *Image) GenerateEmbeddings() (err error) {
 		return
 	}
 
+	uc, _ := loadUserConfig(UsernameFromContext(ctx))
+	_, imageModel, _, _ := effectiveInfinityConfig(uc)
+
 	base64Image := base64.StdEncoding.EncodeToString(*i.Data)
 	base64Image = "data:" + http.DetectContentType(*i.Data) + ";base64," + base64Image
 
 	infinityRequest := infinityEmbeddingsRequest{
-		Model:          infinityImageModel,
+		Model:          imageModel,
 		EncodingFormat: "float",
 		Input:          []string{base64Image},
 		Modality:       "image",
@@ -126,7 +136,7 @@ func (i *Image) GenerateEmbeddings() (err error) {
 	}
 
 	id := i.ID
-	err = saveEmbedding(nil, &id, e, infinityImageModel)
+	err = saveEmbedding(nil, &id, e, imageModel)
 	return
 }
 

@@ -24,7 +24,7 @@ func backfillRecordEmbeddings() {
 		}
 	}
 
-	records, err := GetRecords(nil, nil, nil, nil, nil, []string{"id"})
+	records, err := GetRecords(dbCtx, nil, nil, nil, nil, nil, []string{"id"})
 	if err != nil {
 		log.Printf("backfill: failed to fetch records: %v", err)
 		return

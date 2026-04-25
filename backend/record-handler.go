@@ -41,7 +41,7 @@ func GetRecord(ctx context.Context, input *struct {
 	Timestamps bool `query:"timestamps" doc:"Include CreatedAt and UpdatedAt in response" required:"false"`
 }) (output *RecordOutput, err error) {
 	var records []Record
-	records, err = GetRecords(&input.ID, nil, nil, nil, []struct {
+	records, err = GetRecords(ctx, &input.ID, nil, nil, nil, []struct {
 		q string
 		h func(db gorm.PreloadBuilder) error
 	}{
@@ -108,7 +108,7 @@ func CreateRecord(ctx context.Context, input *struct {
 	if err != nil {
 		return
 	}
-	if _, genErr := record.GenerateEmbeddings(); genErr != nil {
+	if _, genErr := record.GenerateEmbeddings(ctx); genErr != nil {
 		log.Println("embedding generation failed:", genErr)
 	}
 	err = nil

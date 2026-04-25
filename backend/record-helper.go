@@ -48,7 +48,7 @@ func GetRecordsFriendly(ctx context.Context, inputID uint, search *RecordQuery) 
 	if search != nil && search.ParentDepth != 0 {
 		ParentDepth = &search.ParentDepth
 	}
-	records, err = GetRecords(ID, ChildrenDepth, ParentDepth, search, []struct {
+	records, err = GetRecords(ctx, ID, ChildrenDepth, ParentDepth, search, []struct {
 		q string
 		h func(db gorm.PreloadBuilder) error
 	}{
@@ -63,7 +63,7 @@ func GetRecordsFriendly(ctx context.Context, inputID uint, search *RecordQuery) 
 	return
 }
 
-func GetRecords(ID *uint, childrenDepth *int, parentDepth *int, search *RecordQuery, preload []struct {
+func GetRecords(ctx context.Context, ID *uint, childrenDepth *int, parentDepth *int, search *RecordQuery, preload []struct {
 	q string
 	h func(db gorm.PreloadBuilder) error
 }, selects []string) (records []Record, err error) {
@@ -180,13 +180,13 @@ func GetRecords(ID *uint, childrenDepth *int, parentDepth *int, search *RecordQu
 			score float64
 		}
 		if search.SearchImage {
-			artifactSearch, err = SearchByArtifact(search.Query, scopedIDs)
+			artifactSearch, err = SearchByArtifact(ctx, search.Query, scopedIDs)
 			if err != nil {
 				return
 			}
 		}
 		if search.SearchTextEmbedded {
-			recordSearch, err = SearchByRecord(search.Query)
+			recordSearch, err = SearchByRecord(ctx, search.Query)
 			if err != nil {
 				return
 			}

@@ -39,7 +39,7 @@ func CreateArtifact(ctx context.Context, input *struct {
 		}
 	}
 
-	err = a.Store(f)
+	err = a.Store(ctx, f)
 	if err != nil {
 		log.Println(err)
 		return

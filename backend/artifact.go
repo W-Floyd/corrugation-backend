@@ -2,6 +2,7 @@ package backend
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -19,14 +20,14 @@ import (
 )
 
 type ArtifactInterface interface {
-	Store(file huma.FormFile) (err error)
+	Store(ctx context.Context, file huma.FormFile) (err error)
 	GetOriginalContents() (output *[]byte, err error)
 	GetSmallPreviewContents() (output *[]byte, err error)
 	GetLargePreviewContents() (output *[]byte, err error)
 	GetOriginalFilename() (output string, err error)
 	GetContentType() (output string, err error)
 	GetID() (output uint)
-	GenerateEmbeddings() (err error)
+	GenerateEmbeddings(ctx context.Context) (err error)
 }
 
 type Artifact struct {
@@ -82,7 +83,7 @@ func (a *Artifact) GetInterface() (output ArtifactInterface, err error) {
 
 type Image Artifact
 
-func (i *Image) Store(file huma.FormFile) (err error) {
+func (i *Image) Store(ctx context.Context, file huma.FormFile) (err error) {
 
 	b, err := io.ReadAll(file)
 	if err != nil {
@@ -111,7 +112,7 @@ func (i *Image) Store(file huma.FormFile) (err error) {
 	*i = Image(a)
 
 	go func() {
-		if genErr := i.GenerateEmbeddings(); genErr != nil {
+		if genErr := i.GenerateEmbeddings(ctx); genErr != nil {
 			log.Println("embedding generation failed:", genErr)
 		}
 	}()
@@ -389,7 +390,7 @@ func generateMissingArtifactEmbeddings(artifactIDs []uint, embeddedIDs map[uint]
 		if !ok {
 			continue
 		}
-		if genErr := img.GenerateEmbeddings(); genErr != nil {
+		if genErr := img.GenerateEmbeddings(dbCtx); genErr != nil {
 			log.Printf("embedding generation failed for artifact %d: %v", id, genErr)
 		}
 	}

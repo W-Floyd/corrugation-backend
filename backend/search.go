@@ -1,6 +1,7 @@
 package backend
 
 import (
+	"context"
 	"errors"
 )
 
@@ -20,7 +21,7 @@ func dotProduct(v1 []float64, v2 []float64) (dotProduct float64, err error) {
 	return
 }
 
-func SearchByArtifact(search string, recordIDs []uint) (recordResults []struct {
+func SearchByArtifact(ctx context.Context, search string, recordIDs []uint) (recordResults []struct {
 	id    uint
 	score float64
 }, err error) {
@@ -29,7 +30,7 @@ func SearchByArtifact(search string, recordIDs []uint) (recordResults []struct {
 		return
 	}
 
-	searchEmbeddings, err := GenerateImageQueryEmbeddings(search)
+	searchEmbeddings, err := GenerateImageQueryEmbeddingsCtx(ctx, search)
 	if err != nil {
 		return
 	}
@@ -52,7 +53,7 @@ func SearchByArtifact(search string, recordIDs []uint) (recordResults []struct {
 	return
 }
 
-func SearchByRecord(search string) (recordResults []struct {
+func SearchByRecord(ctx context.Context, search string) (recordResults []struct {
 	id    uint
 	score float64
 }, err error) {
@@ -61,7 +62,7 @@ func SearchByRecord(search string) (recordResults []struct {
 		return
 	}
 
-	searchEmbeddings, err := GenerateTextQueryEmbeddings(search)
+	searchEmbeddings, err := GenerateTextQueryEmbeddingsCtx(ctx, search)
 	if err != nil {
 		return
 	}

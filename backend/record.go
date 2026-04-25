@@ -1,6 +1,7 @@
 package backend
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"strconv"
@@ -138,7 +139,7 @@ func GetRecordEmbeddings() (e map[uint][]float64, err error) {
 		embeddedIDs[*emb.RecordID] = true
 	}
 
-	records, err := GetRecords(nil, nil, nil, nil, nil, []string{"id", "title", "label", "description"})
+	records, err := GetRecords(dbCtx, nil, nil, nil, nil, nil, []string{"id", "title", "label", "description"})
 	if err != nil {
 		return
 	}
@@ -186,7 +187,7 @@ func generateMissingRecordEmbeddings(recordIDs []uint, embeddedIDs map[uint]bool
 		return
 	}
 
-	records, err := GetRecords(nil, nil, nil, nil, nil, []string{"id", "title", "label", "description"})
+	records, err := GetRecords(dbCtx, nil, nil, nil, nil, nil, []string{"id", "title", "label", "description"})
 	if err != nil {
 		log.Printf("embedding generation: failed to fetch records: %v", err)
 		return
@@ -201,7 +202,7 @@ func generateMissingRecordEmbeddings(recordIDs []uint, embeddedIDs map[uint]bool
 		if !ok {
 			continue
 		}
-		if _, genErr := r.GenerateEmbeddings(); genErr != nil {
+		if _, genErr := r.GenerateEmbeddings(dbCtx); genErr != nil {
 			log.Printf("embedding generation failed for record %d: %v", id, genErr)
 		}
 	}
@@ -244,7 +245,7 @@ func toRecordResponse(r Record, timestamps bool) RecordResponse {
 	return resp
 }
 
-func (r *Record) GenerateEmbeddings() (vec Embeddings, err error) {
+func (r *Record) GenerateEmbeddings(ctx context.Context) (vec Embeddings, err error) {
 	parts := []string{}
 	if r.Title != nil && *r.Title != "" {
 		parts = append(parts, *r.Title)
@@ -260,12 +261,15 @@ func (r *Record) GenerateEmbeddings() (vec Embeddings, err error) {
 		return
 	}
 
-	vec, err = GenerateTextDocumentEmbeddings(strings.Join(parts, " - "))
+	uc, _ := loadUserConfig(UsernameFromContext(ctx))
+	textModel, _, _, _ := effectiveInfinityConfig(uc)
+
+	vec, err = GenerateTextDocumentEmbeddingsCtx(ctx, strings.Join(parts, " - "))
 	if err != nil {
 		return
 	}
 
 	id := r.ID
-	err = saveEmbedding(&id, nil, vec, infinityTextModel)
+	err = saveEmbedding(&id, nil, vec, textModel)
 	return
 }

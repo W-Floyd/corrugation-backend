@@ -132,7 +132,7 @@ func GetStore(ctx context.Context, input *struct{}) (output *StoreOutput, err er
 
 	output.Body.Entities = make(map[oldbackend.EntityID]*EntityInput)
 
-	records, err := GetRecords(nil, nil, nil, nil, []struct {
+	records, err := GetRecords(ctx, nil, nil, nil, nil, []struct {
 		q string
 		h func(db gorm.PreloadBuilder) error
 	}{
@@ -385,7 +385,7 @@ type EntityIDListOutput struct {
 }
 
 func ListEntityIDs(ctx context.Context, input *struct{}) (output *EntityIDListOutput, err error) {
-	records, err := GetRecords(nil, nil, nil, nil, nil, []string{"id"})
+	records, err := GetRecords(ctx, nil, nil, nil, nil, nil, []string{"id"})
 	if err != nil {
 		return
 	}
@@ -406,7 +406,7 @@ type AllEntitiesOutput struct {
 }
 
 func GetAllEntities(ctx context.Context, input *struct{}) (output *AllEntitiesOutput, err error) {
-	records, err := GetRecords(nil, nil, nil, nil, []struct {
+	records, err := GetRecords(ctx, nil, nil, nil, nil, []struct {
 		q string
 		h func(db gorm.PreloadBuilder) error
 	}{
@@ -452,7 +452,7 @@ func GetEntity(ctx context.Context, input *struct {
 		err = huma.Error500InternalServerError("id must not be 0")
 	}
 
-	records, err := GetRecords(&input.ID, nil, nil, nil, []struct {
+	records, err := GetRecords(ctx, &input.ID, nil, nil, nil, []struct {
 		q string
 		h func(db gorm.PreloadBuilder) error
 	}{
@@ -542,7 +542,7 @@ func PatchEntity(ctx context.Context, input *struct {
 	Body EntityPatch
 }) (output *EntityOutput, err error) {
 
-	records, err := GetRecords(&input.ID, nil, nil, nil, []struct {
+	records, err := GetRecords(ctx, &input.ID, nil, nil, nil, []struct {
 		q string
 		h func(db gorm.PreloadBuilder) error
 	}{
@@ -872,7 +872,7 @@ func ReplaceEntity(ctx context.Context, input *struct {
 	Body EntityInput
 }) (output *EntityOutput, err error) {
 
-	records, err := GetRecords(&input.ID, nil, nil, nil, []struct {
+	records, err := GetRecords(ctx, &input.ID, nil, nil, nil, []struct {
 		q string
 		h func(db gorm.PreloadBuilder) error
 	}{
