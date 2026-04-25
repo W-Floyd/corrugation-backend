@@ -110,10 +110,11 @@ func (i *Image) Store(file huma.FormFile) (err error) {
 
 	*i = Image(a)
 
-	if err = i.GenerateEmbeddings(); err != nil {
-		log.Println("embedding generation failed:", err)
-		err = nil
-	}
+	go func() {
+		if genErr := i.GenerateEmbeddings(); genErr != nil {
+			log.Println("embedding generation failed:", genErr)
+		}
+	}()
 
 	return
 }
