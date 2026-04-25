@@ -1,4 +1,5 @@
 import "./assets/main.css";
+import "drag-drop-touch";
 
 import { createApp } from "vue";
 import { createPinia } from "pinia";

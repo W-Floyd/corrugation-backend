@@ -17,6 +17,7 @@ import CheckIcon from "vue-material-design-icons/Check.vue";
 import CloseIcon from "vue-material-design-icons/Close.vue";
 import ArrowUpIcon from "vue-material-design-icons/ArrowUp.vue";
 
+
 const props = defineProps<{
     entity: Entity;
     isSelected?: boolean;
@@ -52,6 +53,46 @@ const localEntity = ref<Entity>({
     metadata: { ...props.entity.metadata },
 });
 const pendingDeletions = ref<Set<number>>(new Set());
+
+const isDragOver = ref(false);
+const isDragging = ref(false);
+
+const handleDragStart = (e: DragEvent): void => {
+    e.dataTransfer?.setData("entityId", props.entity.id.toString());
+    if (e.dataTransfer) e.dataTransfer.effectAllowed = "move";
+    isDragging.value = true;
+};
+
+const handleDragEnd = (): void => {
+    isDragging.value = false;
+};
+
+const handleDragOver = (e: DragEvent): void => {
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+    isDragOver.value = true;
+};
+
+const handleDragLeave = (e: DragEvent): void => {
+    if (!(e.currentTarget as HTMLElement)?.contains(e.relatedTarget as Node)) {
+        isDragOver.value = false;
+    }
+};
+
+const handleDrop = async (e: DragEvent): Promise<void> => {
+    e.preventDefault();
+    isDragOver.value = false;
+    const draggedId = parseInt(e.dataTransfer?.getData("entityId") ?? "");
+    if (isNaN(draggedId) || draggedId === props.entity.id) return;
+    if (isDescendantOf(props.entity.id, draggedId)) return;
+    try {
+        await api.moveEntity(draggedId, props.entity.id);
+        await entitiesStore.reload();
+        toastsStore.add("Entity moved");
+    } catch {
+        toastsStore.add("Failed to move entity");
+    }
+};
 
 const moveTargetLocation = ref<number>(0);
 const moveSearchInputRef = ref<HTMLInputElement | null>(null);
@@ -418,13 +459,22 @@ defineExpose({ cardEl });
 <template>
     <figure
         ref="cardEl"
-        class="relative h-full min-h-64 min-w-48 max-w-sm bg-white shadow-md dark:bg-gray-800 rounded-xl flex flex-col cursor-default"
-        :class="
+        draggable="true"
+        class="relative h-full min-h-64 min-w-48 max-w-sm bg-white shadow-md dark:bg-gray-800 rounded-xl flex flex-col cursor-default transition-opacity"
+        :class="[
             isSelected
                 ? 'ring-2 ring-blue-500 shadow-blue-200 dark:shadow-blue-900'
-                : 'ring-1 ring-gray-500/25 hover:ring-gray-500/50 hover:shadow-lg'
-        "
+                : isDragOver
+                  ? 'ring-2 ring-green-500 shadow-green-200 dark:shadow-green-900 bg-green-50 dark:bg-green-900/20'
+                  : 'ring-1 ring-gray-500/25 hover:ring-gray-500/50 hover:shadow-lg',
+            isDragging ? 'opacity-40' : '',
+        ]"
         @click="emit('select')"
+        @dragstart="handleDragStart"
+        @dragend="handleDragEnd"
+        @dragover="handleDragOver"
+        @dragleave="handleDragLeave"
+        @drop="handleDrop"
     >
         <!-- Delete confirmation overlay -->
         <div
