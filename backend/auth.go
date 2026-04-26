@@ -71,20 +71,10 @@ func RegisterAuthHandlers(api huma.API) {
 type contextKey string
 
 const usernameContextKey contextKey = "username"
-const searchIDContextKey contextKey = "searchID"
 
 func UsernameFromContext(ctx context.Context) string {
 	v, _ := ctx.Value(usernameContextKey).(string)
 	return v
-}
-
-func SearchIDFromContext(ctx context.Context) string {
-	v, _ := ctx.Value(searchIDContextKey).(string)
-	return v
-}
-
-func WithSearchID(ctx context.Context, searchID string) context.Context {
-	return context.WithValue(ctx, searchIDContextKey, searchID)
 }
 
 func newJWKSet(jwksURL string, insecureSkipVerify bool) jwk.Set {

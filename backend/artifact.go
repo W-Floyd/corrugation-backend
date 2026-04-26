@@ -116,7 +116,7 @@ func (i *Image) Store(ctx context.Context, file huma.FormFile) (err error) {
 	if uc.ID > 0 {
 		ownerID = &uc.ID
 	}
-	EnqueueEmbeddingJob(JobTypeArtifact, i.ID, ownerID, UsernameFromContext(ctx), imageModel, "", "store")
+	EnqueueEmbeddingJob(JobTypeArtifact, i.ID, ownerID, UsernameFromContext(ctx), imageModel, "store")
 
 	return
 }
@@ -358,11 +358,10 @@ func generateMissingArtifactEmbeddings(ctx context.Context, artifactIDs []uint, 
 		ownerID = &uc.ID
 	}
 	username := UsernameFromContext(ctx)
-	searchID := SearchIDFromContext(ctx)
 	var enqueued []uint
 	for _, id := range artifactIDs {
 		if !embeddedIDs[id] {
-			EnqueueEmbeddingJob(JobTypeArtifact, id, ownerID, username, imageModel, searchID, source)
+			EnqueueEmbeddingJob(JobTypeArtifact, id, ownerID, username, imageModel, source)
 			enqueued = append(enqueued, id)
 		}
 	}

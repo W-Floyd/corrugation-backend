@@ -186,15 +186,15 @@ func generateMissingRecordEmbeddings(ctx context.Context, recordIDs []uint, embe
 		ownerID = &uc.ID
 	}
 	username := UsernameFromContext(ctx)
-	searchID := SearchIDFromContext(ctx)
+
 	var enqueued []uint
 	for _, id := range recordIDs {
 		if !embeddedIDs[id] {
-			EnqueueEmbeddingJob(JobTypeRecord, id, ownerID, username, textModel, searchID, source)
+			EnqueueEmbeddingJob(JobTypeRecord, id, ownerID, username, textModel, source)
 			enqueued = append(enqueued, id)
 		}
 	}
-	Log.Infow("generateMissingRecordEmbeddings", "source", source, "username", username, "searchID", searchID, "total", len(recordIDs), "enqueued", len(enqueued))
+	Log.Infow("generateMissingRecordEmbeddings", "source", source, "username", username, "total", len(recordIDs), "enqueued", len(enqueued))
 	return enqueued
 }
 

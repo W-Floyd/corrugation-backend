@@ -3,10 +3,29 @@ import { fileURLToPath, URL } from "node:url";
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import vueDevTools from "vite-plugin-vue-devtools";
+import faviconPlugin from "vite-plugin-favicon-generator";
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => ({
-  plugins: [vue(), vueDevTools()],
+  plugins: [
+    vue(),
+    vueDevTools(),
+    faviconPlugin({
+      appName: "Corrugation",
+      appShortName: "Corrugation",
+      appDescription: "Corrugation",
+      developerName: "William Floyd",
+      source: "src/assets/favicon.svg", // Source favicon image
+      icons: {
+        android: true, // Create Android homescreen icon
+        appleIcon: true, // Create Apple touch icons
+        appleStartup: false, // Create Apple startup images
+        favicons: true, // Create regular favicons
+        windows: false, // Create Windows 8 tile icons
+        yandex: false, // Create Yandex browser icon
+      },
+    }),
+  ],
   define: {
     DEBUG: mode !== "production",
   },
@@ -27,7 +46,7 @@ export default defineConfig(({ mode }) => ({
         changeOrigin: true,
       },
       "/ws": {
-        target: "http://localhost:8083",
+        target: "ws://localhost:8083",
         ws: true,
       },
     },

@@ -24,11 +24,25 @@ export const useEntitiesStore = defineStore("entities", () => {
   const searchTextEmbedded = ref(true);
   const searchTextSubstring = ref(true);
   const apiSearchResults = ref<Entity[]>([]);
-  const apiSearchScores = ref<Record<number, { image?: number; text?: number }>>({});
+  const apiSearchScores = ref<
+    Record<number, { image?: number; text?: number }>
+  >({});
   const filterToMissingImage = ref(false);
   const filterToOnlyImage = ref(false);
 
   const isLoading = ref(true);
+
+  // Search embedding progress tracking
+  const searchProgress = ref<{
+    record: {
+      complete: number[];
+      pending: number[];
+    };
+    artifact: {
+      complete: number[];
+      pending: number[];
+    };
+  } | null>(null);
 
   let ws: WebSocket | null = null;
 
@@ -77,7 +91,11 @@ export const useEntitiesStore = defineStore("entities", () => {
     }
   }
 
-  type PartialScope = { scopeId: number | undefined; searchImage: boolean; searchTextEmbedded: boolean; searchId: string | null };
+  type PartialScope = {
+    scopeId: number | undefined;
+    searchImage: boolean;
+    searchTextEmbedded: boolean;
+  };
   let partialScope: PartialScope | null = null;
   let progressToastId: number | null = null;
 
@@ -98,17 +116,40 @@ export const useEntitiesStore = defineStore("entities", () => {
         searchImage: scope.searchImage,
         searchTextEmbedded: scope.searchTextEmbedded,
       });
-      if (progressToastId === null) return; // toast was dismissed
-      if (progress.ready) {
-        useToastsStore().update(progressToastId, "Embeddings ready — re-run search for complete results", "info");
+      // Skip if search already complete
+      if (
+        progress.record?.pending.length === 0 &&
+        progress.artifact?.pending.length === 0
+      ) {
+        // Don't recreate toast - just exit
+        DEBUG &&
+          console.log("[entities] embedding already complete, skipping update");
+        return;
+      }
+      // Skip if toast already finalized
+      if (progressToastId === null) {
+        DEBUG && console.log("[entities] progressToastId null, creating toast");
+        progressToastId = useToastsStore().add(
+          "Indexing embeddings...",
+          "warn",
+          true,
+        );
+      }
+      DEBUG &&
+        console.log("[entities] getSearchEmbeddingProgress result:", progress);
+      searchProgress.value = progress;
+      if (
+        progress.record?.pending.length === 0 &&
+        progress.artifact?.pending.length === 0
+      ) {
+        useToastsStore().update(
+          progressToastId,
+          "Embeddings ready — re-run search for complete results",
+          "info",
+        );
         useToastsStore().finalize(progressToastId);
         progressToastId = null;
         partialScope = null;
-      } else {
-        useToastsStore().update(
-          progressToastId,
-          `Indexing ${progress.indexed}/${progress.total} embeddings — results may be incomplete`,
-        );
       }
     } catch {
       // ignore — will retry on next embedding_progress message
@@ -121,20 +162,45 @@ export const useEntitiesStore = defineStore("entities", () => {
     const url = `${protocol}://${location.host}/ws${token ? `?token=${encodeURIComponent(token)}` : ""}`;
     DEBUG && console.log("[entities] connectWS", url);
     ws = new WebSocket(url);
-    ws.onopen = () => { reload(); };
+    ws.onopen = () => {
+      reload();
+    };
     ws.onmessage = async (e) => {
-      if (typeof e.data === "string" && e.data.startsWith("embedding_progress")) {
-        const msgSearchId = e.data.includes(":") ? e.data.split(":")[1] : null;
-        const hasSearchId = msgSearchId !== null && msgSearchId !== "";
-        if (useAuthStore().authConfig.enabled && !hasSearchId) return;
-        if (partialScope !== null && (!hasSearchId || msgSearchId === partialScope.searchId)) {
-          fetchAndUpdateProgress(partialScope);
-        }
+      if (
+        typeof e.data === "string" &&
+        e.data.startsWith("embedding_progress")
+      ) {
+        updateEmbeddingProgressForSearch(e.data);
       } else {
         reload();
       }
     };
-    ws.onclose = () => { setTimeout(() => connectWS(), 3000); };
+
+    ws.onclose = () => {
+      setTimeout(() => connectWS(), 3000);
+    };
+  }
+
+  function updateEmbeddingProgressForSearch(fullMessage: string): void {
+    if (!searchProgress.value) return;
+    const jobType = fullMessage.includes(":record:")
+      ? ("record" as "record" | "artifact")
+      : ("artifact" as "record" | "artifact");
+    const progressObj = searchProgress.value[jobType];
+    if (!progressObj) return;
+    const arr = progressObj.pending;
+    if (!arr.length) return;
+    const idMatch = fullMessage.match(/:(\d+)$/);
+    if (!idMatch || !idMatch[1]) return;
+    const id = parseInt(idMatch[1], 10);
+
+    if (arr.includes(id)) {
+      arr.splice(arr.indexOf(id), 1);
+      progressObj.complete.push(id);
+    } else {
+      arr.push(id);
+    }
+    searchProgress.value = { ...searchProgress.value, [jobType]: progressObj };
   }
 
   async function setCurrentEntity(entityId: number): Promise<void> {
@@ -171,7 +237,9 @@ export const useEntitiesStore = defineStore("entities", () => {
     if (searchTextVal.trim()) {
       let results = [...apiSearchResults.value];
       if (filterToMissingImage.value) {
-        results = results.filter((e) => !e.artifacts || e.artifacts.length === 0);
+        results = results.filter(
+          (e) => !e.artifacts || e.artifacts.length === 0,
+        );
       } else if (filterToOnlyImage.value) {
         results = results.filter((e) => e.artifacts && e.artifacts.length > 0);
       }
@@ -192,7 +260,14 @@ export const useEntitiesStore = defineStore("entities", () => {
   }
 
   watch(
-    [searchtext, filterworld, currentEntity, searchImage, searchTextEmbedded, searchTextSubstring],
+    [
+      searchtext,
+      filterworld,
+      currentEntity,
+      searchImage,
+      searchTextEmbedded,
+      searchTextSubstring,
+    ],
     async ([text]) => {
       if (!text.trim()) {
         searching.value = false;
@@ -206,27 +281,41 @@ export const useEntitiesStore = defineStore("entities", () => {
 
       let query = text;
       filterToMissingImage.value = query.includes("filter:missing-image");
-      filterToOnlyImage.value = !filterToMissingImage.value && query.includes("filter:only-image");
-      query = query.replace("filter:missing-image", "").replace("filter:only-image", "").trim();
+      filterToOnlyImage.value =
+        !filterToMissingImage.value && query.includes("filter:only-image");
+      query = query
+        .replace("filter:missing-image", "")
+        .replace("filter:only-image", "")
+        .trim();
 
       clearProgressToast();
       searching.value = true;
       try {
         if (query) {
-          const scopeId = !filterworld.value && currentEntity.value !== 0
-            ? currentEntity.value
-            : undefined;
-          const { results, partial, searchId } = await api.searchRecords(query, {
+          const scopeId =
+            !filterworld.value && currentEntity.value !== 0
+              ? currentEntity.value
+              : undefined;
+          const { results, partial } = await api.searchRecords(query, {
             parentId: scopeId,
             searchImage: searchImage.value,
             searchTextEmbedded: searchTextEmbedded.value,
             searchTextSubstring: searchTextSubstring.value,
           });
           if (partial) {
-            const scope: PartialScope = { scopeId, searchImage: searchImage.value, searchTextEmbedded: searchTextEmbedded.value, searchId };
+            const scope: PartialScope = {
+              scopeId,
+              searchImage: searchImage.value,
+              searchTextEmbedded: searchTextEmbedded.value,
+            };
             partialScope = scope;
-            progressToastId = useToastsStore().add("Indexing embeddings — results may be incomplete", "warn", true);
-            fetchAndUpdateProgress(scope); // populates the count async
+            progressToastId = useToastsStore().add(
+              "Indexing embeddings — results may be incomplete",
+              "warn",
+              true,
+            );
+
+            fetchAndUpdateProgress(scope); // populates searchProgress
           } else {
             partialScope = null;
           }
@@ -251,6 +340,80 @@ export const useEntitiesStore = defineStore("entities", () => {
   // Clear progress toast on navigation
   watch(currentEntity, () => clearProgressToast());
 
+  // Update progress toast based on searchProgress state
+  watch(
+    () => searchProgress.value,
+    (progress) => {
+      if (!progress) {
+        DEBUG && console.log("[entities] progress watch: progress is falsy");
+        return;
+      }
+      const record = progress.record;
+      const artifact = progress.artifact;
+      // Skip if toast already finalized - prevents redundant watch fires
+      if (progressToastId === null) {
+        DEBUG &&
+          console.log("[entities] progress watch: toast already finalized");
+        return;
+      }
+      if (!record || !artifact) {
+        DEBUG &&
+          console.log("[entities] progress watch: missing record/artifact");
+        return;
+      }
+      DEBUG &&
+        console.log(
+          "[entities] embedding progress total:",
+          progress.record?.complete?.length ?? 0,
+          progress.record?.pending?.length ?? 0,
+          progress.artifact?.complete?.length ?? 0,
+          progress.artifact?.pending?.length ?? 0,
+          "progressToastId:",
+          progressToastId,
+        );
+      const total =
+        (record?.complete?.length || 0) +
+        (record?.pending?.length || 0) +
+        (artifact?.complete?.length || 0) +
+        (artifact?.pending?.length || 0);
+      const currentCount =
+        (record?.pending?.length || 0) + (artifact?.pending?.length || 0);
+      if (currentCount === 0) {
+        if (progressToastId !== null) {
+          DEBUG &&
+            console.log("[entities] embedding complete, finalizing toast");
+          useToastsStore().update(progressToastId, "Embeddings ready", "info");
+          useToastsStore().finalize(progressToastId);
+          progressToastId = null;
+          partialScope = null;
+        }
+        return;
+      }
+      if (progressToastId === null) {
+        DEBUG && console.log("[entities] progressToastId null, creating toast");
+        progressToastId = useToastsStore().add(
+          "Indexing embeddings...",
+          "warn",
+          true,
+        );
+      } else {
+        DEBUG &&
+          console.log(
+            "[entities] progressToastId exists:",
+            progressToastId,
+            "current:",
+            currentCount,
+            "total:",
+            total,
+          );
+      }
+      const newMessage = `Indexed ${total - currentCount}/${total} embeddings`;
+      DEBUG && console.log("[entities] toast update:", newMessage);
+      useToastsStore().update(progressToastId, newMessage);
+    },
+    { deep: true },
+  );
+
   return {
     currentEntity,
     allRecords,
@@ -271,6 +434,7 @@ export const useEntitiesStore = defineStore("entities", () => {
     filterToMissingImage,
     filterToOnlyImage,
     isLoading,
+    searchProgress,
     reload,
     connectWS,
     setCurrentEntity,

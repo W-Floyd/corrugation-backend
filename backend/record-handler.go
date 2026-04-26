@@ -3,10 +3,8 @@ package backend
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 	"gorm.io/gorm"
@@ -31,9 +29,8 @@ type RecordOutput struct {
 }
 
 type RecordsOutput struct {
-	Status   int    `yaml:"-"`
-	SearchID string `header:"X-Search-ID"`
-	Body     []RecordResponse
+	Status int `yaml:"-"`
+	Body   []RecordResponse
 }
 
 var GetRecordOperation = huma.Operation{
@@ -104,11 +101,9 @@ func ListRecords(ctx context.Context, input *ListRecordsInput) (output *RecordsO
 	if s.ParentDepth != 0 {
 		parentDepth = &s.ParentDepth
 	}
-	searchID := fmt.Sprintf("%d", time.Now().UnixMilli())
-	searchCtx := WithSearchID(ctx, searchID)
 
 	var partial bool
-	records, partial, err = GetRecords(searchCtx, ID, childrenDepth, parentDepth, search, []struct {
+	records, partial, err = GetRecords(ctx, ID, childrenDepth, parentDepth, search, []struct {
 		q string
 		h func(db gorm.PreloadBuilder) error
 	}{
@@ -122,12 +117,10 @@ func ListRecords(ctx context.Context, input *ListRecordsInput) (output *RecordsO
 		responses[i] = toRecordResponse(r, input.Timestamps)
 	}
 	status := http.StatusOK
-	if !partial {
-		searchID = ""
-	} else {
+	if partial {
 		status = http.StatusMultiStatus
 	}
-	output = &RecordsOutput{Status: status, SearchID: searchID, Body: responses}
+	output = &RecordsOutput{Status: status, Body: responses}
 	return
 }
 

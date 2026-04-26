@@ -65,14 +65,13 @@ var GetSearchEmbeddingProgressOperation = huma.Operation{
 
 type SearchEmbeddingProgress struct {
 	Record struct {
-		Complete []int64 `json:"complete"`
-		Pending  []int64 `json:"pending"`
+		Complete []uint `json:"complete"`
+		Pending  []uint `json:"pending"`
 	} `json:"record"`
 	Artifact struct {
-		Complete []int64 `json:"complete"`
-		Pending  []int64 `json:"pending"`
+		Complete []uint `json:"complete"`
+		Pending  []uint `json:"pending"`
 	} `json:"artifact"`
-	Ready bool `json:"ready"`
 }
 
 func GetSearchEmbeddingProgress(ctx context.Context, input *struct {
@@ -125,37 +124,33 @@ func GetSearchEmbeddingProgress(ctx context.Context, input *struct {
 	var p SearchEmbeddingProgress
 
 	if input.SearchTextEmbedded && len(recordIDs) > 0 {
-		var indexed, pending int64
+		var indexed []uint
 		db.Model(&Embedding{}).
 			Where("record_id IN ? AND embed_model = ?", recordIDs, textModel).
-			Count(&indexed)
+			Pluck("record_id", &indexed)
+		var pending []uint
 		db.Model(&EmbeddingJob{}).
 			Where("job_type = ? AND target_id IN ? AND embed_model = ? AND status IN ?",
 				JobTypeRecord, recordIDs, textModel, []string{JobStatusPending, JobStatusProcessing}).
-			Count(&pending)
-		p.Record.Complete = append(p.Record.Complete, indexed)
-		p.Record.Pending = append(p.Record.Pending, pending)
+			Where("username = ?", UsernameFromContext(ctx)).
+			Distinct("target_id").Pluck("target_id", &pending)
+		p.Record.Complete = append(p.Record.Complete, indexed...)
+		p.Record.Pending = append(p.Record.Pending, pending...)
 	}
 
 	if input.SearchImage && len(artifactIDs) > 0 {
-		var indexed, pending int64
+		var indexed []uint
 		db.Model(&Embedding{}).
 			Where("artifact_id IN ? AND embed_model = ?", artifactIDs, imageModel).
-			Count(&indexed)
+			Pluck("artifact_id", &indexed)
+		var pending []uint
 		db.Model(&EmbeddingJob{}).
 			Where("job_type = ? AND target_id IN ? AND embed_model = ? AND status IN ?",
 				JobTypeArtifact, artifactIDs, imageModel, []string{JobStatusPending, JobStatusProcessing}).
-			Count(&pending)
-		p.Artifact.Complete = append(p.Artifact.Complete, indexed)
-		p.Artifact.Pending = append(p.Artifact.Pending, pending)
-	}
-
-	p.Ready = true
-	if input.SearchTextEmbedded && len(p.Record.Pending) > 0 && p.Record.Pending[0] > 0 {
-		p.Ready = false
-	}
-	if input.SearchImage && len(p.Artifact.Pending) > 0 && p.Artifact.Pending[0] > 0 {
-		p.Ready = false
+			Where("username = ?", UsernameFromContext(ctx)).
+			Distinct("target_id").Pluck("target_id", &pending)
+		p.Artifact.Complete = append(p.Artifact.Complete, indexed...)
+		p.Artifact.Pending = append(p.Artifact.Pending, pending...)
 	}
 
 	output = &struct{ Body SearchEmbeddingProgress }{Body: p}

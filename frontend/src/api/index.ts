@@ -119,7 +119,10 @@ export const api = {
       searchTextEmbedded?: boolean;
       searchTextSubstring?: boolean;
     } = {},
-  ): Promise<{ results: { entity: Entity; imageScore?: number; textScore?: number }[]; partial: boolean; searchId: string | null }> {
+  ): Promise<{
+    results: { entity: Entity; imageScore?: number; textScore?: number }[];
+    partial: boolean;
+  }> {
     const params = new URLSearchParams({ search: query });
     if (opts.parentId != null) {
       params.set("id", String(opts.parentId));
@@ -134,11 +137,9 @@ export const api = {
       params.set("searchTextSubstring", "true");
     const response = await apiFetch(`/api/v2/records?${params}`);
     const partial = response.status === 207;
-    const searchId = response.headers.get("X-Search-ID");
     const records: BackendRecord[] = await response.json();
     return {
       partial,
-      searchId,
       results: records.map((r) => ({
         entity: recordToEntity(r),
         imageScore: r.SearchConfidenceImage,
@@ -180,14 +181,20 @@ export const api = {
     childrenDepth?: number;
     searchImage?: boolean;
     searchTextEmbedded?: boolean;
-  }): Promise<{ indexed: number; pending: number; total: number; ready: boolean }> {
+  }): Promise<{
+    record: { complete: number[]; pending: number[] };
+    artifact: { complete: number[]; pending: number[] };
+  }> {
     const params = new URLSearchParams();
     if (opts.global) params.set("global", "true");
     else if (opts.id != null) params.set("id", String(opts.id));
-    if (opts.childrenDepth != null) params.set("childrenDepth", String(opts.childrenDepth));
+    if (opts.childrenDepth != null)
+      params.set("childrenDepth", String(opts.childrenDepth));
     if (opts.searchImage) params.set("searchImage", "true");
     if (opts.searchTextEmbedded) params.set("searchTextEmbedded", "true");
-    const response = await apiFetch(`/api/v2/embeddings/search-progress?${params}`);
+    const response = await apiFetch(
+      `/api/v2/embeddings/search-progress?${params}`,
+    );
     return response.json();
   },
 

@@ -34,21 +34,19 @@ var embeddingJobQueue = make(chan uint, 4096)
 var embeddingSearchJobQueue = make(chan uint, 4096)
 
 // EnqueueEmbeddingJob creates a job if no pending/processing job exists for the same target+model.
-// When searchID is non-empty, dedup is skipped so the job carries the searchID for broadcast;
 // the worker fast-path handles the case where the embedding already exists.
-func EnqueueEmbeddingJob(jobType string, targetID uint, ownerID *uint, username, embedModel, searchID, source string) {
+func EnqueueEmbeddingJob(jobType string, targetID uint, ownerID *uint, username, embedModel, source string) {
 	if db == nil {
 		return
 	}
-	if searchID == "" {
-		var count int64
-		db.Model(&EmbeddingJob{}).
-			Where("job_type = ? AND target_id = ? AND embed_model = ? AND status IN ?",
-				jobType, targetID, embedModel, []string{JobStatusPending, JobStatusProcessing}).
-			Count(&count)
-		if count > 0 {
-			return
-		}
+
+	var count int64
+	db.Model(&EmbeddingJob{}).
+		Where("job_type = ? AND target_id = ? AND embed_model = ? AND status IN ?",
+			jobType, targetID, embedModel, []string{JobStatusPending, JobStatusProcessing}).
+		Count(&count)
+	if count > 0 {
+		return
 	}
 
 	job := EmbeddingJob{
