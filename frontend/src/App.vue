@@ -532,53 +532,60 @@ watch(
 
                     <!-- Entity grid -->
                     <div class="flex flex-wrap justify-center gap-4">
-                        <EntityCard
-                            v-for="entity in visibleEntities"
-                            :key="entity.id"
-                            :ref="
-                                (el: any) => {
-                                    if (el) cardRefs[entity.id] = el;
-                                    else delete cardRefs[entity.id];
-                                }
-                            "
-                            :entity="entity"
-                            :is-selected="selectedEntityId === entity.id"
-                            :show-shortcuts="showShortcuts"
-                            :start-edit="editEntityId === entity.id"
-                            :confirm-delete="deleteConfirmId === entity.id"
-                            :confirm-move="confirmMoveId === entity.id"
-                            @select="
-                                selectedEntityId = entity.id;
-                                deleteConfirmId = null;
-                            "
-                            @create-child="
-                                (id) => {
-                                    newEntityLocation = id;
-                                    newEntityVisible = true;
-                                }
-                            "
-                            @request-move="
-                                (id) => {
-                                    confirmMoveId = id;
-                                }
-                            "
-                            @edit-started="
-                                editEntityId = null;
-                                editingCardId = entity.id;
-                            "
-                            @edit-ended="editingCardId = null"
-                            @request-delete="
-                                selectedEntityId = entity.id;
-                                deleteConfirmId = entity.id;
-                            "
-                            @delete-confirmed="confirmDeleteEntity(entity.id)"
-                            @delete-cancelled="deleteConfirmId = null"
-                            @move-confirmed="
-                                (newLocation) =>
-                                    handleMoveConfirmed(entity.id, newLocation)
-                            "
-                            @move-cancelled="confirmMoveId = null"
-                        />
+                        <TransitionGroup name="fade">
+                            <EntityCard
+                                v-for="entity in visibleEntities"
+                                :key="entity.id"
+                                :ref="
+                                    (el: any) => {
+                                        if (el) cardRefs[entity.id] = el;
+                                        else delete cardRefs[entity.id];
+                                    }
+                                "
+                                :entity="entity"
+                                :is-selected="selectedEntityId === entity.id"
+                                :show-shortcuts="showShortcuts"
+                                :start-edit="editEntityId === entity.id"
+                                :confirm-delete="deleteConfirmId === entity.id"
+                                :confirm-move="confirmMoveId === entity.id"
+                                @select="
+                                    selectedEntityId = entity.id;
+                                    deleteConfirmId = null;
+                                "
+                                @create-child="
+                                    (id) => {
+                                        newEntityLocation = id;
+                                        newEntityVisible = true;
+                                    }
+                                "
+                                @request-move="
+                                    (id) => {
+                                        confirmMoveId = id;
+                                    }
+                                "
+                                @edit-started="
+                                    editEntityId = null;
+                                    editingCardId = entity.id;
+                                "
+                                @edit-ended="editingCardId = null"
+                                @request-delete="
+                                    selectedEntityId = entity.id;
+                                    deleteConfirmId = entity.id;
+                                "
+                                @delete-confirmed="
+                                    confirmDeleteEntity(entity.id)
+                                "
+                                @delete-cancelled="deleteConfirmId = null"
+                                @move-confirmed="
+                                    (newLocation) =>
+                                        handleMoveConfirmed(
+                                            entity.id,
+                                            newLocation,
+                                        )
+                                "
+                                @move-cancelled="confirmMoveId = null"
+                            />
+                        </TransitionGroup>
                     </div>
                 </div>
             </div>
@@ -634,5 +641,14 @@ watch(
 </template>
 
 <style scoped>
-/* Add custom styles here if needed */
+/* Fade transition for entity cards */
+.fade-enter-active,
+.fade-leave-active {
+    transition: opacity 0.2s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+    opacity: 0;
+}
 </style>
