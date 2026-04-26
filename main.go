@@ -10,7 +10,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/W-Floyd/corrugation/backend"
 	"github.com/danielgtaylor/huma/v2"
@@ -35,7 +34,6 @@ type Options struct {
 	InfinityImageModel         string `help:"Infinity image embeddings model ID" default:"openai/clip-vit-large-patch14"`
 	InfinityTextQueryPrefix    string `help:"Prefix prepended to text search queries before embedding" default:"Represent this sentence for searching relevant passages: "`
 	InfinityTextDocumentPrefix string `help:"Prefix prepended to text documents before embedding" default:""`
-	SearchTimeout              int    `help:"Maximum seconds to wait for embedding search before returning 503" default:"30"`
 	LegacyImportUser           string `help:"Username for legacy imports" default:"legacy"`
 	PprofAddr                  string `help:"pprof HTTP listener address; empty to disable" default:""`
 }
@@ -47,7 +45,6 @@ func main() {
 		backend.Log.Info("init backend")
 		backend.SetInfinityConfig(options.InfinityAddress, options.InfinityTextModel, options.InfinityImageModel, options.InfinityTextQueryPrefix, options.InfinityTextDocumentPrefix)
 		backend.SetEmbeddingConcurrency(options.EmbeddingConcurrency)
-		backend.SetSearchTimeout(time.Duration(options.SearchTimeout) * time.Second)
 		if options.PprofAddr != "" {
 			go func() {
 				backend.Log.Infof("pprof listening on %s", options.PprofAddr)

@@ -1,7 +1,5 @@
 package backend
 
-import "time"
-
 const (
 	errorRecordNotFound            = "record not found"
 	errorMoreRecordsThanExpected   = "more records than expected"
@@ -20,8 +18,6 @@ var (
 	infinityTextDocumentPrefix = ""
 
 	embeddingSemaphore = make(chan struct{}, 4)
-
-	searchTimeout = 30 * time.Second
 )
 
 func SetInfinityConfig(address, textModel, imageModel, textQueryPrefix, textDocumentPrefix string) {
@@ -37,8 +33,4 @@ func SetEmbeddingConcurrency(n int) {
 		n = 1
 	}
 	embeddingSemaphore = make(chan struct{}, n)
-}
-
-func SetSearchTimeout(d time.Duration) {
-	searchTimeout = d
 }

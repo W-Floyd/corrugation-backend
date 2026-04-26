@@ -104,37 +104,6 @@ func StartEmbeddingWorkers() {
 	Log.Infof("embedding queue: started %d workers", n)
 }
 
-// WaitForEmbeddingJobs blocks until all pending/processing jobs for the given targets
-// are done (or failed), or ctx is cancelled. Returns true if all completed in time.
-func WaitForEmbeddingJobs(ctx context.Context, jobType string, targetIDs []uint, embedModel string) bool {
-	if len(targetIDs) == 0 {
-		return true
-	}
-	check := func() bool {
-		var count int64
-		db.Model(&EmbeddingJob{}).
-			Where("job_type = ? AND target_id IN ? AND embed_model = ? AND status IN ?",
-				jobType, targetIDs, embedModel, []string{JobStatusPending, JobStatusProcessing}).
-			Count(&count)
-		return count == 0
-	}
-	if check() {
-		return true
-	}
-	ticker := time.NewTicker(100 * time.Millisecond)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return false
-		case <-ticker.C:
-			if check() {
-				return true
-			}
-		}
-	}
-}
-
 func broadcastEmbeddingProgress(job EmbeddingJob) {
 	msg := "embedding_progress:" + job.JobType + ":" + strconv.FormatUint(uint64(job.TargetID), 10)
 	Log.Infow("broadcasting embedding progress", "jobID", job.ID, "username", job.Username, "msg", msg)

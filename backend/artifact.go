@@ -341,13 +341,8 @@ func GetArtifactEmbeddings(ctx context.Context, artifactRecordMap map[uint]*uint
 	}
 
 	enqueuedIDs := generateMissingArtifactEmbeddings(ctx, artifactIDs, embeddedIDs, "search")
-	if len(enqueuedIDs) > 0 {
-		if WaitForEmbeddingJobs(ctx, JobTypeArtifact, enqueuedIDs, infinityImageModel) {
-			err = loadEmbeddings(enqueuedIDs)
-		} else {
-			partial = true
-		}
-	}
+
+	partial = len(enqueuedIDs) > 0
 
 	return
 }

@@ -162,26 +162,8 @@ func GetRecordEmbeddings(ctx context.Context, scopedIDs []uint) (e map[uint][]fl
 	}
 
 	enqueuedIDs := generateMissingRecordEmbeddings(ctx, missingIDs, nil, "search")
-	if len(enqueuedIDs) > 0 {
-		if WaitForEmbeddingJobs(ctx, JobTypeRecord, enqueuedIDs, textModel) {
-			reloaded := make([]Embedding, 0, len(enqueuedIDs))
-			if err = db.Where("record_id IN ? AND embed_model = ?", enqueuedIDs, textModel).Find(&reloaded).Error; err != nil {
-				return
-			}
-			for _, emb := range reloaded {
-				if emb.RecordID == nil {
-					continue
-				}
-				var vec []float64
-				if err = json.Unmarshal(emb.Data, &vec); err != nil {
-					return
-				}
-				e[*emb.RecordID] = vec
-				embeddedIDs[*emb.RecordID] = true
-				embeddingsCache.Store(emb.Hash, Embeddings(vec))
-			}
-		}
-	}
+	partial = len(enqueuedIDs) > 0
+
 	return
 }
 

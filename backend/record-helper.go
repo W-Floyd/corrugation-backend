@@ -222,9 +222,6 @@ func GetRecords(ctx context.Context, ID *uint, childrenDepth *int, parentDepth *
 			}
 		}
 
-		searchCtx, searchCancel := context.WithTimeout(ctx, searchTimeout)
-		defer searchCancel()
-
 		var artifactSearch, recordSearch []struct {
 			id    uint
 			score float64
@@ -233,18 +230,14 @@ func GetRecords(ctx context.Context, ID *uint, childrenDepth *int, parentDepth *
 		var artifactPartial, recordPartial bool
 		var wg sync.WaitGroup
 		if search.SearchImage {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				artifactSearch, artifactPartial, artifactErr = SearchByArtifact(searchCtx, search.Query, artifactRecordMap)
-			}()
+			wg.Go(func() {
+				artifactSearch, artifactPartial, artifactErr = SearchByArtifact(ctx, search.Query, artifactRecordMap)
+			})
 		}
 		if search.SearchTextEmbedded {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				recordSearch, recordPartial, recordErr = SearchByRecord(searchCtx, search.Query, scopedRecordIDs)
-			}()
+			wg.Go(func() {
+				recordSearch, recordPartial, recordErr = SearchByRecord(ctx, search.Query, scopedRecordIDs)
+			})
 		}
 		wg.Wait()
 		if artifactErr != nil {
