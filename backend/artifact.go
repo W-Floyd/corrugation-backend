@@ -36,12 +36,12 @@ type Artifact struct {
 	OriginalFilename *string `json:",omitempty"`
 	ContentType      *string `json:",omitempty"`
 
-	SmallPreviewID *uint     `json:"-"`
+	SmallPreviewID *uint     `json:"-" gorm:"index"`
 	SmallPreview   *Artifact `json:"-" gorm:"foreignKey:SmallPreviewID"`
-	LargePreviewID *uint     `json:"-"`
+	LargePreviewID *uint     `json:"-" gorm:"index"`
 	LargePreview   *Artifact `json:"-" gorm:"foreignKey:LargePreviewID"`
 
-	RecordID *uint `json:",omitempty"`
+	RecordID *uint `json:",omitempty" gorm:"index"`
 }
 
 func GetArtifactFromDB(ID uint) (artifact Artifact, err error) {

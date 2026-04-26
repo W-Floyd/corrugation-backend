@@ -692,10 +692,10 @@ var GetQRCodeOperation = huma.Operation{
 	Path:   "/api/qrcode/{id}",
 }
 
-func GetQRCode(_ context.Context, input *struct {
+func GetQRCode(ctx context.Context, input *struct {
 	ID uint `path:"id"`
 }) (output *BytesOutput, err error) {
-	return GetEntityQRCode(nil, input)
+	return GetEntityQRCode(ctx, input)
 }
 
 var GetEntityQRCodeOperation = huma.Operation{

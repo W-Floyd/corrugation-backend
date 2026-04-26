@@ -36,7 +36,7 @@ type Record struct {
 
 	Artifacts []*Artifact `json:",omitempty"`
 
-	ParentID *uint   `json:",omitempty"`
+	ParentID *uint   `json:",omitempty" gorm:"index"`
 	Parent   *Record `gorm:"foreignKey:ParentID" json:"-"`
 
 	OwnerID *uint `json:",omitempty"`
@@ -125,13 +125,17 @@ func GetRecordEmbeddings(ctx context.Context, scopedIDs []uint) (e map[uint][]fl
 	uc, _ := loadUser(UsernameFromContext(ctx))
 	textModel, _, _, _ := effectiveInfinityConfig(uc)
 
+	if len(scopedIDs) == 0 {
+		return map[uint][]float64{}, false, nil
+	}
+
 	var embeddings []Embedding
 	if err = db.Where("record_id IN ? AND embed_model = ?", scopedIDs, textModel).Find(&embeddings).Error; err != nil {
 		return
 	}
 
 	e = map[uint][]float64{}
-	embeddedIDs := map[uint]bool{}
+	embeddedIDs := make(map[uint]bool, len(embeddings))
 
 	for _, emb := range embeddings {
 		if emb.RecordID == nil {
@@ -150,29 +154,34 @@ func GetRecordEmbeddings(ctx context.Context, scopedIDs []uint) (e map[uint][]fl
 		embeddedIDs[*emb.RecordID] = true
 	}
 
-	enqueuedIDs := generateMissingRecordEmbeddings(ctx, scopedIDs, embeddedIDs, "search")
-	if len(enqueuedIDs) > 0 {
-		if WaitForEmbeddingJobs(ctx, JobTypeRecord, enqueuedIDs, textModel) {
-			for _, id := range enqueuedIDs {
-				reloaded, reloadErr := gorm.G[Embedding](db).Where("record_id = ? AND embed_model = ?", id, textModel).Find(dbCtx)
-				if reloadErr != nil || len(reloaded) == 0 {
-					continue
-				}
-				var vec []float64
-				if cached, ok := embeddingsCache.Load(reloaded[0].Hash); ok {
-					vec = cached.(Embeddings)
-				} else if jsonErr := json.Unmarshal(reloaded[0].Data, &vec); jsonErr == nil {
-					embeddingsCache.Store(reloaded[0].Hash, Embeddings(vec))
-				}
-				if vec != nil {
-					e[id] = vec
-				}
-			}
-		} else {
-			partial = true
+	missingIDs := make([]uint, 0, len(scopedIDs))
+	for _, id := range scopedIDs {
+		if !embeddedIDs[id] {
+			missingIDs = append(missingIDs, id)
 		}
 	}
 
+	enqueuedIDs := generateMissingRecordEmbeddings(ctx, missingIDs, nil, "search")
+	if len(enqueuedIDs) > 0 {
+		if WaitForEmbeddingJobs(ctx, JobTypeRecord, enqueuedIDs, textModel) {
+			reloaded := make([]Embedding, 0, len(enqueuedIDs))
+			if err = db.Where("record_id IN ? AND embed_model = ?", enqueuedIDs, textModel).Find(&reloaded).Error; err != nil {
+				return
+			}
+			for _, emb := range reloaded {
+				if emb.RecordID == nil {
+					continue
+				}
+				var vec []float64
+				if err = json.Unmarshal(emb.Data, &vec); err != nil {
+					return
+				}
+				e[*emb.RecordID] = vec
+				embeddedIDs[*emb.RecordID] = true
+				embeddingsCache.Store(emb.Hash, Embeddings(vec))
+			}
+		}
+	}
 	return
 }
 

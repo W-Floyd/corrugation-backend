@@ -9,9 +9,9 @@ import (
 type Embedding struct {
 	gorm.Model
 
-	RecordID   *uint  `gorm:"index"`
-	ArtifactID *uint  `gorm:"index"`
-	EmbedModel string `gorm:"not null;index"`
+	RecordID   *uint  `gorm:"index:idx_composite,priority:1"`
+	ArtifactID *uint  `gorm:"index:idx_composite,priority:1"`
+	EmbedModel string `gorm:"not null;index:idx_composite,priority:2"`
 	Data       []byte `gorm:"not null"`
 	Hash       string `gorm:"not null"`
 }
