@@ -358,20 +358,35 @@ func GetChildrenRecurse(parentID uint, searchDepth int, currentDepth int) (recor
 		return
 	}
 
-	var children []Record
+	maxDepth := searchDepth - currentDepth
+	if maxDepth <= 0 {
+		maxDepth = maxSearchDepth
+	}
+	cteSQL := `
+WITH RECURSIVE children AS (
+	SELECT r.*, 1 as depth
+	FROM records r
+	WHERE r.parent_id = ?
+	UNION ALL
+	SELECT r.*, c.depth + 1
+	FROM records r
+	INNER JOIN children c ON r.parent_id = c.id
+	WHERE c.depth < ?
+)
+SELECT * FROM children ORDER BY depth, id
+`
+	err = db.Raw(cteSQL, parentID, maxDepth).Scan(&records).Error
 
-	children, err = gorm.G[Record](db).Where("parent_id = ?", parentID).Preload("Artifacts", func(db gorm.PreloadBuilder) error {
-		db.Select("id", "record_id")
-		return nil
-	}).Find(dbCtx)
 	if err != nil {
 		return
 	}
-	for _, child := range children {
-		records = append(records, &child)
-		var subChildren []*Record
-		subChildren, err = GetChildrenRecurse(child.ID, searchDepth, currentDepth+1)
-		records = append(records, subChildren...)
+
+	if len(records) > 0 {
+		var recordPtrs []*Record
+		for i := range records {
+			recordPtrs = append(recordPtrs, records[i])
+		}
+		records = recordPtrs
 	}
 
 	return

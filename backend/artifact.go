@@ -46,7 +46,7 @@ type Artifact struct {
 
 func GetArtifactFromDB(ID uint) (artifact Artifact, err error) {
 	var artifacts []Artifact
-	artifacts, err = gorm.G[Artifact](db).Where("id = ?", ID).Find(dbCtx)
+	artifacts, err = gorm.G[Artifact](db).Where("id = ?", ID).Preload("SmallPreview", nil).Preload("LargePreview", nil).Find(dbCtx)
 	if err != nil {
 		return
 	} else if len(artifacts) > 1 {
@@ -231,39 +231,43 @@ func (i *Image) GetOriginalContents() (output *[]byte, err error) {
 	return
 }
 func (i *Image) GetSmallPreviewContents() (output *[]byte, err error) {
-	if i.SmallPreview == nil || i.SmallPreview.Data == nil || len(*i.SmallPreview.Data) == 0 {
-		if i.SmallPreviewID != nil {
-			var a Artifact
-			a, err = GetArtifactFromDB(*i.SmallPreviewID)
-			output = a.Data
-			return
-		} else {
-			_, err = i.computeSmallPreview()
-			if err != nil {
-				return
-			}
-			output = i.SmallPreview.Data
-			return
+	if i.SmallPreview != nil && i.SmallPreview.Data != nil && len(*i.SmallPreview.Data) > 0 {
+		output = i.SmallPreview.Data
+		return
+	}
+	if i.SmallPreviewID != nil {
+		a, fetchErr := GetArtifactFromDB(*i.SmallPreviewID)
+		if fetchErr != nil {
+			return nil, fetchErr
 		}
+		i.SmallPreview = &a
+		output = a.Data
+		return
+	}
+	_, err = i.computeSmallPreview()
+	if err != nil {
+		return
 	}
 	output = i.SmallPreview.Data
 	return
 }
 func (i *Image) GetLargePreviewContents() (output *[]byte, err error) {
-	if i.LargePreview == nil || i.LargePreview.Data == nil || len(*i.LargePreview.Data) == 0 {
-		if i.LargePreviewID != nil {
-			var a Artifact
-			a, err = GetArtifactFromDB(*i.LargePreviewID)
-			output = a.Data
-			return
-		} else {
-			_, err = i.computeLargePreview()
-			if err != nil {
-				return
-			}
-			output = i.LargePreview.Data
-			return
+	if i.LargePreview != nil && i.LargePreview.Data != nil && len(*i.LargePreview.Data) > 0 {
+		output = i.LargePreview.Data
+		return
+	}
+	if i.LargePreviewID != nil {
+		a, fetchErr := GetArtifactFromDB(*i.LargePreviewID)
+		if fetchErr != nil {
+			return nil, fetchErr
 		}
+		i.LargePreview = &a
+		output = a.Data
+		return
+	}
+	_, err = i.computeLargePreview()
+	if err != nil {
+		return
 	}
 	output = i.LargePreview.Data
 	return

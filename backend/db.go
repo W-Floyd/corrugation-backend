@@ -22,9 +22,32 @@ func ConnectDB(dbFilePath string) (err error) {
 		return errors.New("db is already defined, will not override")
 	}
 
-	db, err = gorm.Open(sqlite.Open(dbFilePath), &gorm.Config{
+	sqliteDB, err := gorm.Open(sqlite.Open(dbFilePath), &gorm.Config{
 		Logger: newGORMLogger(),
 	})
+	if err != nil {
+		return err
+	}
+
+	db = sqliteDB
+
+	// Optimize connection pool for concurrent reads
+	if dbPool, err := sqliteDB.DB(); err == nil {
+		dbPool.SetMaxIdleConns(10)
+		dbPool.SetMaxOpenConns(10)
+		dbPool.SetConnMaxLifetime(0) // Connection reuses indefinitely
+	}
+
+	// Enable WAL mode for better concurrent read performance
+	if err = db.Exec("PRAGMA journal_mode=WAL").Error; err != nil {
+		Log.Warnw("Could not enable WAL mode", "error", err)
+	}
+
+	// Optimize for concurrent reads
+	if err = db.Exec("PRAGMA cache_size=-64000").Error; err != nil {
+		Log.Warnw("Could not set cache size", "error", err)
+	}
+
 	return
 }
 
