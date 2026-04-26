@@ -289,6 +289,9 @@ export const useEntitiesStore = defineStore("entities", () => {
         .trim();
 
       clearProgressToast();
+      // Clear old results immediately to prevent stale data during load
+      apiSearchResults.value = [];
+      apiSearchScores.value = {};
       searching.value = true;
       try {
         if (query) {

@@ -487,7 +487,10 @@ watch(
         >
             <!-- Loading state -->
             <div
-                v-if="entitiesStore.isLoading && entitiesStore.allRecords.length === 0"
+                v-if="
+                    entitiesStore.isLoading &&
+                    entitiesStore.allRecords.length === 0
+                "
                 class="flex items-center justify-center h-screen"
             >
                 <span class="text-2xl text-gray-500">Loading...</span>
@@ -512,7 +515,16 @@ watch(
                 <!-- Empty state or entity list -->
                 <div class="w-full px-4 mt-8">
                     <div
-                        v-if="visibleEntities.length === 0"
+                        v-if="entitiesStore.searching"
+                        class="flex flex-col items-center justify-center h-64 gap-4"
+                    >
+                        <div
+                            class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"
+                        ></div>
+                        <p class="text-xl text-gray-500/50">Searching...</p>
+                    </div>
+                    <div
+                        v-else-if="visibleEntities.length === 0"
                         class="flex items-center justify-center h-64"
                     >
                         <p class="text-2xl text-gray-500/50">Empty</p>
