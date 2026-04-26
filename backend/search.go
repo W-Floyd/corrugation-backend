@@ -3,6 +3,8 @@ package backend
 import (
 	"context"
 	"errors"
+
+	"gonum.org/v1/gonum/blas/blas64"
 )
 
 const (
@@ -10,15 +12,11 @@ const (
 	minimumTextSearchConfidence  float64 = 0.9
 )
 
-func dotProduct(v1 []float64, v2 []float64) (dotProduct float64, err error) {
+func dotProduct(v1 []float64, v2 []float64) (result float64, err error) {
 	if len(v1) != len(v2) {
-		err = errors.New("vectors should have same length")
-		return
+		return 0, errors.New("vectors should have same length")
 	}
-	for i := range len(v1) {
-		dotProduct += v1[i] * v2[i]
-	}
-	return
+	return blas64.Implementation().Ddot(len(v1), v1, 1, v2, 1), nil
 }
 
 func SearchByArtifact(ctx context.Context, search string, artifactRecordMap map[uint]*uint) (recordResults []struct {
