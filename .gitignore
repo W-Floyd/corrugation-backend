@@ -11,3 +11,4 @@ corrugation
 *.sqlite
 __debug_bin*
 .env
+frontend/favicons/

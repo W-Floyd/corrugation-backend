@@ -124,7 +124,6 @@ GET  /api/v2/embeddings/search-progress  // Indexing progress
 **Production**:
 - `vue`, `vue-router`, `pinia`
 - `@mdi/js`, `vue-material-design-icons`
-- `drag-drop-touch`
 
 **Development**:
 - `vite`, `vue-tsc`, `tailwindcss`

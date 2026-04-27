@@ -60,38 +60,6 @@ const handleDragStart = (e: DragEvent): void => {
     const el = cardEl.value;
     if (!el) return;
 
-    // Mobile: require long press before allowing drag
-    if ("ontouchstart" in window) {
-        e.preventDefault();
-        let pressTimer: ReturnType<typeof setTimeout> | null = null;
-        let pressed = false;
-
-        const startPress = (_: TouchEvent | MouseEvent) => {
-            if (pressed) return;
-            pressed = true;
-            pressTimer = setTimeout(() => {
-                // Start drag after 1 second hold
-                el.dispatchEvent(new DragEvent("dragstart", { bubbles: true }));
-            }, 1000);
-        };
-
-        const cancelPress = () => {
-            if (pressed && pressTimer) {
-                pressed = false;
-                clearTimeout(pressTimer);
-                pressTimer = null;
-            }
-        };
-
-        el.addEventListener("touchstart", startPress);
-        el.addEventListener("mousedown", startPress);
-        el.addEventListener("touchend", cancelPress);
-        el.addEventListener("touchcancel", cancelPress);
-        el.addEventListener("mouseup", cancelPress);
-        return;
-    }
-
-    // Desktop: normal drag behavior
     e.dataTransfer?.setData("entityId", props.entity.id.toString());
     if (e.dataTransfer) e.dataTransfer.effectAllowed = "move";
     isDragging.value = true;
