@@ -273,6 +273,11 @@ func GetRecords(ctx context.Context, ID *uint, childrenDepth *int, parentDepth *
 
 		searchLower := strings.ToLower(search.Query)
 		for _, r := range records {
+			if r.ReferenceNumber != nil && search.Query == *r.ReferenceNumber {
+				textScore[r.ID] = 1.0
+				bestScore[r.ID] = 1.0
+				continue
+			}
 			if !search.SearchTextSubstring {
 				continue
 			}
@@ -327,10 +332,10 @@ func GetRecords(ctx context.Context, ID *uint, childrenDepth *int, parentDepth *
 		for _, rid := range recordIDs {
 			r, ok := recordMap[rid]
 			if ok && r != nil {
-				is := bestImageScore[rid]
-				ts := textScore[rid]
-				r.SearchConfidenceImage = &is
-				r.SearchConfidenceText = &ts
+				imageScore := bestImageScore[rid]
+				textScore := textScore[rid]
+				r.SearchConfidenceImage = &imageScore
+				r.SearchConfidenceText = &textScore
 				filteredSortedRecords = append(filteredSortedRecords, *r)
 			}
 		}
@@ -554,16 +559,17 @@ func fieldScore(field *string, searchLower string) float64 {
 		return 0
 	}
 	fieldLower := strings.ToLower(*field)
+	// Whole string match
 	if fieldLower == searchLower {
-		return 1.0
-	}
-	for _, word := range strings.Fields(fieldLower) {
-		if word == searchLower {
-			return 1.0
-		}
-	}
-	if strings.Contains(fieldLower, searchLower) {
 		return 0.99
+	}
+	// Whole word match
+	if slices.Contains(strings.Fields(fieldLower), searchLower) {
+		return 0.98
+	}
+	// Substring match
+	if strings.Contains(fieldLower, searchLower) {
+		return 0.97
 	}
 	return 0
 }

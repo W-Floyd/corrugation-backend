@@ -3,6 +3,10 @@ import { ref, onBeforeUnmount, watch } from "vue";
 import KbdHint from "@/components/KbdHint.vue";
 import MagnifyIcon from "vue-material-design-icons/Magnify.vue";
 import CloseIcon from "vue-material-design-icons/Close.vue";
+import EarthIcon from "vue-material-design-icons/Earth.vue";
+import TextBoxSearchIcon from "vue-material-design-icons/TextBoxSearch.vue";
+import ImageSearchIcon from "vue-material-design-icons/ImageSearch.vue";
+import TextSearchIcon from "vue-material-design-icons/TextSearch.vue";
 import { useEntitiesStore } from "@/stores/entities";
 import { useToastsStore } from "@/stores/toasts";
 
@@ -62,7 +66,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <div class="flex flex-row items-center gap-2 mb-4">
+    <div class="flex flex-row flex-wrap items-center gap-2 mb-4">
         <!-- Search icon -->
         <div class="text-gray-500 dark:text-gray-400">
             <MagnifyIcon :size="24" />
@@ -71,43 +75,47 @@ onBeforeUnmount(() => {
         <!-- Filter world checkbox -->
         <div class="flex items-center">
             <label
-                class="relative flex items-center cursor-pointer"
-                title="Only search in current entity"
+               class="relative flex items-center cursor-pointer"
+               title="Only search in current entity"
             >
                 <input
-                    type="checkbox"
-                    v-model="entitiesStore.filterworld"
-                    class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                   type="checkbox"
+                   v-model="entitiesStore.filterworld"
+                   class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                     @change="onWorldChange"
                 />
-                <span
-                    class="relative ml-1 text-sm text-gray-600 dark:text-gray-400"
-                    >Global<KbdHint
-                        shortcut="G"
-                        :show="props.showShortcuts"
-                        :center="true"
-                /></span>
+                <EarthIcon
+                   class="relative ml-1 text-sm text-gray-600 dark:text-gray-400"
+                   :size="16"
+                />
+                <KbdHint
+                   shortcut="G"
+                    :show="props.showShortcuts"
+                    :center="true"
+                />
             </label>
         </div>
 
         <!-- Text embedding toggle -->
-        <div class="flex items-center">
+        <div class="flex items-center flex-shrink-0">
             <label
-                class="relative flex items-center cursor-pointer"
-                title="Use text embeddings in search"
+               class="relative flex items-center cursor-pointer"
+               title="Use text embeddings in search"
             >
                 <input
-                    type="checkbox"
-                    v-model="entitiesStore.searchTextEmbedded"
-                    class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                   type="checkbox"
+                   v-model="entitiesStore.searchTextEmbedded"
+                   class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                 />
-                <span
-                    class="relative ml-1 text-sm text-gray-600 dark:text-gray-400"
-                    >Emb. Text<KbdHint
-                        shortcut="W"
-                        :show="props.showShortcuts"
-                        :center="true"
-                /></span>
+                <TextBoxSearchIcon
+                   class="relative ml-1 text-sm text-gray-600 dark:text-gray-400"
+                   :size="16"
+                />
+                <KbdHint
+                   shortcut="W"
+                    :show="props.showShortcuts"
+                    :center="true"
+                />
             </label>
         </div>
 
@@ -122,69 +130,71 @@ onBeforeUnmount(() => {
                     v-model="entitiesStore.searchTextSubstring"
                     class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                 />
-                <span
-                    class="relative ml-1 text-sm text-gray-600 dark:text-gray-400"
-                    >Sub. Text<KbdHint
-                        shortcut="T"
-                        :show="props.showShortcuts"
-                        :center="true"
-                /></span>
+                <TextSearchIcon
+                   class="relative ml-1 text-sm text-gray-600 dark:text-gray-400"
+                    :size="16"
+                />
+                <KbdHint
+                   shortcut="T"
+                    :show="props.showShortcuts"
+                    :center="true"
+                />
             </label>
         </div>
 
         <!-- Image embedding toggle -->
         <div class="flex items-center">
             <label
-                class="relative flex items-center cursor-pointer"
-                title="Use image embeddings in search"
+               class="relative flex items-center cursor-pointer"
+               title="Use image embeddings in search"
             >
                 <input
-                    type="checkbox"
-                    v-model="entitiesStore.searchImage"
-                    class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                   type="checkbox"
+                   v-model="entitiesStore.searchImage"
+                   class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                 />
-                <span
-                    class="relative ml-1 text-sm text-gray-600 dark:text-gray-400"
-                    >Emb. Image<KbdHint
-                        shortcut="I"
-                        :show="props.showShortcuts"
-                        :center="true"
-                /></span>
+                <ImageSearchIcon
+                   class="relative ml-1 text-sm text-gray-600 dark:text-gray-400"
+                   :size="16"
+                />
+                <KbdHint
+                   shortcut="I"
+                    :show="props.showShortcuts"
+                    :center="true"
+                />
             </label>
         </div>
 
         <!-- Search input -->
-        <div class="relative flex-1">
+        <div class="relative flex-1 min-w-xs">
             <input
-                ref="searchInputEl"
-                v-model="entitiesStore.searchtextpredebounce"
+               ref="searchInputEl"
+               v-model="entitiesStore.searchtextpredebounce"
                 @input="handleSearchInput"
                 @keydown.enter.stop="searchInputEl?.blur()"
                 @keydown.esc.stop="searchInputEl?.blur()"
-                placeholder="Search for an entity..."
-                type="search"
-                class="w-full px-4 py-2 rounded-full bg-white ring-1 ring-gray-300 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:ring-gray-600 dark:text-white"
+               placeholder="Search for an entity..."
+               type="search"
+               class="w-full px-4 py-2 rounded-full bg-white ring-1 ring-gray-300 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:ring-gray-600 dark:text-white pr-10"
             />
             <kbd
-                v-if="props.showShortcuts"
-                class="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-sans bg-gray-800 text-white rounded px-1 leading-3.5 pointer-events-none shadow"
-                >/</kbd
+               v-if="props.showShortcuts"
+               class="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-sans bg-gray-800 text-white rounded px-1 leading-3.5 pointer-events-none shadow"
+                >/
+            </kbd>
+            <button
+                           v-if="entitiesStore.searchtext"
+                            @click="resetSearch"
+               type="button"
+               class="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-300"
+               title="Clear search"
             >
+                <CloseIcon :size="14" />
+            </button>
         </div>
 
         <!-- Command palette shortcut hint -->
         <KbdHint shortcut="?" :show="props.showShortcuts" :inline="true" />
-
-        <!-- Clear button -->
-        <button
-            v-if="entitiesStore.searchtext || entitiesStore.filterworld"
-            @click="resetSearch"
-            type="button"
-            class="h-8 w-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-300"
-            title="Clear search"
-        >
-            <CloseIcon :size="16" />
-        </button>
     </div>
 </template>
 
