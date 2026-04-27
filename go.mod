@@ -3,29 +3,26 @@ module github.com/W-Floyd/corrugation
 go 1.25.0
 
 require (
+	github.com/boxes-ltd/imaging v1.7.5
 	github.com/chai2010/webp v1.4.0
 	github.com/danielgtaylor/huma/v2 v2.37.3
-	github.com/disintegration/imaging v1.6.2
 	github.com/gabriel-vasile/mimetype v1.4.13
 	github.com/go-echarts/go-echarts/v2 v2.7.2
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/gorilla/websocket v1.5.3
 	github.com/labstack/echo-jwt/v4 v4.4.0
 	github.com/labstack/echo/v4 v4.15.1
+	github.com/lestrrat-go/jwx/v2 v2.1.6
 	github.com/nao1215/markdown v0.13.0
 	github.com/peterbourgon/diskv/v3 v3.0.1
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
+	go.uber.org/zap v1.27.1
 	golang.org/x/net v0.53.0 // indirect
 	gonum.org/v1/gonum v0.17.0
 	gorm.io/driver/sqlite v1.6.0
 	gorm.io/gorm v1.31.0
-)
-
-require (
-	github.com/lestrrat-go/jwx/v2 v2.1.6
-	go.uber.org/zap v1.27.1
 )
 
 require (

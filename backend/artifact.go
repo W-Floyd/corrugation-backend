@@ -12,9 +12,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/boxes-ltd/imaging"
 	"github.com/chai2010/webp"
 	"github.com/danielgtaylor/huma/v2"
-	"github.com/disintegration/imaging"
 	"gorm.io/gorm"
 )
 

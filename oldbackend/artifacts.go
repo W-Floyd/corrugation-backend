@@ -11,8 +11,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/boxes-ltd/imaging"
 	"github.com/chai2010/webp"
-	"github.com/disintegration/imaging"
 	"github.com/gabriel-vasile/mimetype"
 	"github.com/labstack/echo/v4"
 )
