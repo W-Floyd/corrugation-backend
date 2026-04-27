@@ -18,6 +18,7 @@ import KbdHint from "@/components/KbdHint.vue";
 import LoginView from "@/views/LoginView.vue";
 import PlusIcon from "vue-material-design-icons/Plus.vue";
 import CameraIcon from "vue-material-design-icons/Camera.vue";
+import LogoutIcon from "vue-material-design-icons/Logout.vue";
 import { api } from "@/api";
 import { useAuthStore } from "./stores/auth";
 
