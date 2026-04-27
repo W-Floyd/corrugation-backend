@@ -57,6 +57,41 @@ const isDragOver = ref(false);
 const isDragging = ref(false);
 
 const handleDragStart = (e: DragEvent): void => {
+    const el = cardEl.value;
+    if (!el) return;
+
+    // Mobile: require long press before allowing drag
+    if ("ontouchstart" in window) {
+        e.preventDefault();
+        let pressTimer: ReturnType<typeof setTimeout> | null = null;
+        let pressed = false;
+
+        const startPress = (_: TouchEvent | MouseEvent) => {
+            if (pressed) return;
+            pressed = true;
+            pressTimer = setTimeout(() => {
+                // Start drag after 1 second hold
+                el.dispatchEvent(new DragEvent("dragstart", { bubbles: true }));
+            }, 1000);
+        };
+
+        const cancelPress = () => {
+            if (pressed && pressTimer) {
+                pressed = false;
+                clearTimeout(pressTimer);
+                pressTimer = null;
+            }
+        };
+
+        el.addEventListener("touchstart", startPress);
+        el.addEventListener("mousedown", startPress);
+        el.addEventListener("touchend", cancelPress);
+        el.addEventListener("touchcancel", cancelPress);
+        el.addEventListener("mouseup", cancelPress);
+        return;
+    }
+
+    // Desktop: normal drag behavior
     e.dataTransfer?.setData("entityId", props.entity.id.toString());
     if (e.dataTransfer) e.dataTransfer.effectAllowed = "move";
     isDragging.value = true;
@@ -316,7 +351,9 @@ const handleUpdate = async (): Promise<void> => {
         const e = localEntity.value;
         await api.updateRecord(props.entity.id, {
             Title: e.metadata.labeled ? null : e.name,
-            ReferenceNumber: e.metadata.labeled ? e.metadata.referenceNumber : null,
+            ReferenceNumber: e.metadata.labeled
+                ? e.metadata.referenceNumber
+                : null,
             Labeled: e.metadata.labeled,
             Description: e.description,
             Quantity: e.metadata.quantity ?? undefined,
@@ -531,7 +568,11 @@ defineExpose({ cardEl });
                     :key="loc.id"
                     :value="loc.id"
                 >
-                    {{ formatOptionSegments(loc.id).map(s => s.text).join("/") }}
+                    {{
+                        formatOptionSegments(loc.id)
+                            .map((s) => s.text)
+                            .join("/")
+                    }}
                 </option>
             </select>
             <div class="flex gap-2 flex-wrap items-center">
@@ -618,9 +659,12 @@ defineExpose({ cardEl });
                     <div class="text-xl font-bold" :title="`ID: ${entity.id}`">
                         <template v-if="entitiesStore.searchtext.trim()">
                             <template
-                                v-for="(seg, i) in formatOptionSegments(entity.id)"
+                                v-for="(seg, i) in formatOptionSegments(
+                                    entity.id,
+                                )"
                                 :key="i"
-                            ><span v-if="i > 0">/</span><span
+                                ><span v-if="i > 0">/</span
+                                ><span
                                     :class="
                                         seg.labeled
                                             ? 'font-mono text-blue-600 dark:text-blue-400'
@@ -639,7 +683,11 @@ defineExpose({ cardEl });
                         }}</template>
                     </div>
                     <div
-                        v-if="!entitiesStore.searchtext.trim() && entity.metadata.labeled && entity.metadata.referenceNumber"
+                        v-if="
+                            !entitiesStore.searchtext.trim() &&
+                            entity.metadata.labeled &&
+                            entity.metadata.referenceNumber
+                        "
                         class="text-xl font-mono text-blue-600 dark:text-blue-400"
                     >
                         #{{ entity.metadata.referenceNumber }}
