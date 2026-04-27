@@ -4,12 +4,14 @@ import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import vueDevTools from "vite-plugin-vue-devtools";
 import faviconPlugin from "vite-plugin-favicon-generator";
+import basicSsl from "@vitejs/plugin-basic-ssl";
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => ({
   plugins: [
     vue(),
     vueDevTools(),
+    basicSsl(),
     faviconPlugin({
       appName: "Corrugation",
       appShortName: "Corrugation",
@@ -40,15 +42,17 @@ export default defineConfig(({ mode }) => ({
     sourcemap: mode === "development",
   },
   server: {
+    host: "0.0.0.0",
+    https: true,
     proxy: {
-      "/api": {
+       "/api": {
         target: "http://localhost:8083",
         changeOrigin: true,
-      },
-      "/ws": {
+       },
+       "/ws": {
         target: "ws://localhost:8083",
         ws: true,
-      },
-    },
-  },
+       },
+     },
+   },
 }));
