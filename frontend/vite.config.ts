@@ -43,7 +43,7 @@ export default defineConfig(({ mode }) => ({
   },
   server: {
     host: "0.0.0.0",
-    https: true,
+    https: {},
     proxy: {
        "/api": {
         target: "http://localhost:8083",
