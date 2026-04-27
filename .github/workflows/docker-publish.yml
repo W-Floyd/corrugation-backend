@@ -3,7 +3,19 @@ name: Build and publish Docker image
 on:
   push:
     branches:
-      - main
+       - main
+    paths:
+      - '**.css'
+      - '**.go'
+      - '**.json'
+      - '**.mod'
+      - '**.sum'
+      - '**.svg'
+      - '**.ts'
+      - '**.vue'
+      - '.dockerignore'
+      - '.github/workflows/docker-publish.yml'
+      - 'Dockerfile'
 
 jobs:
   build:
