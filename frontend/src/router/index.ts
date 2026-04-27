@@ -35,7 +35,7 @@ router.beforeEach(async (to) => {
   }
 
   const token = authStore.token;
-  const authEnabled = authStore.authConfig.enabled;
+  let authEnabled = authStore.authConfig.enabled;
   DEBUG && console.log("[router] token:", !!token, "authEnabled:", authEnabled);
 
   if (to.name === "callback") {

@@ -19,20 +19,27 @@ import LoginView from "@/views/LoginView.vue";
 import PlusIcon from "vue-material-design-icons/Plus.vue";
 import CameraIcon from "vue-material-design-icons/Camera.vue";
 import { api } from "@/api";
+import { useAuthStore } from "./stores/auth";
 
 const router = useRouter();
 const route = useRoute();
 const entitiesStore = useEntitiesStore();
 const cameraStore = useCameraStore();
 const toastsStore = useToastsStore();
+const authStore = useAuthStore();
 
 const newEntityVisible = ref(false);
-const newEntityLocation = ref(0);
-const confirmMoveId = ref<number | null>(null);
+const newEntityLocation = ref<Record | null>(null);
+const confirmMoveId = ref<null | number>(null);
 const commandDialogVisible = ref(false);
-const selectedEntityId = ref<number | null>(null);
-const showShortcuts = ref(false);
-const editEntityId = ref<number | null>(null);
+const selectedEntityId = ref<null | number>(null);
+const showShortcuts = ref(true);
+const editEntityId = ref<null | number>(null);
+
+const handleLogout = (): void => {
+    authStore.clearToken();
+    window.location.href = "/";
+};
 const cardRefs = ref<Record<number, { cardEl: HTMLElement | null }>>({});
 const deleteConfirmId = ref<number | null>(null);
 const searchBarRef = ref<{ focusSearch: () => void } | null>(null);
@@ -498,14 +505,26 @@ watch(
 
             <!-- Main content -->
             <div v-else>
-                <!-- Header with breadcrumbs -->
+                <!-- Header with breadcrumbs and logout -->
                 <div class="w-full pt-4 px-4 pb-4">
-                    <BreadcrumbNav
-                        @open-new-entity="
-                            newEntityLocation = entitiesStore.currentEntity;
-                            newEntityVisible = true;
-                        "
-                    />
+                    <div class="flex">
+                        <BreadcrumbNav
+                            @open-new-entity="
+                                newEntityLocation = entitiesStore.currentEntity;
+                                newEntityVisible = true;
+                            "
+                        />
+                        <button
+                            v-if="authStore.isAuthenticated"
+                            @click="handleLogout"
+                            type="button"
+                            class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-300"
+                            title="Logout"
+                        >
+                            <span class="text-sm font-medium">Logout</span>
+                            <LogoutIcon :size="18" />
+                        </button>
+                    </div>
                     <SearchBar
                         ref="searchBarRef"
                         :show-shortcuts="showShortcuts"
