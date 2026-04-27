@@ -29,12 +29,12 @@ const toastsStore = useToastsStore();
 const authStore = useAuthStore();
 
 const newEntityVisible = ref(false);
-const newEntityLocation = ref<Record | null>(null);
-const confirmMoveId = ref<null | number>(null);
+const newEntityLocation = ref(0);
+const confirmMoveId = ref<number | null>(null);
 const commandDialogVisible = ref(false);
-const selectedEntityId = ref<null | number>(null);
-const showShortcuts = ref(true);
-const editEntityId = ref<null | number>(null);
+const selectedEntityId = ref<number | null>(null);
+const showShortcuts = ref(false);
+const editEntityId = ref<number | null>(null);
 
 const handleLogout = (): void => {
     authStore.clearToken();
