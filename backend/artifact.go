@@ -215,9 +215,16 @@ func (i *Image) ComputePreview(maximumPixelCount int, quality float32) (output *
 
 	buf := new(bytes.Buffer)
 
-	webp.Encode(buf, img, &webp.Options{Quality: quality})
+	err = webp.Encode(buf, img, &webp.Options{Quality: quality})
+	if err != nil {
+		return
+	}
 
-	o, err := io.ReadAll(buf)
+	var o []byte
+	o, err = io.ReadAll(buf)
+	if err != nil {
+		return
+	}
 	output = &o
 	return
 }
