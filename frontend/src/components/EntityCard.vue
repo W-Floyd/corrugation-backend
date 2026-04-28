@@ -55,14 +55,22 @@ const pendingDeletions = ref<Set<number>>(new Set());
 
 const isDragOver = ref(false);
 const isDragging = ref(false);
+const pointerOnEditable = ref(false);
+const isDraggable = computed(
+    () => !pointerOnEditable.value && !editMode.value && !props.confirmDelete && !props.confirmMove,
+);
+
+const handlePointerDown = (e: PointerEvent): void => {
+    pointerOnEditable.value = !!(e.target as HTMLElement).closest("input, textarea, [contenteditable]");
+};
+
+const handlePointerUp = (): void => {
+    pointerOnEditable.value = false;
+};
 
 const handleDragStart = (e: DragEvent): void => {
     const el = cardEl.value;
     if (!el) return;
-    if ((e.target as HTMLElement).closest("input, textarea, [contenteditable]")) {
-        e.preventDefault();
-        return;
-    }
     e.dataTransfer?.setData("entityId", props.entity.id.toString());
     if (e.dataTransfer) e.dataTransfer.effectAllowed = "move";
     isDragging.value = true;
@@ -463,7 +471,7 @@ defineExpose({ cardEl });
 </script>
 
 <template>
-    <figure ref="cardEl" draggable="true"
+    <figure ref="cardEl" :draggable="isDraggable"
         class="relative h-full min-h-64 min-w-48 max-w-sm bg-white shadow-md dark:bg-gray-800 rounded-xl flex flex-col cursor-default transition-opacity"
         :class="[
             isSelected
@@ -472,7 +480,8 @@ defineExpose({ cardEl });
                     ? 'ring-2 ring-green-500 shadow-green-200 dark:shadow-green-900 bg-green-50 dark:bg-green-900/20'
                     : 'ring-1 ring-gray-500/25 hover:ring-gray-500/50 hover:shadow-lg',
             isDragging ? 'opacity-40' : '',
-        ]" @click="emit('select')" @dragstart="handleDragStart" @dragend="handleDragEnd" @dragover="handleDragOver"
+        ]" @click="emit('select')" @pointerdown="handlePointerDown" @pointerup="handlePointerUp"
+        @dragstart="handleDragStart" @dragend="handleDragEnd" @dragover="handleDragOver"
         @dragleave="handleDragLeave" @drop="handleDrop">
         <!-- Delete confirmation overlay -->
         <div v-if="confirmDelete"
