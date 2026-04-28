@@ -171,11 +171,26 @@ export const useEntitiesStore = defineStore("entities", () => {
       reload();
     };
     ws.onmessage = async (e) => {
-      if (
-        typeof e.data === "string" &&
-        e.data.startsWith("embedding_progress")
-      ) {
+      if (typeof e.data !== "string") {
+        reload();
+        return;
+      }
+      if (e.data.startsWith("embedding_progress")) {
         updateEmbeddingProgressForSearch(e.data);
+      } else if (e.data === "embedding_server_offline") {
+        if (offlineToastId === null) {
+          offlineToastId = useToastsStore().add(
+            "Embedding server is offline — indexing will resume automatically",
+            "warn",
+            true,
+          );
+        }
+      } else if (e.data === "embedding_server_online") {
+        if (offlineToastId !== null) {
+          useToastsStore().remove(offlineToastId);
+          offlineToastId = null;
+          useToastsStore().add("Embedding server is online", "info");
+        }
       } else {
         reload();
       }

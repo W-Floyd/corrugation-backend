@@ -178,9 +178,9 @@ func CreateRecord(ctx context.Context, input *struct {
 	if err != nil {
 		return
 	}
-	if _, genErr := record.GenerateEmbeddings(ctx); genErr != nil {
-		Log.Errorw("embedding generation failed", "error", genErr)
-	}
+	uc, _ := loadUser(username)
+	textModel, _, _, _ := effectiveInfinityConfig(uc)
+	EnqueueEmbeddingJob(JobTypeRecord, record.ID, userID, username, textModel, "store")
 	err = nil
 	output = &RecordOutput{
 		Body: toRecordResponse(record, true),
@@ -250,9 +250,14 @@ func UpdateRecord(ctx context.Context, input *struct {
 		}
 	}
 
-	if _, genErr := r.GenerateEmbeddings(ctx); genErr != nil {
-		Log.Errorw("embedding generation failed", "error", genErr)
+	updateUsername := UsernameFromContext(ctx)
+	updateUC, _ := loadUser(updateUsername)
+	textModel, _, _, _ := effectiveInfinityConfig(updateUC)
+	var updateOwnerID *uint
+	if updateUC.ID > 0 {
+		updateOwnerID = &updateUC.ID
 	}
+	EnqueueEmbeddingJob(JobTypeRecord, r.ID, updateOwnerID, updateUsername, textModel, "store")
 
 	output = &RecordOutput{Body: toRecordResponse(r, true)}
 	return

@@ -9,7 +9,6 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/conditional"
-	"gorm.io/gorm"
 )
 
 var CreateArtifactOperation = huma.Operation{
@@ -69,23 +68,14 @@ func GetArtifact(ctx context.Context, input *struct {
 		return
 	}
 
-	embedCtx := context.WithoutCancel(ctx)
-	go func() {
-		i, iErr := artifact.GetInterface()
-		if iErr != nil {
-			return
-		}
-		img, ok := i.(*Image)
-		if !ok {
-			return
-		}
-		existing, _ := gorm.G[Embedding](db).Where("artifact_id = ? AND embed_model = ?", artifact.ID, infinityImageModel).Find(dbCtx)
-		if len(existing) == 0 {
-			if genErr := img.GenerateEmbeddings(embedCtx); genErr != nil {
-				Log.Errorw("embedding generation failed", "error", genErr)
-			}
-		}
-	}()
+	username := UsernameFromContext(ctx)
+	uc, _ := loadUser(username)
+	_, imageModel, _, _ := effectiveInfinityConfig(uc)
+	var ownerID *uint
+	if uc.ID > 0 {
+		ownerID = &uc.ID
+	}
+	EnqueueEmbeddingJob(JobTypeArtifact, artifact.ID, ownerID, username, imageModel, "search")
 
 	etag := fmt.Sprintf(`"%d"`, artifact.UpdatedAt.UnixMilli())
 

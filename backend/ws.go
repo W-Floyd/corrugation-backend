@@ -31,9 +31,14 @@ func (h *hub) unregister(conn *websocket.Conn) {
 	h.mu.Unlock()
 }
 
-// Broadcast sends msg to all connected clients.
+// Broadcast sends an "update" reload signal to all connected clients.
 func Broadcast() {
 	wsHub.broadcast("update", "")
+}
+
+// BroadcastAll sends msg to every connected client regardless of username.
+func BroadcastAll(msg string) {
+	wsHub.broadcast(msg, "")
 }
 
 // BroadcastToUser sends msg only to connections owned by username.

@@ -2,11 +2,44 @@ package backend
 
 import (
 	"context"
+	"net/http"
 	"strconv"
 	"time"
 
 	"gorm.io/gorm"
 )
+
+// closed once the Infinity health check succeeds; workers block until then
+var infinityReady = make(chan struct{})
+
+func isInfinityReady() bool {
+	select {
+	case <-infinityReady:
+		return true
+	default:
+		return false
+	}
+}
+
+func waitForInfinity() {
+	Log.Infow("infinity: waiting for health check", "url", infinityAddress+"/health")
+	for {
+		resp, err := http.Get(infinityAddress + "/health")
+		if err != nil {
+			Log.Infow("infinity: not ready, retrying in 2s", "error", err)
+		} else {
+			resp.Body.Close()
+			if resp.StatusCode == http.StatusOK {
+				Log.Info("infinity: health check passed, embeddings enabled")
+				close(infinityReady)
+				BroadcastAll("embedding_server_online")
+				return
+			}
+			Log.Infow("infinity: not ready, retrying in 2s", "status", resp.StatusCode)
+		}
+		time.Sleep(2 * time.Second)
+	}
+}
 
 const (
 	JobStatusPending    = "pending"
@@ -62,6 +95,10 @@ func EnqueueEmbeddingJob(jobType string, targetID uint, ownerID *uint, username,
 		Log.Errorw("failed to enqueue embedding job", "error", err)
 		return
 	}
+	if !isInfinityReady() {
+		BroadcastToUser(username, "embedding_server_offline")
+	}
+
 	select {
 	case embeddingJobQueue <- job.ID:
 	default:
@@ -71,6 +108,8 @@ func EnqueueEmbeddingJob(jobType string, targetID uint, ownerID *uint, username,
 
 // StartEmbeddingWorkers recovers pending DB jobs and starts worker goroutines.
 func StartEmbeddingWorkers() {
+	go waitForInfinity()
+
 	go func() {
 		// Reset interrupted processing jobs back to pending
 		db.Model(&EmbeddingJob{}).Where("status = ?", JobStatusProcessing).Update("status", JobStatusPending)
@@ -111,6 +150,7 @@ func broadcastEmbeddingProgress(job EmbeddingJob) {
 }
 
 func embeddingWorkerLoop() {
+	<-infinityReady
 	for jobID := range embeddingJobQueue {
 		processEmbeddingJob(jobID)
 	}
