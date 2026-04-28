@@ -16,6 +16,7 @@ import PlusIcon from "vue-material-design-icons/Plus.vue";
 import CheckIcon from "vue-material-design-icons/Check.vue";
 import CloseIcon from "vue-material-design-icons/Close.vue";
 import ArrowUpIcon from "vue-material-design-icons/ArrowUp.vue";
+import AlertIcon from "vue-material-design-icons/Alert.vue";
 
 const props = defineProps<{
     entity: Entity;
@@ -378,6 +379,10 @@ onUnmounted(() => {
 });
 
 const handleUpdate = async (): Promise<void> => {
+    const e = localEntity.value;
+    if (!e.metadata.labeled && e.name && /^\d+$/.test(e.name) && parseInt(e.name, 10) !== props.entity.id) {
+        toastsStore.add("Name is a number that doesn't match this record's ID", "warn");
+    }
     try {
         await Promise.all(
             [...pendingDeletions.value].map((id) => api.deleteArtifact(id)),
@@ -385,7 +390,6 @@ const handleUpdate = async (): Promise<void> => {
         const artifacts = (localEntity.value.artifacts ?? []).filter(
             (id) => !pendingDeletions.value.has(id),
         );
-        const e = localEntity.value;
         await api.updateRecord(props.entity.id, {
             Title: e.metadata.labeled ? null : e.name,
             ReferenceNumber: e.metadata.labeled
@@ -653,11 +657,17 @@ defineExpose({ cardEl });
                                 ">{{ seg.text }}</span></template>
                         </template>
                         <template v-else>
-                            <template v-if="entity.name">{{
-                                entity.metadata.quantity
-                                    ? `${entity.name} (x${entity.metadata.quantity})`
-                                    : entity.name
-                            }}</template>
+                            <span v-if="entity.name && entity.name !== entity.metadata.referenceNumber"
+                                class="inline-flex items-baseline gap-1">
+                                <AlertIcon v-if="/^\d+$/.test(entity.name) && entity.metadata.referenceNumber"
+                                    class="text-yellow-500 self-center" :size="20"
+                                    title="Name is a number but does not match the label" />
+                                <span>{{
+                                    entity.metadata.quantity
+                                        ? `${entity.name} (x${entity.metadata.quantity})`
+                                        : entity.name
+                                }}</span>
+                            </span>
                             <span v-else-if="!entity.metadata.referenceNumber"
                                 class="font-normal text-gray-400 dark:text-gray-500">({{ entity.id
                                 }})</span>
