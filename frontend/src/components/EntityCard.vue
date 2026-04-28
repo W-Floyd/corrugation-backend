@@ -698,7 +698,7 @@ defineExpose({ cardEl });
                         #{{ entity.metadata.referenceNumber }}
                     </div>
                     <span v-if="
-                        /^\d+$/.test(entity.name) &&
+                        /^\d+$/.test(entity.name as string) &&
                         (
                             (
                                 entity.metadata.referenceNumber &&
@@ -706,7 +706,7 @@ defineExpose({ cardEl });
                             ) ||
                             (
                                 !entity.metadata.referenceNumber &&
-                                parseInt(entity.name, 10) !== entity.id
+                                parseInt(entity.name as string, 10) !== entity.id
                             )
                         )" class="relative flex">
                         <AlertIcon class="text-yellow-500 self-center" :size="18" title="Name mismatch" />
