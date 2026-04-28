@@ -33,7 +33,6 @@ const handleQuickCapture = async (entityId: number): Promise<void> => {
                             quantity: null,
                             owner: null,
                             tags: null,
-                            labeled: false,
                             referenceNumber: null,
                             lastModified: null,
                         },

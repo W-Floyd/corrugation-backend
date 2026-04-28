@@ -3,7 +3,6 @@ export interface Metadata {
   owner: string | null;
   tags: string[] | null;
   lastModified: string | null;
-  labeled: boolean;
   referenceNumber: string | null;
 }
 
@@ -38,7 +37,6 @@ export interface BackendRecord {
   CreatedAt?: string;
   UpdatedAt?: string;
   ReferenceNumber?: string;
-  Labeled: boolean;
   Title?: string;
   Description?: string;
   Quantity?: number;
@@ -52,7 +50,6 @@ export interface BackendRecord {
 export interface RecordBody {
   Title?: string | null;
   ReferenceNumber?: string | null;
-  Labeled?: boolean;
   Description?: string | null;
   Quantity?: number | null;
   ParentID?: number | null;
@@ -70,7 +67,6 @@ export function recordToEntity(r: BackendRecord): Entity {
       quantity: r.Quantity ?? null,
       owner: null,
       tags: r.Tags?.map((t) => t.Title) ?? null,
-      labeled: r.Labeled ?? false,
       referenceNumber: r.ReferenceNumber ?? null,
       lastModified: r.UpdatedAt ?? null,
     },
@@ -80,8 +76,7 @@ export function recordToEntity(r: BackendRecord): Entity {
 export function entityToRecordBody(e: Entity | EntityCreate): RecordBody {
   return {
     Title: e.name ?? null,
-    ReferenceNumber: e.metadata.labeled ? e.metadata.referenceNumber : null,
-    Labeled: e.metadata.labeled,
+    ReferenceNumber: e.metadata.referenceNumber,
     Description: e.description,
     Quantity: e.metadata.quantity ?? undefined,
     ParentID: e.location || undefined,

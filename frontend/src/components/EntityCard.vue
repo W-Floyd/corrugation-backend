@@ -165,6 +165,34 @@ const handleDrop = async (e: DragEvent): Promise<void> => {
 
 const moveTargetLocation = ref<number>(0);
 const moveSearchInputRef = ref<HTMLInputElement | null>(null);
+const nextRefPlaceholder = ref<string | null>(null);
+
+const nameIsWrongNumber = computed(() => {
+    const n = localEntity.value.name;
+    return !!n && /^\d+$/.test(n) && parseInt(n, 10) !== props.entity.id;
+});
+
+const nameRefMismatch = computed(() => {
+    const n = localEntity.value.name;
+    const r = localEntity.value.metadata.referenceNumber;
+    return !!n && !!r && /^\d+$/.test(n) && /^\d+$/.test(r) && n !== r;
+});
+
+const refTaken = computed(() => {
+    const v = localEntity.value.metadata.referenceNumber?.trim();
+    if (!v) return false;
+    return Object.values(entitiesStore.entityMap).some(
+        (e) => e.id !== props.entity.id && e.metadata.referenceNumber === v,
+    );
+});
+
+watch(editMode, async (on) => {
+    if (on && !localEntity.value.metadata.referenceNumber) {
+        nextRefPlaceholder.value = String(await api.nextReferenceNumber());
+    } else {
+        nextRefPlaceholder.value = null;
+    }
+});
 
 const isDescendantOf = (entityId: number, ancestorId: number): boolean => {
     let current = entityId;
@@ -200,7 +228,6 @@ const filteredMoveEntities = computed(() => {
             owner: null,
             tags: null,
             lastModified: null,
-            labeled: false,
             referenceNumber: null,
         },
     };
@@ -287,28 +314,28 @@ watch(filteredMoveEntities, (results) => {
 
 const formatOptionSegments = (
     entityId: number,
-): { text: string; labeled: boolean }[] => {
-    const tree: { text: string; labeled: boolean }[] = [];
+): { text: string; isRef: boolean }[] => {
+    const tree: { text: string; isRef: boolean }[] = [];
     let target = entityId;
     while (target !== 0) {
         const elem = entitiesStore.entityMap[target];
         if (!elem) {
-            tree.push({ text: target.toString(), labeled: false });
+            tree.push({ text: target.toString(), isRef: false });
             break;
         }
         if (elem.name) {
-            tree.push({ text: elem.name, labeled: false });
+            tree.push({ text: elem.name, isRef: false });
         } else if (elem.metadata.referenceNumber) {
             tree.push({
                 text: `#${elem.metadata.referenceNumber}`,
-                labeled: true,
+                isRef: true,
             });
         } else {
-            tree.push({ text: target.toString(), labeled: false });
+            tree.push({ text: target.toString(), isRef: false });
         }
         target = elem.location;
     }
-    tree.push({ text: "World", labeled: false });
+    tree.push({ text: "World", isRef: false });
     tree.reverse();
     return tree;
 };
@@ -380,9 +407,6 @@ onUnmounted(() => {
 
 const handleUpdate = async (): Promise<void> => {
     const e = localEntity.value;
-    if (!e.metadata.labeled && e.name && /^\d+$/.test(e.name) && parseInt(e.name, 10) !== props.entity.id) {
-        toastsStore.add("Name is a number that doesn't match this record's ID", "warn");
-    }
     try {
         await Promise.all(
             [...pendingDeletions.value].map((id) => api.deleteArtifact(id)),
@@ -391,13 +415,10 @@ const handleUpdate = async (): Promise<void> => {
             (id) => !pendingDeletions.value.has(id),
         );
         await api.updateRecord(props.entity.id, {
-            Title: e.metadata.labeled ? null : e.name,
-            ReferenceNumber: e.metadata.labeled
-                ? e.metadata.referenceNumber
-                : null,
-            Labeled: e.metadata.labeled,
+            Title: e.name || null,
+            ReferenceNumber: e.metadata.referenceNumber || null,
             Description: e.description,
-            Quantity: e.metadata.quantity ?? undefined,
+            Quantity: typeof e.metadata.quantity === "number" ? e.metadata.quantity : null,
             ParentID: e.location || undefined,
             Artifacts: artifacts,
         });
@@ -544,8 +565,8 @@ defineExpose({ cardEl });
                     : 'ring-1 ring-gray-500/25 hover:ring-gray-500/50 hover:shadow-lg',
             isDragging ? 'opacity-40' : '',
         ]" @click="emit('select')" @pointerdown="handlePointerDown" @pointerup="handlePointerUp"
-        @dragstart="handleDragStart" @dragend="handleDragEnd" @dragover="handleDragOver"
-        @dragleave="handleDragLeave" @drop="handleDrop">
+        @dragstart="handleDragStart" @dragend="handleDragEnd" @dragover="handleDragOver" @dragleave="handleDragLeave"
+        @drop="handleDrop">
         <!-- Delete confirmation overlay -->
         <div v-if="confirmDelete"
             class="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 rounded-xl bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm"
@@ -651,7 +672,7 @@ defineExpose({ cardEl });
                         <template v-if="entitiesStore.searchtext.trim()">
                             <template v-for="(seg, i) in formatOptionSegments(
                                 entity.id,
-                            )" :key="i"><span v-if="i > 0">/</span><span :class="seg.labeled
+                            )" :key="i"><span v-if="i > 0">/</span><span :class="seg.isRef
                                 ? 'font-mono text-blue-600 dark:text-blue-400'
                                 : ''
                                 ">{{ seg.text }}</span></template>
@@ -659,14 +680,14 @@ defineExpose({ cardEl });
                         <template v-else>
                             <span v-if="entity.name && entity.name !== entity.metadata.referenceNumber"
                                 class="inline-flex items-baseline gap-1">
-                                <AlertIcon v-if="/^\d+$/.test(entity.name) && entity.metadata.referenceNumber"
-                                    class="text-yellow-500 self-center" :size="20"
-                                    title="Name is a number but does not match the label" />
                                 <span>{{
                                     entity.metadata.quantity
                                         ? `${entity.name} (x${entity.metadata.quantity})`
                                         : entity.name
                                 }}</span>
+                                <AlertIcon v-if="/^\d+$/.test(entity.name) && (entity.metadata.referenceNumber || parseInt(entity.name, 10) !== entity.id)"
+                                    class="text-yellow-500 self-center" :size="20"
+                                    title="Name is a number but does not match the label" />
                             </span>
                             <span v-else-if="!entity.metadata.referenceNumber"
                                 class="font-normal text-gray-400 dark:text-gray-500">({{ entity.id
@@ -675,7 +696,6 @@ defineExpose({ cardEl });
                     </div>
                     <div v-if="
                         !entitiesStore.searchtext.trim() &&
-                        entity.metadata.labeled &&
                         entity.metadata.referenceNumber
                     " class="text-xl font-mono text-blue-600 dark:text-blue-400">
                         #{{ entity.metadata.referenceNumber }}
@@ -688,15 +708,15 @@ defineExpose({ cardEl });
                 <div class="flex-auto flex list-reset space-x-2 items-baseline mb-2">
                     <input ref="nameInputEl" type="text" v-model="localEntity.name"
                         class="bg-white rounded-sm dark:bg-gray-900 ring-1" placeholder="Name" />
+                    <AlertIcon v-if="nameIsWrongNumber || nameRefMismatch" class="text-yellow-500 self-center shrink-0" :size="20"
+                        :title="nameRefMismatch ? 'Name and reference number don\'t match' : 'Name is a number that doesn\'t match this record\'s ID'" />
+                    <input type="text" v-model="localEntity.metadata.referenceNumber"
+                        class="bg-white rounded-sm dark:bg-gray-900 ring-1 w-16 font-mono"
+                        :placeholder="nextRefPlaceholder ?? 'Ref#'" />
+                    <AlertIcon v-if="refTaken || nameRefMismatch" class="text-yellow-500 self-center shrink-0" :size="20"
+                        :title="nameRefMismatch ? 'Name and reference number don\'t match' : 'Reference number already in use'" />
                     <input type="number" min="0" v-model.number="localEntity.metadata.quantity"
                         class="bg-white rounded-sm dark:bg-gray-900 ring-1 w-10" placeholder="Qty" />
-                    <label class="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 cursor-pointer">
-                        <input type="checkbox" v-model="localEntity.metadata.labeled" class="w-4 h-4" />
-                        Labeled
-                    </label>
-                    <input v-if="localEntity.metadata.labeled" type="text"
-                        v-model="localEntity.metadata.referenceNumber"
-                        class="bg-white rounded-sm dark:bg-gray-900 ring-1 w-16" placeholder="Ref#" />
                 </div>
             </div>
 
@@ -715,30 +735,27 @@ defineExpose({ cardEl });
             <div v-if="!editMode && entitiesStore.hasChildren(entity.id)">
                 <p class="mb-2 font-semibold">Contains:</p>
                 <div class="flex flex-wrap gap-2 overflow-hidden hover:overflow-y-auto max-h-32 shadow-md p-2 ring-1 ring-gray-500/10 hover:ring-gray-500/25 hover:shadow-lg rounded-md"
-                    style="scrollbar-gutter: stable"
-                    @dragenter="isDragOverChildren = true"
+                    style="scrollbar-gutter: stable" @dragenter="isDragOverChildren = true"
                     @dragleave="(e) => { if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node)) isDragOverChildren = false; }">
                     <div v-for="childId in entitiesStore.listChildLocations(
                         entity.id,
-                    )" :key="childId"
-                        draggable="true"
-                        :class="[
-                            'p-1 rounded cursor-pointer bg-gray-50 dark:bg-gray-800 ring-1 active:shadow-md transition-colors',
-                            childDragReadyId === childId
-                                ? 'ring-2 ring-green-500 shadow shadow-green-200 dark:shadow-green-900 bg-green-50 dark:bg-green-900/20'
-                                : 'dark:hover:bg-gray-700 hover:bg-gray-100 hover:shadow-sm ring-gray-200 dark:ring-slate-500 hover:ring-blue-500/75',
-                            draggingChildId === childId ? 'opacity-40' : '',
-                        ]"
-                        @click.stop="entitiesStore.setCurrentEntity(childId)"
-                        @dragstart="handleChildDragStart($event, childId)"
-                        @dragend="handleChildDragEnd"
-                        @dragover="handleChildDragOver($event, childId)"
-                        @dragleave="handleChildDragLeave"
+                    )" :key="childId" draggable="true" :class="[
+                        'p-1 rounded cursor-pointer bg-gray-50 dark:bg-gray-800 ring-1 active:shadow-md transition-colors',
+                        childDragReadyId === childId
+                            ? 'ring-2 ring-green-500 shadow shadow-green-200 dark:shadow-green-900 bg-green-50 dark:bg-green-900/20'
+                            : 'dark:hover:bg-gray-700 hover:bg-gray-100 hover:shadow-sm ring-gray-200 dark:ring-slate-500 hover:ring-blue-500/75',
+                        draggingChildId === childId ? 'opacity-40' : '',
+                    ]" @click.stop="entitiesStore.setCurrentEntity(childId)"
+                        @dragstart="handleChildDragStart($event, childId)" @dragend="handleChildDragEnd"
+                        @dragover="handleChildDragOver($event, childId)" @dragleave="handleChildDragLeave"
                         @drop="handleChildDrop($event, childId)">
-                        <template v-if="entitiesStore.entityMap[childId]?.metadata.labeled && entitiesStore.entityMap[childId]?.metadata.referenceNumber">
-                            <span class="font-mono text-blue-600 dark:text-blue-400">#{{ entitiesStore.entityMap[childId]!.metadata.referenceNumber }}</span>
+                        <template
+                            v-if="entitiesStore.entityMap[childId]?.metadata.referenceNumber">
+                            <span class="font-mono text-blue-600 dark:text-blue-400">#{{
+                                entitiesStore.entityMap[childId]!.metadata.referenceNumber }}</span>
                         </template>
-                        <template v-else-if="entitiesStore.entityMap[childId]?.name">{{ entitiesStore.entityMap[childId]!.name }}</template>
+                        <template v-else-if="entitiesStore.entityMap[childId]?.name">{{
+                            entitiesStore.entityMap[childId]!.name }}</template>
                         <span v-else class="font-normal text-gray-400 dark:text-gray-500">({{ childId }})</span>
                     </div>
                 </div>

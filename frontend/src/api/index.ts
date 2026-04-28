@@ -36,7 +36,15 @@ export async function apiFetch(
 
   if (!response.ok) {
     const body = await response.text();
-    const message = body || `HTTP ${response.status}`;
+    let message = body || `HTTP ${response.status}`;
+    try {
+      const parsed = JSON.parse(body);
+      if (parsed.detail) {
+        message = parsed.title ? `${parsed.title}: ${parsed.detail}` : parsed.detail;
+      } else if (parsed.title) {
+        message = parsed.title;
+      }
+    } catch { /* not JSON, use raw body */ }
     useToastsStore().add(message);
     throw new Error(message);
   }
@@ -171,7 +179,7 @@ export const api = {
 
   // Next available reference number not held by any labeled record
   async nextReferenceNumber(): Promise<number> {
-    const response = await apiFetch("/api/v2/records/nextid?labeled=true");
+    const response = await apiFetch("/api/v2/records/nextid");
     return response.json();
   },
 

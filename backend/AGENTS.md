@@ -11,7 +11,7 @@
 ## Core Data Models
 
 ### Record
-- ID, Quantity, ReferenceNumber (unique), Labeled flag
+- ID, Quantity, ReferenceNumber (unique) flag
 - Title, Description, ParentID (hierarchical)
 - Tags (many-to-many), Artifacts (references), OwnerID
 - SearchConfidenceImage, SearchConfidenceText (computed scores)
@@ -173,7 +173,7 @@ Old entity model (still supported):
 ## Database Schema
 
 ```sql
-records: id, quantity, reference_number (unique), labeled, title, description, parent_id, owner_id, timestamps
+records: id, quantity, reference_number (unique), title, description, parent_id, owner_id, timestamps
 tags: title (pk), color, timestamps
 artifacts: id, data, original_filename, content_type, small_preview_id, large_preview_id, record_id, timestamps
 embeddings: record_id, artifact_id, embed_model, data, hash, timestamps

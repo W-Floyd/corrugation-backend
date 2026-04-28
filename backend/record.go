@@ -16,7 +16,6 @@ const maxSearchDepth = 100
 type RecordInput struct {
 	Quantity        *uint       `required:"false"`
 	ReferenceNumber *string     `required:"false"`
-	Labeled         *bool       `required:"false"`
 	Title           *string     `required:"false"`
 	Description     *string     `required:"false"`
 	Tags            []*TagInput `required:"false"`
@@ -28,8 +27,7 @@ type Record struct {
 	gorm.Model
 
 	Quantity        *uint   `json:",omitempty"`
-	ReferenceNumber *string `json:",omitempty" gorm:"uniqueIndex"`
-	Labeled         bool    `json:"Labeled"`
+	ReferenceNumber *string `json:",omitempty" gorm:"uniqueIndex:idx_owner_ref"`
 	Title           *string `json:",omitempty" gorm:"index"`
 	Description     *string `json:",omitempty"`
 	Tags            []*Tag  `json:",omitempty" gorm:"many2many:record_tags;"`
@@ -39,7 +37,7 @@ type Record struct {
 	ParentID *uint   `json:",omitempty" gorm:"index"`
 	Parent   *Record `gorm:"foreignKey:ParentID" json:"-"`
 
-	OwnerID *uint `json:",omitempty"`
+	OwnerID *uint `json:",omitempty" gorm:"uniqueIndex:idx_owner_ref"`
 	Owner   *User `gorm:"foreignKey:OwnerID" json:"-"`
 
 	SearchConfidenceImage *float64 `gorm:"-" json:",omitempty"`
@@ -49,9 +47,6 @@ type Record struct {
 func (i *RecordInput) Convert() (o Record, err error) {
 	o.Quantity = i.Quantity
 	o.ReferenceNumber = i.ReferenceNumber
-	if i.Labeled != nil {
-		o.Labeled = *i.Labeled
-	}
 	o.Title = i.Title
 	o.Description = i.Description
 
@@ -195,7 +190,6 @@ type RecordResponse struct {
 	UpdatedAt             *time.Time  `json:"UpdatedAt,omitempty"`
 	Quantity              *uint       `json:",omitempty"`
 	ReferenceNumber       *string     `json:",omitempty"`
-	Labeled               bool        `json:"Labeled"`
 	Title                 *string     `json:",omitempty"`
 	Description           *string     `json:",omitempty"`
 	Tags                  []*Tag      `json:",omitempty"`
@@ -210,7 +204,6 @@ func toRecordResponse(r Record, timestamps bool) RecordResponse {
 		ID:                    r.ID,
 		Quantity:              r.Quantity,
 		ReferenceNumber:       r.ReferenceNumber,
-		Labeled:               r.Labeled,
 		Title:                 r.Title,
 		Description:           r.Description,
 		Tags:                  r.Tags,

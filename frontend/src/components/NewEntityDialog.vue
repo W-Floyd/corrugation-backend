@@ -1,5 +1,6 @@
 <script setup lang="ts" name="NewEntityDialog">
-import { ref, onMounted, watch, nextTick } from "vue";
+import { ref, computed, watch, nextTick } from "vue";
+import AlertIcon from "vue-material-design-icons/Alert.vue";
 import KbdHint from "@/components/KbdHint.vue";
 import { useEntitiesStore } from "@/stores/entities";
 import { useCameraStore } from "@/stores/camera";
@@ -33,10 +34,17 @@ const nameInput = ref<HTMLInputElement | null>(null);
 const title = ref<string>("");
 const description = ref<string>("");
 const quantity = ref<number | null>(null);
-const labeled = ref(false);
 const referenceNumber = ref<string>("");
 const files = ref<File[]>([]);
 const nextRefNumber = ref<number>(0);
+
+const refTaken = computed(() => {
+    const v = referenceNumber.value.trim();
+    if (!v) return false;
+    return Object.values(entitiesStore.entityMap).some(
+        (e) => e.metadata.referenceNumber === v,
+    );
+});
 
 watch(
     () => props.visible,
@@ -44,26 +52,17 @@ watch(
         dialogVisible.value = visible;
         if (visible) {
             resetDialog();
+            nextRefNumber.value = await api.nextReferenceNumber();
             nextTick(() => nameInput.value?.focus());
         }
     },
     { immediate: true },
 );
 
-watch(labeled, async (val) => {
-    if (val) {
-        nextRefNumber.value = await api.nextReferenceNumber();
-        referenceNumber.value = String(nextRefNumber.value);
-    } else {
-        referenceNumber.value = "";
-    }
-});
-
 const resetDialog = (): void => {
     title.value = "";
     description.value = "";
     quantity.value = null;
-    labeled.value = false;
     referenceNumber.value = "";
     files.value = [];
     nextRefNumber.value = 0;
@@ -79,10 +78,9 @@ const handleSubmit = async (): Promise<void> => {
 
         const record = await api.createRecord({
             Title: title.value || null,
-            ReferenceNumber: labeled.value ? referenceNumber.value || null : null,
-            Labeled: labeled.value,
+            ReferenceNumber: referenceNumber.value || null,
             Description: description.value || null,
-            Quantity: quantity.value ?? undefined,
+            Quantity: typeof quantity.value === "number" ? quantity.value : null,
             ParentID: props.location || undefined,
             Artifacts: artifactIds.length ? artifactIds : undefined,
         });
@@ -110,10 +108,6 @@ const handleCameraOpen = async (): Promise<void> => {
         });
     });
 };
-
-onMounted(() => {
-    // nothing needed on mount; ids fetched when dialog opens
-});
 </script>
 
 <template>
@@ -137,15 +131,14 @@ onMounted(() => {
                             class="bg-white rounded-sm dark:bg-gray-900 ring-1 px-2 py-1"
                             @keydown.enter.prevent="handleSubmit" />
 
-                        <label for="labeled">Labeled</label>
-                        <input id="labeled" type="checkbox" v-model="labeled" class="w-4 h-4 justify-self-start" />
-
-                        <template v-if="labeled">
-                            <label for="refnum">Reference #</label>
+                        <label for="refnum">Reference #</label>
+                        <div class="flex items-center gap-2">
                             <input id="refnum" type="text" v-model="referenceNumber"
                                 class="bg-white rounded-sm dark:bg-gray-900 ring-1 px-2 py-1"
                                 :placeholder="String(nextRefNumber)" @keydown.enter.prevent="handleSubmit" />
-                        </template>
+                            <AlertIcon v-if="refTaken" class="text-yellow-500 shrink-0" :size="20"
+                                title="Reference number already in use" />
+                        </div>
 
                         <label for="description">Description</label>
                         <textarea id="description" v-model="description"

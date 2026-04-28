@@ -129,11 +129,9 @@ var CreateRecordOperation = huma.Operation{
 	Path:   "/api/v2/record",
 }
 
-// stealReferenceNumber clears ReferenceNumber from any unlabeled record holding it,
-// or returns an error if a labeled record owns it.
-func stealReferenceNumber(refNum string, excludeID *uint) error {
+func checkReferenceNumberAvailable(refNum string, ownerID *uint, excludeID *uint) error {
 	var existing Record
-	q := db.Where("reference_number = ?", refNum)
+	q := db.Where("reference_number = ?", refNum).Where("owner_id = ?", ownerID)
 	if excludeID != nil {
 		q = q.Where("id != ?", *excludeID)
 	}
@@ -142,10 +140,7 @@ func stealReferenceNumber(refNum string, excludeID *uint) error {
 	} else if err != nil {
 		return err
 	}
-	if existing.Labeled {
-		return huma.Error409Conflict("reference number is held by a labeled record")
-	}
-	return db.Model(&existing).Update("reference_number", nil).Error
+	return huma.Error409Conflict("reference number is already in use")
 }
 
 func CreateRecord(ctx context.Context, input *struct {
@@ -163,7 +158,7 @@ func CreateRecord(ctx context.Context, input *struct {
 	}
 
 	if input.Body.ReferenceNumber != nil {
-		if err = stealReferenceNumber(*input.Body.ReferenceNumber, nil); err != nil {
+		if err = checkReferenceNumberAvailable(*input.Body.ReferenceNumber, userID, nil); err != nil {
 			return
 		}
 	}
@@ -211,7 +206,7 @@ func UpdateRecord(ctx context.Context, input *struct {
 	r := records[0]
 
 	if input.Body.ReferenceNumber != nil {
-		if err = stealReferenceNumber(*input.Body.ReferenceNumber, &r.ID); err != nil {
+		if err = checkReferenceNumberAvailable(*input.Body.ReferenceNumber, r.OwnerID, &r.ID); err != nil {
 			return
 		}
 	}
@@ -220,13 +215,6 @@ func UpdateRecord(ctx context.Context, input *struct {
 	if err != nil {
 		return
 	}
-
-	r.Quantity = updated.Quantity
-	r.ReferenceNumber = updated.ReferenceNumber
-	r.Labeled = updated.Labeled
-	r.Title = updated.Title
-	r.Description = updated.Description
-	r.ParentID = updated.ParentID
 
 	if updated.Artifacts != nil {
 		r.Artifacts = updated.Artifacts
@@ -239,15 +227,15 @@ func UpdateRecord(ctx context.Context, input *struct {
 		r.Tags = updated.Tags
 	}
 
-	_, err = gorm.G[Record](db).Where("id = ?", r.ID).Updates(dbCtx, r)
+	err = db.Model(&r).Updates(map[string]any{
+		"quantity":         updated.Quantity,
+		"reference_number": updated.ReferenceNumber,
+		"title":            updated.Title,
+		"description":      updated.Description,
+		"parent_id":        updated.ParentID,
+	}).Error
 	if err != nil {
 		return
-	}
-	if updated.ParentID == nil {
-		err = db.Model(&r).Update("parent_id", nil).Error
-		if err != nil {
-			return
-		}
 	}
 
 	updateUsername := UsernameFromContext(ctx)
@@ -268,13 +256,15 @@ var GetNextReferenceNumberOperation = huma.Operation{
 	Path:   "/api/v2/records/nextid",
 }
 
-func GetNextReferenceNumber(_ context.Context, input *struct {
-	Labeled bool `query:"labeled" doc:"Only count labeled records as blocking a reference number" required:"false"`
-}) (output *UIntOutput, err error) {
+func GetNextReferenceNumber(ctx context.Context, _ *struct{}) (output *UIntOutput, err error) {
 	var refs []string
 	q := db.Model(&Record{}).Where("reference_number IS NOT NULL")
-	if input.Labeled {
-		q = q.Where("labeled = true")
+	if username := UsernameFromContext(ctx); username != "" {
+		var user User
+		if user, err = loadUser(username); err != nil {
+			return
+		}
+		q = q.Where("owner_id = ?", user.ID)
 	}
 	if tx := q.Pluck("reference_number", &refs); tx.Error != nil {
 		err = tx.Error
