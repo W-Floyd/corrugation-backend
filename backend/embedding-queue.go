@@ -49,6 +49,8 @@ const (
 
 	JobTypeArtifact = "artifact"
 	JobTypeRecord   = "record"
+
+	maxEmbeddingRetries = 5
 )
 
 type EmbeddingJob struct {
@@ -59,8 +61,37 @@ type EmbeddingJob struct {
 	Username   string
 	Status     string `gorm:"not null;index"`
 	ErrorMsg   string
+	RetryCount int
 	EmbedModel string `gorm:"not null;index:idx_embedding_job_dedup"`
 	Source     string // "store", "search", "backfill"
+}
+
+// retryTrigger is signalled after each successful job or every 10 s, whichever comes first.
+// Buffered at 1 so rapid successes coalesce into a single retry scan.
+var retryTrigger = make(chan struct{}, 1)
+
+func triggerRetry() {
+	select {
+	case retryTrigger <- struct{}{}:
+	default:
+	}
+}
+
+func retryFailedJobs() {
+	var jobs []EmbeddingJob
+	db.Where("status = ? AND retry_count < ?", JobStatusFailed, maxEmbeddingRetries).Find(&jobs)
+	for _, j := range jobs {
+		db.Model(&j).Updates(map[string]interface{}{
+			"status":      JobStatusPending,
+			"error_msg":   "",
+			"retry_count": j.RetryCount + 1,
+		})
+		Log.Infow("retrying failed embedding job", "jobID", j.ID, "attempt", j.RetryCount+1)
+		select {
+		case embeddingJobQueue <- j.ID:
+		default:
+		}
+	}
 }
 
 var embeddingJobQueue = make(chan uint, 4096)
@@ -136,6 +167,19 @@ func StartEmbeddingWorkers() {
 		}
 	}()
 
+	go func() {
+		<-infinityReady
+		ticker := time.NewTicker(10 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-retryTrigger:
+			case <-ticker.C:
+			}
+			retryFailedJobs()
+		}
+	}()
+
 	n := cap(embeddingSemaphore)
 	for i := 0; i < n; i++ {
 		go embeddingWorkerLoop()
@@ -199,6 +243,7 @@ func processEmbeddingJob(jobID uint) {
 		Log.Errorw("embedding job failed", "jobID", job.ID, "type", job.JobType, "targetID", job.TargetID, "error", genErr)
 	} else {
 		db.Model(&job).Update("status", JobStatusDone)
+		triggerRetry()
 	}
 
 	broadcastEmbeddingProgress(job)
