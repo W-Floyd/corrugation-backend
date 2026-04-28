@@ -165,7 +165,27 @@ func ImportFromReader(ctx context.Context, r io.Reader, reset bool, legacyImport
 		r.Description = strPtr(le.Description)
 
 		if le.Metadata.IsLabeled {
-			r.ReferenceNumber = strPtr(le.Name)
+			name := le.Name
+			if _, err := strconv.ParseInt(name, 10, 64); err == nil {
+				r.ReferenceNumber = strPtr(name)
+			} else {
+				idx := strings.Index(name, " - ")
+				if idx != -1 {
+					prefix := name[0:idx]
+					intPrefix := false
+					if _, err := strconv.ParseInt(prefix, 10, 64); err == nil {
+						intPrefix = true
+					}
+					if refNum, err := strconv.Atoi(strings.TrimSpace(name[:idx])); err == nil && intPrefix {
+						r.ReferenceNumber = strPtr(strconv.Itoa(refNum))
+						r.Title = strPtr(strings.TrimSpace(name[idx+3:]))
+					} else {
+						r.Title = strPtr(name)
+					}
+				} else {
+					r.Title = strPtr(name)
+				}
+			}
 		} else {
 			r.Title = strPtr(le.Name)
 		}
