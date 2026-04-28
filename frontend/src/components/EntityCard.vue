@@ -59,7 +59,10 @@ const isDragging = ref(false);
 const handleDragStart = (e: DragEvent): void => {
     const el = cardEl.value;
     if (!el) return;
-
+    if ((e.target as HTMLElement).closest("input, textarea, [contenteditable]")) {
+        e.preventDefault();
+        return;
+    }
     e.dataTransfer?.setData("entityId", props.entity.id.toString());
     if (e.dataTransfer) e.dataTransfer.effectAllowed = "move";
     isDragging.value = true;
@@ -150,7 +153,8 @@ const filteredMoveEntities = computed(() => {
         (e) =>
             e.name?.toLowerCase().includes(term) ||
             e.description?.toLowerCase().includes(term) ||
-            e.id.toString().includes(term),
+            e.id.toString().includes(term) ||
+            e.metadata.referenceNumber?.toString().includes(term),
     );
 });
 
@@ -210,9 +214,11 @@ watch(
 
 watch(filteredMoveEntities, (results) => {
     if (!props.confirmMove) return;
-    if (!results.some((r) => r.id === moveTargetLocation.value)) {
-        moveTargetLocation.value = results[0]?.id ?? 0;
-    }
+    if (results.some((r) => r.id === moveTargetLocation.value)) return;
+    const term = entitiesStore.moveSearchtext.toLowerCase().trim();
+    const byRef = term && results.find((r) => r.metadata.referenceNumber?.toLowerCase() === term);
+    const byId = term && results.find((r) => r.id.toString() === term);
+    moveTargetLocation.value = (byRef || byId || results[0])?.id ?? 0;
 });
 
 const formatOptionSegments = (
@@ -473,7 +479,8 @@ defineExpose({ cardEl });
             class="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 rounded-xl bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm"
             @click.stop>
             <p class="text-lg font-semibold text-red-600 dark:text-red-400">
-                Delete "{{ entity.name || entity.id }}"?
+                {{ entity.name || entity.metadata.referenceNumber ? `Delete "${entity.name ||
+                    `#${entity.metadata.referenceNumber}`}"?` : "Delete?" }}
             </p>
             <div class="flex gap-3">
                 <button @click.stop="emit('deleteConfirmed')"
@@ -493,7 +500,8 @@ defineExpose({ cardEl });
             class="absolute inset-0 z-10 flex flex-col gap-2 rounded-xl bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm p-4"
             @click.stop>
             <p class="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                Move "{{ entity.name || entity.id }}" to:
+                {{ entity.name || entity.metadata.referenceNumber ? `Move "${entity.name ||
+                    `#${entity.metadata.referenceNumber}`}" to:` : "Move to:" }}
             </p>
             <input ref="moveSearchInputRef" v-model="entitiesStore.moveSearchtext" type="search"
                 placeholder="Search locations..."
@@ -576,13 +584,16 @@ defineExpose({ cardEl });
                                 : ''
                                 ">{{ seg.text }}</span></template>
                         </template>
-                        <template v-else>{{
-                            entity.name
-                                ? entity.metadata.quantity
+                        <template v-else>
+                            <template v-if="entity.name">{{
+                                entity.metadata.quantity
                                     ? `${entity.name} (x${entity.metadata.quantity})`
                                     : entity.name
-                                : ""
-                        }}</template>
+                            }}</template>
+                            <span v-else-if="!entity.metadata.referenceNumber"
+                                class="font-normal text-gray-400 dark:text-gray-500">({{ entity.id
+                                }})</span>
+                        </template>
                     </div>
                     <div v-if="
                         !entitiesStore.searchtext.trim() &&
@@ -632,7 +643,11 @@ defineExpose({ cardEl });
                     )" :key="childId"
                         class="p-1 rounded cursor-pointer bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 hover:bg-gray-100 hover:shadow-sm ring-gray-200 dark:ring-slate-500 ring-1 hover:ring-blue-500/75 active:shadow-md"
                         @click.stop="entitiesStore.setCurrentEntity(childId)">
-                        {{ entitiesStore.readname(childId) }}
+                        <template v-if="entitiesStore.entityMap[childId]?.metadata.labeled && entitiesStore.entityMap[childId]?.metadata.referenceNumber">
+                            <span class="font-mono text-blue-600 dark:text-blue-400">#{{ entitiesStore.entityMap[childId]!.metadata.referenceNumber }}</span>
+                        </template>
+                        <template v-else-if="entitiesStore.entityMap[childId]?.name">{{ entitiesStore.entityMap[childId]!.name }}</template>
+                        <span v-else class="font-normal text-gray-400 dark:text-gray-500">({{ childId }})</span>
                     </div>
                 </div>
             </div>
