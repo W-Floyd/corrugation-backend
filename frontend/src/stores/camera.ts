@@ -99,13 +99,22 @@ export const useCameraStore = defineStore("camera", () => {
     _originalBlob.value = null;
     rotation = 0;
     try {
+      // Check if camera device exists before attempting to open
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const hasCamera = devices.some(device => device.kind === 'videoinput');
+      if (!hasCamera) {
+        console.warn("No camera device found");
+        _reset();
+        return;
+      }
+
       const mobile = navigator.maxTouchPoints > 0;
       const portrait = mobile && window.innerHeight > window.innerWidth;
       const constraints: MediaTrackConstraints = {};
       // Use saved device ID if no deviceId provided
       const actualDeviceId = deviceId ?? selectedDeviceId.value;
       if (actualDeviceId) {
-        constraints.deviceId = { exact: actualDeviceId };
+        constraints.deviceId = { ideal: actualDeviceId };
       } else {
         constraints.facingMode = mobile ? "environment" : "user";
       }
@@ -119,6 +128,7 @@ export const useCameraStore = defineStore("camera", () => {
       opened.value = true;
     } catch (e) {
       console.error("Camera error:", e);
+      _reset();
     }
   }
 
