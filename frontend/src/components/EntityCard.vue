@@ -56,6 +56,56 @@ const pendingDeletions = ref<Set<number>>(new Set());
 const isDragOver = ref(false);
 const isDragging = ref(false);
 const pointerOnEditable = ref(false);
+
+const childDragReadyId = ref<number | null>(null);
+let childDragTimer: ReturnType<typeof setTimeout> | null = null;
+const draggingChildId = ref<number | null>(null);
+const isDragOverChildren = ref(false);
+
+const handleChildDragStart = (e: DragEvent, childId: number): void => {
+    e.stopPropagation();
+    e.dataTransfer?.setData("entityId", childId.toString());
+    if (e.dataTransfer) e.dataTransfer.effectAllowed = "move";
+    draggingChildId.value = childId;
+};
+
+const handleChildDragEnd = (): void => {
+    draggingChildId.value = null;
+};
+
+const handleChildDragOver = (e: DragEvent, childId: number): void => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+    if (childDragReadyId.value === childId) return;
+    if (childDragTimer !== null) return;
+    childDragTimer = setTimeout(() => {
+        childDragReadyId.value = childId;
+        childDragTimer = null;
+    }, 1000);
+};
+
+const handleChildDragLeave = (e: DragEvent): void => {
+    if ((e.currentTarget as HTMLElement).contains(e.relatedTarget as Node)) return;
+    if (childDragTimer !== null) { clearTimeout(childDragTimer); childDragTimer = null; }
+    childDragReadyId.value = null;
+};
+
+const handleChildDrop = async (e: DragEvent, childId: number): Promise<void> => {
+    e.stopPropagation();
+    if (childDragTimer !== null) { clearTimeout(childDragTimer); childDragTimer = null; }
+    childDragReadyId.value = null;
+    if (!e.dataTransfer?.getData("entityId")) return;
+    const entityId = parseInt(e.dataTransfer.getData("entityId"), 10);
+    if (isNaN(entityId) || entityId === childId) return;
+    try {
+        await api.moveRecord(entityId, childId);
+        await entitiesStore.reload();
+        toastsStore.add("Entity moved", "info");
+    } catch {
+        toastsStore.add("Failed to move entity");
+    }
+};
 const isDraggable = computed(
     () => !pointerOnEditable.value && !editMode.value && !props.confirmDelete && !props.confirmMove,
 );
@@ -89,6 +139,7 @@ const handleDragOver = (e: DragEvent): void => {
 const handleDragLeave = (e: DragEvent): void => {
     if (!(e.currentTarget as HTMLElement)?.contains(e.relatedTarget as Node)) {
         isDragOver.value = false;
+        isDragOverChildren.value = false;
     }
 };
 
@@ -98,8 +149,12 @@ const handleDrop = async (e: DragEvent): Promise<void> => {
     const draggedId = parseInt(e.dataTransfer?.getData("entityId") ?? "");
     if (isNaN(draggedId) || draggedId === props.entity.id) return;
     if (isDescendantOf(props.entity.id, draggedId)) return;
+    // Child dragged back over its own children box — leave it where it is
+    if (draggingChildId.value !== null && isDragOverChildren.value) return;
+    // Child being dragged out → move to this card's parent level, not into the card
+    const targetId = draggingChildId.value !== null ? props.entity.location : props.entity.id;
     try {
-        await api.moveRecord(draggedId, props.entity.id);
+        await api.moveRecord(draggedId, targetId);
         await entitiesStore.reload();
         toastsStore.add("Entity moved", "info");
     } catch {
@@ -477,7 +532,11 @@ defineExpose({ cardEl });
             isSelected
                 ? 'ring-2 ring-blue-500 shadow-blue-200 dark:shadow-blue-900'
                 : isDragOver
-                    ? 'ring-2 ring-green-500 shadow-green-200 dark:shadow-green-900 bg-green-50 dark:bg-green-900/20'
+                    ? draggingChildId !== null && !isDragOverChildren
+                        ? 'ring-2 ring-blue-400 shadow-blue-100 dark:shadow-blue-900/30 bg-blue-50/50 dark:bg-blue-900/10'
+                        : childDragReadyId !== null
+                            ? 'ring-2 ring-green-300 dark:ring-green-800 bg-green-50/50 dark:bg-green-900/10'
+                            : 'ring-2 ring-green-500 shadow-green-200 dark:shadow-green-900 bg-green-50 dark:bg-green-900/20'
                     : 'ring-1 ring-gray-500/25 hover:ring-gray-500/50 hover:shadow-lg',
             isDragging ? 'opacity-40' : '',
         ]" @click="emit('select')" @pointerdown="handlePointerDown" @pointerup="handlePointerUp"
@@ -646,12 +705,26 @@ defineExpose({ cardEl });
             <div v-if="!editMode && entitiesStore.hasChildren(entity.id)">
                 <p class="mb-2 font-semibold">Contains:</p>
                 <div class="flex flex-wrap gap-2 overflow-hidden hover:overflow-y-auto max-h-32 shadow-md p-2 ring-1 ring-gray-500/10 hover:ring-gray-500/25 hover:shadow-lg rounded-md"
-                    style="scrollbar-gutter: stable">
+                    style="scrollbar-gutter: stable"
+                    @dragenter="isDragOverChildren = true"
+                    @dragleave="(e) => { if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node)) isDragOverChildren = false; }">
                     <div v-for="childId in entitiesStore.listChildLocations(
                         entity.id,
                     )" :key="childId"
-                        class="p-1 rounded cursor-pointer bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 hover:bg-gray-100 hover:shadow-sm ring-gray-200 dark:ring-slate-500 ring-1 hover:ring-blue-500/75 active:shadow-md"
-                        @click.stop="entitiesStore.setCurrentEntity(childId)">
+                        draggable="true"
+                        :class="[
+                            'p-1 rounded cursor-pointer bg-gray-50 dark:bg-gray-800 ring-1 active:shadow-md transition-colors',
+                            childDragReadyId === childId
+                                ? 'ring-2 ring-green-500 shadow shadow-green-200 dark:shadow-green-900 bg-green-50 dark:bg-green-900/20'
+                                : 'dark:hover:bg-gray-700 hover:bg-gray-100 hover:shadow-sm ring-gray-200 dark:ring-slate-500 hover:ring-blue-500/75',
+                            draggingChildId === childId ? 'opacity-40' : '',
+                        ]"
+                        @click.stop="entitiesStore.setCurrentEntity(childId)"
+                        @dragstart="handleChildDragStart($event, childId)"
+                        @dragend="handleChildDragEnd"
+                        @dragover="handleChildDragOver($event, childId)"
+                        @dragleave="handleChildDragLeave"
+                        @drop="handleChildDrop($event, childId)">
                         <template v-if="entitiesStore.entityMap[childId]?.metadata.labeled && entitiesStore.entityMap[childId]?.metadata.referenceNumber">
                             <span class="font-mono text-blue-600 dark:text-blue-400">#{{ entitiesStore.entityMap[childId]!.metadata.referenceNumber }}</span>
                         </template>
