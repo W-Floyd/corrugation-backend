@@ -45,6 +45,7 @@ export const useEntitiesStore = defineStore("entities", () => {
   } | null>(null);
 
   let ws: WebSocket | null = null;
+  let offlineToastId: number | null = null;
 
   // All records indexed by ID
   const recordById = computed<Record<number, BackendRecord>>(() => {
@@ -86,6 +87,10 @@ export const useEntitiesStore = defineStore("entities", () => {
       allRecords.value = await api.getRecords(0, { global: true });
       locationtree.value = buildLocationTree(currentEntity.value);
       isLoading.value = false;
+      const existingIds = new Set(allRecords.value.map((r) => r.ID));
+      apiSearchResults.value = apiSearchResults.value.filter((e) =>
+        existingIds.has(e.id),
+      );
     } catch (e) {
       console.error("reload failed:", e);
     }
