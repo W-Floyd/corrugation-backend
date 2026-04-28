@@ -21,11 +21,13 @@ RUN --mount=type=cache,target="/root/.cache/go-build" go mod download
 COPY main.go main.go
 COPY backend/ backend/
 COPY oldbackend/ oldbackend/
-RUN --mount=type=cache,target="/root/.cache/go-build" go build -ldflags="-extldflags -static" -o main .
+RUN --mount=type=cache,target="/root/.cache/go-build" go build -ldflags="-extldflags -static" -o main . && mkdir -p /tmp
 
 # Stage 2: Final image
 FROM scratch
 WORKDIR /
 COPY --from=backend /app/main /app/main
 COPY --from=frontend /app/dist /dist
+# Go's multipart parser buffers uploads to /tmp; scratch has no /tmp
+COPY --from=backend /tmp /tmp
 ENTRYPOINT ["/app/main"]
