@@ -1,11 +1,11 @@
 <script setup lang="ts" name="BreadcrumbNav">
-import { computed } from "vue";
-import { useRouter } from "vue-router";
+import { computed, ref } from "vue";
 import { useEntitiesStore } from "@/stores/entities";
-import type { Entity } from "@/api/types";
+import { useToastsStore } from "@/stores/toasts";
+import { api } from "@/api";
 
-const router = useRouter();
 const entitiesStore = useEntitiesStore();
+const toastsStore = useToastsStore();
 
 const emit = defineEmits<{ openNewEntity: [] }>();
 
@@ -19,6 +19,36 @@ const locationTree = computed(() =>
 const navigateTo = async (entityId: number): Promise<void> => {
     await entitiesStore.setCurrentEntity(entityId);
 };
+
+const dragOverId = ref<number | null>(null);
+
+const handleDragOver = (e: DragEvent, id: number): void => {
+    if (!e.dataTransfer?.types.includes("entityid")) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    dragOverId.value = id;
+};
+
+const handleDragLeave = (e: DragEvent): void => {
+    if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node)) {
+        dragOverId.value = null;
+    }
+};
+
+const handleDrop = async (e: DragEvent, targetId: number): Promise<void> => {
+    dragOverId.value = null;
+    const raw = e.dataTransfer?.getData("entityId");
+    if (!raw) return;
+    const entityId = parseInt(raw, 10);
+    if (isNaN(entityId) || entityId === targetId) return;
+    try {
+        await api.moveRecord(entityId, targetId);
+        await entitiesStore.reload();
+        toastsStore.add("Entity moved", "info");
+    } catch {
+        toastsStore.add("Failed to move entity");
+    }
+};
 </script>
 
 <template>
@@ -27,7 +57,13 @@ const navigateTo = async (entityId: number): Promise<void> => {
             <template v-for="(n, index) in locationTree" :key="n.id">
                 <li>
                     <a @click="navigateTo(n.id)"
-                        class="text-blue-600 no-underline cursor-pointer dark:text-sky-400 dark:hover:text-sky-300 hover:text-blue-700 hover:underline px-1"
+                        @dragover="handleDragOver($event, n.id)"
+                        @dragleave="handleDragLeave"
+                        @drop="handleDrop($event, n.id)"
+                        :class="[
+                            'text-blue-600 no-underline cursor-pointer dark:text-sky-400 dark:hover:text-sky-300 hover:text-blue-700 hover:underline px-1 rounded transition-colors',
+                            dragOverId === n.id ? 'ring-2 ring-green-500 shadow shadow-green-200 dark:shadow-green-900 bg-green-50 dark:bg-green-900/20' : '',
+                        ]"
                         :title="`Go to entity ${n.id}`">
                         {{ n.name }}
                     </a>
