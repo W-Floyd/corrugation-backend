@@ -10,7 +10,7 @@ import TextSearchIcon from "vue-material-design-icons/TextSearch.vue";
 import { useEntitiesStore } from "@/stores/entities";
 import { useToastsStore } from "@/stores/toasts";
 
-const props = defineProps<{ showShortcuts?: boolean }>();
+const props = defineProps<{ showHint?: boolean }>();
 
 const entitiesStore = useEntitiesStore();
 const toastsStore = useToastsStore();
@@ -78,7 +78,7 @@ onBeforeUnmount(() => {
                 <input type="checkbox" v-model="entitiesStore.filterworld"
                     class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" @change="onWorldChange" />
                 <EarthIcon class="relative ml-1 text-sm text-gray-600 dark:text-gray-400" :size="16" />
-                <KbdHint shortcut="G" :show="props.showShortcuts" :center="true" />
+                <KbdHint contents="G" :show="props.showHint" :center="true" />
             </label>
         </div>
 
@@ -88,7 +88,7 @@ onBeforeUnmount(() => {
                 <input type="checkbox" v-model="entitiesStore.searchTextEmbedded"
                     class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
                 <TextBoxSearchIcon class="relative ml-1 text-sm text-gray-600 dark:text-gray-400" :size="16" />
-                <KbdHint shortcut="W" :show="props.showShortcuts" :center="true" />
+                <KbdHint contents="W" :show="props.showHint" :center="true" />
             </label>
         </div>
 
@@ -98,7 +98,7 @@ onBeforeUnmount(() => {
                 <input type="checkbox" v-model="entitiesStore.searchTextSubstring"
                     class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
                 <TextSearchIcon class="relative ml-1 text-sm text-gray-600 dark:text-gray-400" :size="16" />
-                <KbdHint shortcut="T" :show="props.showShortcuts" :center="true" />
+                <KbdHint contents="T" :show="props.showHint" :center="true" />
             </label>
         </div>
 
@@ -108,7 +108,7 @@ onBeforeUnmount(() => {
                 <input type="checkbox" v-model="entitiesStore.searchImage"
                     class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
                 <ImageSearchIcon class="relative ml-1 text-sm text-gray-600 dark:text-gray-400" :size="16" />
-                <KbdHint shortcut="I" :show="props.showShortcuts" :center="true" />
+                <KbdHint contents="I" :show="props.showHint" :center="true" />
             </label>
         </div>
 
@@ -118,7 +118,7 @@ onBeforeUnmount(() => {
                 @keydown.enter.stop="searchInputEl?.blur()" @keydown.esc.stop="searchInputEl?.blur()"
                 placeholder="Search for an entity..." type="search"
                 class="w-full px-4 py-2 rounded-full bg-white ring-1 ring-gray-300 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:ring-gray-600 dark:text-white pr-10" />
-            <kbd v-if="props.showShortcuts"
+            <kbd v-if="props.showHint"
                 class="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-sans bg-gray-800 text-white rounded px-1 leading-3.5 pointer-events-none shadow">/
             </kbd>
             <button v-if="entitiesStore.searchtext" @click="resetSearch" type="button"
@@ -129,7 +129,7 @@ onBeforeUnmount(() => {
         </div>
 
         <!-- Command palette shortcut hint -->
-        <KbdHint shortcut="?" :show="props.showShortcuts" :inline="true" />
+        <KbdHint contents="?" :show="props.showHint" :inline="true" />
     </div>
 </template>
 

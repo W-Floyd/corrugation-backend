@@ -15,12 +15,12 @@ const props = withDefaults(
     defineProps<{
         visible?: boolean;
         location?: number;
-        showShortcuts?: boolean;
+        showHint?: boolean;
     }>(),
     {
         visible: false,
         location: 0,
-        showShortcuts: false,
+        showHint: false,
     },
 );
 
@@ -69,6 +69,10 @@ const resetDialog = (): void => {
 };
 
 const handleSubmit = async (): Promise<void> => {
+    if (refTaken.value) {
+        toastsStore.add("Conflicting Reference #", "warn");
+        return
+    }
     try {
         let artifactIds: number[] = [];
         for (const file of files.value) {
@@ -175,12 +179,12 @@ const handleCameraOpen = async (): Promise<void> => {
                         <button type="button" @click="handleSubmit"
                             class="relative h-10 px-4 py-2 text-white bg-blue-500 rounded-full shadow hover:bg-blue-600">
                             Submit
-                            <KbdHint shortcut="Enter" :show="props.showShortcuts" />
+                            <KbdHint contents="Enter" :show="props.showHint" />
                         </button>
                         <button type="button" @click="handleDialogClose"
                             class="relative h-10 px-4 py-2 text-white bg-red-500 rounded-full shadow hover:bg-red-600">
                             Cancel
-                            <KbdHint shortcut="Esc" :show="props.showShortcuts" />
+                            <KbdHint contents="Esc" :show="props.showHint" />
                         </button>
                     </div>
                 </div>

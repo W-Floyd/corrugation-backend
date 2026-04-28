@@ -34,7 +34,7 @@ const newEntityLocation = ref(0);
 const confirmMoveId = ref<number | null>(null);
 const commandDialogVisible = ref(false);
 const selectedEntityId = ref<number | null>(null);
-const showShortcuts = ref(false);
+const showHint = ref(false);
 const editEntityId = ref<number | null>(null);
 
 const handleLogout = (): void => {
@@ -226,7 +226,7 @@ const navigateGrid = (direction: "up" | "down" | "left" | "right"): void => {
 
 const handleKeydown = (e: KeyboardEvent): void => {
     if (e.key === "Meta" || e.key === "Alt") {
-        showShortcuts.value = true;
+        showHint.value = true;
         return;
     }
 
@@ -430,7 +430,7 @@ const handleKeydown = (e: KeyboardEvent): void => {
 
 const handleKeyup = (e: KeyboardEvent): void => {
     if (e.key === "Meta" || e.key === "Alt") {
-        showShortcuts.value = false;
+        showHint.value = false;
     }
 };
 
@@ -514,7 +514,7 @@ watch(
                             <LogoutIcon :size="18" />
                         </button>
                     </div>
-                    <SearchBar ref="searchBarRef" :show-shortcuts="showShortcuts" />
+                    <SearchBar ref="searchBarRef" :show-hint="showHint" />
                 </div>
 
                 <!-- Empty state or entity list -->
@@ -534,9 +534,8 @@ watch(
                                 if (el) cardRefs[entity.id] = el;
                                 else delete cardRefs[entity.id];
                             }
-                                " :entity="entity" :is-selected="selectedEntityId === entity.id"
-                                :show-shortcuts="showShortcuts" :start-edit="editEntityId === entity.id"
-                                :confirm-delete="deleteConfirmId === entity.id"
+                                " :entity="entity" :is-selected="selectedEntityId === entity.id" :show-hint="showHint"
+                                :start-edit="editEntityId === entity.id" :confirm-delete="deleteConfirmId === entity.id"
                                 :confirm-move="confirmMoveId === entity.id" @select="
                                     selectedEntityId = entity.id;
                                 deleteConfirmId = null;
@@ -577,13 +576,13 @@ watch(
                 " class="relative h-14 w-14 flex items-center justify-center rounded-full bg-blue-500 hover:bg-blue-600 text-white shadow-lg active:shadow-xl"
                     title="Create new entity (N)">
                     <PlusIcon :size="28" />
-                    <KbdHint shortcut="N" :show="showShortcuts" />
+                    <KbdHint contents="N" :show="showHint" />
                 </button>
                 <button @click="handleFabCapture"
                     class="relative h-14 w-14 flex items-center justify-center rounded-full bg-blue-500 hover:bg-blue-600 text-white shadow-lg active:shadow-xl"
                     title="Quick capture (C)">
                     <CameraIcon :size="28" />
-                    <KbdHint shortcut="C" :show="showShortcuts" />
+                    <KbdHint contents="C" :show="showHint" />
                 </button>
             </div>
 
@@ -591,7 +590,7 @@ watch(
             <CameraModal />
 
             <!-- Dialogs -->
-            <NewEntityDialog :visible="newEntityVisible" :location="newEntityLocation" :show-shortcuts="showShortcuts"
+            <NewEntityDialog :visible="newEntityVisible" :location="newEntityLocation" :show-hint="showHint"
                 @update:visible="newEntityVisible = $event" @created="
                     (id) => {
                         if (newEntityLocation === entitiesStore.currentEntity)

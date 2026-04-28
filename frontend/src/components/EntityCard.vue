@@ -21,7 +21,7 @@ import AlertIcon from "vue-material-design-icons/Alert.vue";
 const props = defineProps<{
     entity: Entity;
     isSelected?: boolean;
-    showShortcuts?: boolean;
+    showHint?: boolean;
     startEdit?: boolean;
     confirmDelete?: boolean;
     confirmMove?: boolean;
@@ -579,12 +579,12 @@ defineExpose({ cardEl });
                 <button @click.stop="emit('deleteConfirmed')"
                     class="h-9 px-4 rounded-full bg-red-500 hover:bg-red-600 text-white text-sm shadow relative">
                     Delete
-                    <KbdHint shortcut="Enter" :show="showShortcuts && isSelected" />
+                    <KbdHint contents="Enter" :show="showHint && isSelected" />
                 </button>
                 <button @click.stop="emit('deleteCancelled')"
                     class="h-9 px-4 rounded-full bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-sm shadow relative">
                     Cancel
-                    <KbdHint shortcut="Esc" :show="showShortcuts && isSelected" />
+                    <KbdHint contents="Esc" :show="showHint && isSelected" />
                 </button>
             </div>
         </div>
@@ -615,26 +615,26 @@ defineExpose({ cardEl });
                     class="relative h-10 w-10 p-0 m-0 flex items-center justify-center bg-blue-500 rounded-full shadow hover:bg-blue-600 active:shadow-lg text-white"
                     title="Move">
                     <CheckIcon :size="20" />
-                    <KbdHint shortcut="Enter" :show="showShortcuts && isSelected" />
+                    <KbdHint contents="Enter" :show="showHint && isSelected" />
                 </button>
                 <button v-if="!isAtCurrentLocation" @click.stop="
                     emit('moveConfirmed', entitiesStore.currentEntity)
                     "
                     class="h-10 px-3 rounded-full bg-purple-500 hover:bg-purple-600 text-white text-sm shadow relative">
                     To {{ currentLocationName }}
-                    <KbdHint shortcut="H" :show="showShortcuts && isSelected" />
+                    <KbdHint contents="H" :show="showHint && isSelected" />
                 </button>
                 <button v-if="entity.id !== 0 && entitiesStore.currentEntity !== 0" @click.stop="moveUp()"
                     class="relative h-10 w-10 p-0 m-0 flex items-center justify-center bg-orange-500 rounded-full shadow hover:bg-orange-600 active:shadow-lg text-white"
                     title="Move to parent">
                     <ArrowUpIcon :size="20" />
-                    <KbdHint shortcut="U" :show="showShortcuts && isSelected" />
+                    <KbdHint contents="U" :show="showHint && isSelected" />
                 </button>
                 <button @click.stop="emit('moveCancelled')"
                     class="relative h-10 w-10 p-0 m-0 flex items-center justify-center bg-red-500 rounded-full shadow hover:bg-red-600 active:shadow-lg text-white"
                     title="Cancel">
                     <CloseIcon :size="20" />
-                    <KbdHint shortcut="Esc" :show="showShortcuts && isSelected" />
+                    <KbdHint contents="Esc" :show="showHint && isSelected" />
                 </button>
             </div>
         </div>
@@ -685,9 +685,6 @@ defineExpose({ cardEl });
                                         ? `${entity.name} (x${entity.metadata.quantity})`
                                         : entity.name
                                 }}</span>
-                                <AlertIcon v-if="/^\d+$/.test(entity.name) && (entity.metadata.referenceNumber || parseInt(entity.name, 10) !== entity.id)"
-                                    class="text-yellow-500 self-center" :size="20"
-                                    title="Name is a number but does not match the label" />
                             </span>
                             <span v-else-if="!entity.metadata.referenceNumber"
                                 class="font-normal text-gray-400 dark:text-gray-500">({{ entity.id
@@ -700,6 +697,23 @@ defineExpose({ cardEl });
                     " class="text-xl font-mono text-blue-600 dark:text-blue-400">
                         #{{ entity.metadata.referenceNumber }}
                     </div>
+                    <span v-if="
+                        /^\d+$/.test(entity.name) &&
+                        (
+                            (
+                                entity.metadata.referenceNumber &&
+                                entity.name !== entity.metadata.referenceNumber
+                            ) ||
+                            (
+                                !entity.metadata.referenceNumber &&
+                                parseInt(entity.name, 10) !== entity.id
+                            )
+                        )" class="relative flex">
+                        <AlertIcon class="text-yellow-500 self-center" :size="18" title="Name mismatch" />
+                        <KbdHint
+                            :contents="entity.metadata.referenceNumber && entity.name !== entity.metadata.referenceNumber ? 'Name/Ref' : entity.name && parseInt(entity.name, 10) !== entity.id ? 'Name/ID' : ''"
+                            :show="showHint" :inline="true" />
+                    </span>
                 </div>
             </div>
 
@@ -708,13 +722,17 @@ defineExpose({ cardEl });
                 <div class="flex-auto flex list-reset space-x-2 items-baseline mb-2">
                     <input ref="nameInputEl" type="text" v-model="localEntity.name"
                         class="bg-white rounded-sm dark:bg-gray-900 ring-1" placeholder="Name" />
-                    <AlertIcon v-if="nameIsWrongNumber || nameRefMismatch" class="text-yellow-500 self-center shrink-0" :size="20"
+                    <AlertIcon v-if="!localEntity.metadata.referenceNumber && nameIsWrongNumber"
+                        class="text-yellow-500 self-center shrink-0" :size="20"
                         :title="nameRefMismatch ? 'Name and reference number don\'t match' : 'Name is a number that doesn\'t match this record\'s ID'" />
                     <input type="text" v-model="localEntity.metadata.referenceNumber"
                         class="bg-white rounded-sm dark:bg-gray-900 ring-1 w-16 font-mono"
                         :placeholder="nextRefPlaceholder ?? 'Ref#'" />
-                    <AlertIcon v-if="refTaken || nameRefMismatch" class="text-yellow-500 self-center shrink-0" :size="20"
-                        :title="nameRefMismatch ? 'Name and reference number don\'t match' : 'Reference number already in use'" />
+                    <span v-if="refTaken || nameRefMismatch" class="relative flex">
+                        <AlertIcon class="text-yellow-500 self-center shrink-0" :size="20"
+                            :title="nameRefMismatch ? 'Name and reference number don\'t match' : 'Reference number already in use'" />
+                        <KbdHint contents="Name/Ref" :show="showHint" :inline="true" />
+                    </span>
                     <input type="number" min="0" v-model.number="localEntity.metadata.quantity"
                         class="bg-white rounded-sm dark:bg-gray-900 ring-1 w-10" placeholder="Qty" />
                 </div>
@@ -749,8 +767,7 @@ defineExpose({ cardEl });
                         @dragstart="handleChildDragStart($event, childId)" @dragend="handleChildDragEnd"
                         @dragover="handleChildDragOver($event, childId)" @dragleave="handleChildDragLeave"
                         @drop="handleChildDrop($event, childId)">
-                        <template
-                            v-if="entitiesStore.entityMap[childId]?.metadata.referenceNumber">
+                        <template v-if="entitiesStore.entityMap[childId]?.metadata.referenceNumber">
                             <span class="font-mono text-blue-600 dark:text-blue-400">#{{
                                 entitiesStore.entityMap[childId]!.metadata.referenceNumber }}</span>
                         </template>
@@ -768,42 +785,42 @@ defineExpose({ cardEl });
                 class="relative h-10 w-10 p-0 m-0 flex items-center justify-center bg-red-500 rounded-full shadow hover:bg-red-600 active:shadow-lg text-white"
                 title="Delete entity">
                 <TrashCanIcon :size="20" />
-                <KbdHint shortcut="Del" :show="showShortcuts && isSelected" />
+                <KbdHint contents="Del" :show="showHint && isSelected" />
             </button>
 
             <button v-if="!editMode" @click.stop="emit('requestMove', entity.id)"
                 class="relative h-10 w-10 p-0 m-0 flex items-center justify-center bg-blue-500 rounded-full shadow hover:bg-blue-600 active:shadow-lg text-white"
                 title="Move entity">
                 <FolderMoveIcon :size="20" />
-                <KbdHint shortcut="M" :show="showShortcuts && isSelected" />
+                <KbdHint contents="M" :show="showHint && isSelected" />
             </button>
 
             <button v-if="!editMode" @click.stop="handleEditToggle"
                 class="relative h-10 w-10 p-0 m-0 flex items-center justify-center bg-blue-500 rounded-full shadow hover:bg-blue-600 active:shadow-lg text-white"
                 title="Edit entity">
                 <PencilIcon :size="20" />
-                <KbdHint shortcut="Enter" :show="showShortcuts && isSelected" />
+                <KbdHint contents="Enter" :show="showHint && isSelected" />
             </button>
 
             <button v-if="!editMode" @click.stop="handleQuickCapture"
                 class="relative h-10 w-10 p-0 m-0 flex items-center justify-center bg-blue-500 rounded-full shadow hover:bg-blue-600 active:shadow-lg text-white"
                 title="Quick capture (add photo to this entity)">
                 <CameraIcon :size="20" />
-                <KbdHint shortcut="P" :show="showShortcuts && isSelected" />
+                <KbdHint contents="P" :show="showHint && isSelected" />
             </button>
 
             <button v-if="!editMode" @click.stop="handleQuickCaptureNewChild"
                 class="relative h-10 w-10 p-0 m-0 flex items-center justify-center bg-blue-500 rounded-full shadow hover:bg-blue-600 active:shadow-lg text-white"
                 title="Quick capture new child entity">
                 <CameraPlusIcon :size="20" />
-                <KbdHint shortcut="⇧C" :show="showShortcuts && isSelected" />
+                <KbdHint contents="⇧C" :show="showHint && isSelected" />
             </button>
 
             <button v-if="!editMode" @click.stop="emit('createChild', entity.id)"
                 class="relative h-10 w-10 p-0 m-0 flex items-center justify-center bg-blue-500 rounded-full shadow hover:bg-blue-600 active:shadow-lg text-white"
                 title="New entity as child">
                 <PlusIcon :size="20" />
-                <KbdHint shortcut="⇧N" :show="showShortcuts && isSelected" />
+                <KbdHint contents="⇧N" :show="showHint && isSelected" />
             </button>
 
             <!-- Edit mode controls -->
@@ -812,14 +829,14 @@ defineExpose({ cardEl });
                     class="relative h-10 w-10 p-0 m-0 flex items-center justify-center bg-blue-500 rounded-full shadow hover:bg-blue-600 active:shadow-lg text-white"
                     title="Save">
                     <CheckIcon :size="20" />
-                    <KbdHint shortcut="Enter" :show="showShortcuts" />
+                    <KbdHint contents="Enter" :show="showHint" />
                 </button>
 
                 <button @click.stop="handleCancel"
                     class="relative h-10 w-10 p-0 m-0 flex items-center justify-center bg-red-500 rounded-full shadow hover:bg-red-600 active:shadow-lg text-white"
                     title="Cancel">
                     <CloseIcon :size="20" />
-                    <KbdHint shortcut="Esc" :show="showShortcuts" />
+                    <KbdHint contents="Esc" :show="showHint" />
                 </button>
 
                 <button @click.stop="
@@ -830,7 +847,7 @@ defineExpose({ cardEl });
                     class="relative h-10 w-10 p-0 m-0 flex items-center justify-center bg-blue-500 rounded-full shadow hover:bg-blue-600 active:shadow-lg text-white"
                     title="Capture artifact">
                     <CameraIcon :size="20" />
-                    <KbdHint shortcut="P" :show="showShortcuts" />
+                    <KbdHint contents="P" :show="showHint" />
                 </button>
             </template>
         </div>
