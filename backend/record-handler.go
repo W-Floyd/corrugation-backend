@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/danielgtaylor/huma/v2"
 	"gorm.io/gorm"
@@ -253,12 +254,14 @@ func UpdateRecord(ctx context.Context, input *struct {
 
 var GetNextReferenceNumberOperation = huma.Operation{
 	Method: http.MethodGet,
-	Path:   "/api/v2/records/nextid",
+	Path:   "/api/v2/records/nextref",
 }
 
-func GetNextReferenceNumber(ctx context.Context, _ *struct{}) (output *UIntOutput, err error) {
+func GetNextReferenceNumber(ctx context.Context, input *struct {
+	ExcludeIDs []uint `query:"excludeIDs"`
+}) (output *UIntOutput, err error) {
 	var refs []string
-	q := db.Model(&Record{}).Where("reference_number IS NOT NULL")
+	q := db.Model(&Record{}).Where("reference_number IS NOT NULL AND id NOT IN ?", input.ExcludeIDs).Order("reference_number")
 	if username := UsernameFromContext(ctx); username != "" {
 		var user User
 		if user, err = loadUser(username); err != nil {
@@ -270,17 +273,31 @@ func GetNextReferenceNumber(ctx context.Context, _ *struct{}) (output *UIntOutpu
 		err = tx.Error
 		return
 	}
-	taken := map[uint]bool{}
-	for _, s := range refs {
-		if n, parseErr := strconv.ParseUint(s, 10, 64); parseErr == nil {
-			taken[uint(n)] = true
+
+	nums := []int{}
+
+	for _, ref := range refs {
+		v, err := strconv.Atoi(strings.TrimSpace(ref))
+		if err != nil {
+			nums = append(nums, v)
 		}
 	}
-	var next uint = 1
-	for taken[next] {
-		next++
+
+	low := 1
+	high := len(nums) - 1
+
+	for low <= high {
+		mid := low + (high-low)/2
+
+		// If value matches index, missing element is on the right
+		if nums[mid] == mid {
+			low = mid + 1
+		} else {
+			high = mid - 1
+		}
 	}
-	output = &UIntOutput{Body: next}
+
+	output = &UIntOutput{Body: uint(low)}
 	return
 }
 

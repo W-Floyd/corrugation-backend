@@ -187,8 +187,8 @@ const refTaken = computed(() => {
 });
 
 watch(editMode, async (on) => {
-    if (on && !localEntity.value.metadata.referenceNumber) {
-        nextRefPlaceholder.value = String(await api.nextReferenceNumber());
+    if (on) {
+        nextRefPlaceholder.value = String(await api.nextReferenceNumber([localEntity.value.id]));
     } else {
         nextRefPlaceholder.value = null;
     }

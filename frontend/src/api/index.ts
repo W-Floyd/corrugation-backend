@@ -171,15 +171,14 @@ export const api = {
     await apiFetch(`/api/v2/artifact/${id}`, { method: "DELETE" });
   },
 
-  // Next free record ID (for assigning a specific DB id — legacy use)
-  async nextFreeId(): Promise<number> {
-    const response = await apiFetch("/api/entity/find/firstfreeid");
-    return response.json();
-  },
-
   // Next available reference number not held by any labeled record
-  async nextReferenceNumber(): Promise<number> {
-    const response = await apiFetch("/api/v2/records/nextid");
+  async nextReferenceNumber(excludeIDs?: number[]): Promise<number> {
+
+    const params = new URLSearchParams();
+    if (excludeIDs != null) {
+      params.set("excludeIDs", excludeIDs.toString())
+    }
+    const response = await apiFetch(`/api/v2/records/nextref?${params}`);
     return response.json();
   },
 
