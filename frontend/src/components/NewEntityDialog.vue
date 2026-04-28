@@ -90,7 +90,7 @@ const handleSubmit = async (): Promise<void> => {
         emit("created", record.ID);
         emit("update:visible", false);
         dialogVisible.value = false;
-        toastsStore.add("Entity created");
+        toastsStore.add("Entity created", "info");
     } catch (error) {
         console.error("Failed to create entity:", error);
         toastsStore.add("Failed to create entity");
@@ -118,109 +118,60 @@ onMounted(() => {
 
 <template>
     <Teleport to="body">
-        <div
-            v-if="dialogVisible"
-            class="fixed inset-0 overflow-y-auto z-50"
-            role="dialog"
-            aria-modal="true"
-        >
+        <div v-if="dialogVisible" class="fixed inset-0 overflow-y-auto z-50" role="dialog" aria-modal="true">
             <!-- Overlay -->
-            <div
-                class="fixed inset-0 bg-black/40"
-                @click="handleDialogClose"
-            ></div>
+            <div class="fixed inset-0 bg-black/40" @click="handleDialogClose"></div>
 
             <!-- Panel -->
-            <div
-                class="relative flex items-center justify-center min-h-screen p-4"
-                @click.stop
-                @keydown.esc.stop="handleDialogClose"
-            >
+            <div class="relative flex items-center justify-center min-h-screen p-4" @click.stop
+                @keydown.esc.stop="handleDialogClose">
                 <div
-                    class="relative w-full max-w-2xl p-8 overflow-y-auto bg-white border border-gray-300 rounded-lg dark:bg-gray-800"
-                >
+                    class="relative w-full max-w-2xl p-8 overflow-y-auto bg-white border border-gray-300 rounded-lg dark:bg-gray-800">
                     <!-- Title -->
                     <h1 class="pb-4 text-3xl font-medium">Create New Entity</h1>
 
                     <!-- Form -->
-                    <div
-                        class="grid grid-cols-[8rem_1fr] gap-x-4 gap-y-3 items-center"
-                    >
+                    <div class="grid grid-cols-[8rem_1fr] gap-x-4 gap-y-3 items-center">
                         <label for="name">Name</label>
-                        <input
-                            id="name"
-                            ref="nameInput"
-                            type="text"
-                            v-model="title"
+                        <input id="name" ref="nameInput" type="text" v-model="title"
                             class="bg-white rounded-sm dark:bg-gray-900 ring-1 px-2 py-1"
-                            @keydown.enter.prevent="handleSubmit"
-                        />
+                            @keydown.enter.prevent="handleSubmit" />
 
                         <label for="labeled">Labeled</label>
-                        <input
-                            id="labeled"
-                            type="checkbox"
-                            v-model="labeled"
-                            class="w-4 h-4 justify-self-start"
-                        />
+                        <input id="labeled" type="checkbox" v-model="labeled" class="w-4 h-4 justify-self-start" />
 
                         <template v-if="labeled">
                             <label for="refnum">Reference #</label>
-                            <input
-                                id="refnum"
-                                type="text"
-                                v-model="referenceNumber"
+                            <input id="refnum" type="text" v-model="referenceNumber"
                                 class="bg-white rounded-sm dark:bg-gray-900 ring-1 px-2 py-1"
-                                :placeholder="String(nextRefNumber)"
-                                @keydown.enter.prevent="handleSubmit"
-                            />
+                                :placeholder="String(nextRefNumber)" @keydown.enter.prevent="handleSubmit" />
                         </template>
 
                         <label for="description">Description</label>
-                        <textarea
-                            id="description"
-                            v-model="description"
-                            class="bg-white rounded-sm dark:bg-gray-900 ring-1 px-2 py-1"
-                            rows="3"
-                        ></textarea>
+                        <textarea id="description" v-model="description"
+                            class="bg-white rounded-sm dark:bg-gray-900 ring-1 px-2 py-1" rows="3"></textarea>
 
                         <label for="quantity">Quantity</label>
-                        <input
-                            id="quantity"
-                            type="number"
-                            min="0"
-                            v-model.number="quantity"
-                            class="bg-white rounded-sm dark:bg-gray-900 ring-1 px-2 py-1"
-                        />
+                        <input id="quantity" type="number" min="0" v-model.number="quantity"
+                            class="bg-white rounded-sm dark:bg-gray-900 ring-1 px-2 py-1" />
 
                         <label for="file">Image</label>
                         <div class="flex flex-wrap items-center gap-2">
-                            <input
-                                id="file"
-                                type="file"
+                            <input id="file" type="file"
                                 class="bg-white rounded-sm ring-1 dark:bg-gray-900 dark:hover:bg-gray-700"
-                                accept="image/*"
-                                multiple
-                                @change="
+                                accept="image/*" multiple @change="
                                     (e) => {
                                         files = Array.from(
                                             (e.target as HTMLInputElement)
                                                 .files || [],
                                         );
                                     }
-                                "
-                            />
-                            <button
-                                type="button"
-                                @click="handleCameraOpen"
-                                class="h-10 px-4 py-2 text-white bg-blue-500 rounded-full shadow hover:bg-blue-600"
-                            >
+                                " />
+                            <button type="button" @click="handleCameraOpen"
+                                class="h-10 px-4 py-2 text-white bg-blue-500 rounded-full shadow hover:bg-blue-600">
                                 Camera
                             </button>
-                            <span
-                                v-if="files.length > 0"
-                                class="text-sm text-gray-500"
-                            >
+                            <span v-if="files.length > 0" class="text-sm text-gray-500">
                                 {{ files.length }} file(s) selected
                             </span>
                         </div>
@@ -228,27 +179,15 @@ onMounted(() => {
 
                     <!-- Buttons -->
                     <div class="flex mt-8 gap-4">
-                        <button
-                            type="button"
-                            @click="handleSubmit"
-                            class="relative h-10 px-4 py-2 text-white bg-blue-500 rounded-full shadow hover:bg-blue-600"
-                        >
+                        <button type="button" @click="handleSubmit"
+                            class="relative h-10 px-4 py-2 text-white bg-blue-500 rounded-full shadow hover:bg-blue-600">
                             Submit
-                            <KbdHint
-                                shortcut="Enter"
-                                :show="props.showShortcuts"
-                            />
+                            <KbdHint shortcut="Enter" :show="props.showShortcuts" />
                         </button>
-                        <button
-                            type="button"
-                            @click="handleDialogClose"
-                            class="relative h-10 px-4 py-2 text-white bg-red-500 rounded-full shadow hover:bg-red-600"
-                        >
+                        <button type="button" @click="handleDialogClose"
+                            class="relative h-10 px-4 py-2 text-white bg-red-500 rounded-full shadow hover:bg-red-600">
                             Cancel
-                            <KbdHint
-                                shortcut="Esc"
-                                :show="props.showShortcuts"
-                            />
+                            <KbdHint shortcut="Esc" :show="props.showShortcuts" />
                         </button>
                     </div>
                 </div>

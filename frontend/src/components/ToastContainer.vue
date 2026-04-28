@@ -43,21 +43,12 @@ const dismissClasses: Record<ToastLevel, string> = {
 <template>
     <div class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 items-end pointer-events-none">
         <TransitionGroup name="toast" tag="div" class="flex flex-col gap-2 items-end">
-            <div
-                v-for="toast in toastsStore.items"
-                :key="toast.id"
-                v-show="visibleToasts.get(toast.id)"
-                @mouseenter="visibleToasts.set(toast.id, true)"
-                @mouseleave="hideToast(toast.id)"
-                :class="['flex items-start gap-2 max-w-sm px-4 py-3 rounded-lg shadow-lg ring-1 pointer-events-auto', levelClasses[toast.level]]"
-            >
+            <div v-for="toast in toastsStore.items" :key="toast.id" v-show="visibleToasts.get(toast.id)"
+                @mouseenter="visibleToasts.set(toast.id, true)" @mouseleave="hideToast(toast.id)"
+                :class="['flex items-start gap-2 max-w-sm px-4 py-3 rounded-lg shadow-lg ring-1 pointer-events-auto', levelClasses[toast.level]]">
                 <span class="text-sm break-words">{{ toast.message }}</span>
-                <button
-                    type="button"
-                    @click="hideToast(toast.id)"
-                    :class="['shrink-0', dismissClasses[toast.level]]"
-                    title="Dismiss"
-                >&times;</button>
+                <button type="button" @click="hideToast(toast.id)" :class="['shrink-0', dismissClasses[toast.level]]"
+                    title="Dismiss">&times;</button>
             </div>
         </TransitionGroup>
     </div>
@@ -68,10 +59,12 @@ const dismissClasses: Record<ToastLevel, string> = {
 .toast-leave-active {
     transition: opacity 0.3s ease-out, transform 0.3s ease-out;
 }
+
 .toast-enter-from {
     opacity: 0;
     transform: translateY(0.5rem);
 }
+
 .toast-leave-to {
     opacity: 0;
     transform: translateY(0.5rem);

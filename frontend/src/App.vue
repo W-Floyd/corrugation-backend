@@ -70,7 +70,7 @@ const handleMoveConfirmed = async (
     try {
         await api.moveRecord(entityId, newLocation);
         await entitiesStore.reload();
-        toastsStore.add("Entity moved");
+        toastsStore.add("Entity moved", "info");
         if (newLocation === entitiesStore.currentEntity) {
             selectedEntityId.value = entityId;
         } else if (nextId !== null) {
@@ -97,7 +97,7 @@ const handleFabCapture = async (): Promise<void> => {
             Artifacts: [artifactId],
         });
         await entitiesStore.reload();
-        toastsStore.add("Entity created from photo");
+        toastsStore.add("Entity created from photo", "info");
     } catch {
         toastsStore.add("Failed to create entity from photo");
     }
@@ -115,7 +115,7 @@ const confirmDeleteEntity = async (entityId: number): Promise<void> => {
     try {
         await api.deleteRecord(entityId);
         await entitiesStore.reload();
-        toastsStore.add("Entity deleted");
+        toastsStore.add("Entity deleted", "warn");
         if (nextId !== null) {
             selectedEntityId.value = nextId;
         }
@@ -139,7 +139,7 @@ const handleQuickCaptureOnEntity = async (entityId: number): Promise<void> => {
         const artifacts = [...(entity?.artifacts ?? []), artifactId];
         await api.updateRecord(entityId, { Artifacts: artifacts });
         await entitiesStore.reload();
-        toastsStore.add("Artifact captured and added");
+        toastsStore.add("Artifact captured and added", "info");
     } catch {
         toastsStore.add("Failed to capture artifact");
     }
@@ -161,7 +161,7 @@ const handleQuickCaptureNewChild = async (parentId: number): Promise<void> => {
             Artifacts: [artifactId],
         });
         await entitiesStore.reload();
-        toastsStore.add("Entity created from photo");
+        toastsStore.add("Entity created from photo", "info");
     } catch {
         toastsStore.add("Failed to create entity from photo");
     }
@@ -200,10 +200,10 @@ const navigateGrid = (direction: "up" | "down" | "left" | "right"): void => {
             direction === "right"
                 ? dx > 10
                 : direction === "left"
-                  ? dx < -10
-                  : direction === "down"
-                    ? dy > 10
-                    : dy < -10;
+                    ? dx < -10
+                    : direction === "down"
+                        ? dy > 10
+                        : dy < -10;
         if (!inDir) continue;
 
         const primary =
@@ -489,18 +489,12 @@ watch(
 
         <RouterView v-else-if="route.name === 'callback'" />
 
-        <div
-            v-else
-            class="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white"
-        >
+        <div v-else class="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white">
             <!-- Loading state -->
-            <div
-                v-if="
-                    entitiesStore.isLoading &&
-                    entitiesStore.allRecords.length === 0
-                "
-                class="flex items-center justify-center h-screen"
-            >
+            <div v-if="
+                entitiesStore.isLoading &&
+                entitiesStore.allRecords.length === 0
+            " class="flex items-center justify-center h-screen">
                 <span class="text-2xl text-gray-500">Loading...</span>
             </div>
 
@@ -509,102 +503,67 @@ watch(
                 <!-- Header with breadcrumbs and logout -->
                 <div class="w-full pt-4 px-4 pb-4">
                     <div class="flex">
-                        <BreadcrumbNav
-                            @open-new-entity="
-                                newEntityLocation = entitiesStore.currentEntity;
-                                newEntityVisible = true;
-                            "
-                        />
-                        <button
-                            v-if="authStore.isAuthenticated"
-                            @click="handleLogout"
-                            type="button"
+                        <BreadcrumbNav @open-new-entity="
+                            newEntityLocation = entitiesStore.currentEntity;
+                        newEntityVisible = true;
+                        " />
+                        <button v-if="authStore.isAuthenticated" @click="handleLogout" type="button"
                             class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-300"
-                            title="Logout"
-                        >
+                            title="Logout">
                             <span class="text-sm font-medium">Logout</span>
                             <LogoutIcon :size="18" />
                         </button>
                     </div>
-                    <SearchBar
-                        ref="searchBarRef"
-                        :show-shortcuts="showShortcuts"
-                    />
+                    <SearchBar ref="searchBarRef" :show-shortcuts="showShortcuts" />
                 </div>
 
                 <!-- Empty state or entity list -->
                 <div class="w-full px-4 mt-8">
-                    <div
-                        v-if="entitiesStore.searching"
-                        class="flex flex-col items-center justify-center h-64 gap-4"
-                    >
-                        <div
-                            class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"
-                        ></div>
+                    <div v-if="entitiesStore.searching" class="flex flex-col items-center justify-center h-64 gap-4">
+                        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
                         <p class="text-xl text-gray-500/50">Searching...</p>
                     </div>
-                    <div
-                        v-else-if="visibleEntities.length === 0"
-                        class="flex items-center justify-center h-64"
-                    >
+                    <div v-else-if="visibleEntities.length === 0" class="flex items-center justify-center h-64">
                         <p class="text-2xl text-gray-500/50">Empty</p>
                     </div>
 
                     <!-- Entity grid -->
                     <div class="flex flex-wrap justify-center gap-4">
                         <TransitionGroup name="fade">
-                            <EntityCard
-                                v-for="entity in visibleEntities"
-                                :key="entity.id"
-                                :ref="
-                                    (el: any) => {
-                                        if (el) cardRefs[entity.id] = el;
-                                        else delete cardRefs[entity.id];
-                                    }
-                                "
-                                :entity="entity"
-                                :is-selected="selectedEntityId === entity.id"
-                                :show-shortcuts="showShortcuts"
-                                :start-edit="editEntityId === entity.id"
+                            <EntityCard v-for="entity in visibleEntities" :key="entity.id" :ref="(el: any) => {
+                                if (el) cardRefs[entity.id] = el;
+                                else delete cardRefs[entity.id];
+                            }
+                                " :entity="entity" :is-selected="selectedEntityId === entity.id"
+                                :show-shortcuts="showShortcuts" :start-edit="editEntityId === entity.id"
                                 :confirm-delete="deleteConfirmId === entity.id"
-                                :confirm-move="confirmMoveId === entity.id"
-                                @select="
+                                :confirm-move="confirmMoveId === entity.id" @select="
                                     selectedEntityId = entity.id;
-                                    deleteConfirmId = null;
-                                "
-                                @create-child="
+                                deleteConfirmId = null;
+                                " @create-child="
                                     (id) => {
                                         newEntityLocation = id;
                                         newEntityVisible = true;
                                     }
-                                "
-                                @request-move="
+                                " @request-move="
                                     (id) => {
                                         confirmMoveId = id;
                                     }
-                                "
-                                @edit-started="
+                                " @edit-started="
                                     editEntityId = null;
-                                    editingCardId = entity.id;
-                                "
-                                @edit-ended="editingCardId = null"
-                                @request-delete="
+                                editingCardId = entity.id;
+                                " @edit-ended="editingCardId = null" @request-delete="
                                     selectedEntityId = entity.id;
-                                    deleteConfirmId = entity.id;
-                                "
-                                @delete-confirmed="
+                                deleteConfirmId = entity.id;
+                                " @delete-confirmed="
                                     confirmDeleteEntity(entity.id)
-                                "
-                                @delete-cancelled="deleteConfirmId = null"
-                                @move-confirmed="
-                                    (newLocation) =>
-                                        handleMoveConfirmed(
-                                            entity.id,
-                                            newLocation,
-                                        )
-                                "
-                                @move-cancelled="confirmMoveId = null"
-                            />
+                                    " @delete-cancelled="deleteConfirmId = null" @move-confirmed="
+                                        (newLocation) =>
+                                            handleMoveConfirmed(
+                                                entity.id,
+                                                newLocation,
+                                            )
+                                    " @move-cancelled="confirmMoveId = null" />
                         </TransitionGroup>
                     </div>
                 </div>
@@ -612,22 +571,17 @@ watch(
 
             <!-- Floating action buttons -->
             <div class="fixed bottom-6 right-6 flex flex-col gap-3">
-                <button
-                    @click="
-                        newEntityLocation = entitiesStore.currentEntity;
-                        newEntityVisible = true;
-                    "
-                    class="relative h-14 w-14 flex items-center justify-center rounded-full bg-blue-500 hover:bg-blue-600 text-white shadow-lg active:shadow-xl"
-                    title="Create new entity (N)"
-                >
+                <button @click="
+                    newEntityLocation = entitiesStore.currentEntity;
+                newEntityVisible = true;
+                " class="relative h-14 w-14 flex items-center justify-center rounded-full bg-blue-500 hover:bg-blue-600 text-white shadow-lg active:shadow-xl"
+                    title="Create new entity (N)">
                     <PlusIcon :size="28" />
                     <KbdHint shortcut="N" :show="showShortcuts" />
                 </button>
-                <button
-                    @click="handleFabCapture"
+                <button @click="handleFabCapture"
                     class="relative h-14 w-14 flex items-center justify-center rounded-full bg-blue-500 hover:bg-blue-600 text-white shadow-lg active:shadow-xl"
-                    title="Quick capture (C)"
-                >
+                    title="Quick capture (C)">
                     <CameraIcon :size="28" />
                     <KbdHint shortcut="C" :show="showShortcuts" />
                 </button>
@@ -637,22 +591,14 @@ watch(
             <CameraModal />
 
             <!-- Dialogs -->
-            <NewEntityDialog
-                :visible="newEntityVisible"
-                :location="newEntityLocation"
-                :show-shortcuts="showShortcuts"
-                @update:visible="newEntityVisible = $event"
-                @created="
+            <NewEntityDialog :visible="newEntityVisible" :location="newEntityLocation" :show-shortcuts="showShortcuts"
+                @update:visible="newEntityVisible = $event" @created="
                     (id) => {
                         if (newEntityLocation === entitiesStore.currentEntity)
                             selectedEntityId = id;
                     }
-                "
-            />
-            <CommandDialog
-                :visible="commandDialogVisible"
-                @update:visible="commandDialogVisible = $event"
-            />
+                " />
+            <CommandDialog :visible="commandDialogVisible" @update:visible="commandDialogVisible = $event" />
 
             <!-- Toast notifications -->
             <ToastContainer />
