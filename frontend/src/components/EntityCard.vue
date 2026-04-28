@@ -552,7 +552,7 @@ defineExpose({ cardEl });
 
 <template>
     <figure ref="cardEl" :draggable="isDraggable"
-        class="relative h-full min-h-64 min-w-48 max-w-sm bg-white shadow-md dark:bg-gray-800 rounded-xl flex flex-col cursor-default transition-opacity"
+        class="relative h-full min-h-auto w-sm xs:w-full bg-white shadow-md dark:bg-gray-800 rounded-xl flex flex-col cursor-default transition-opacity"
         :class="[
             isSelected
                 ? 'ring-2 ring-blue-500 shadow-blue-200 dark:shadow-blue-900'

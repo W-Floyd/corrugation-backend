@@ -124,12 +124,12 @@ const handleCameraOpen = async (): Promise<void> => {
             <div class="relative flex items-center justify-center min-h-screen p-4" @click.stop
                 @keydown.esc.stop="handleDialogClose">
                 <div
-                    class="relative w-full max-w-2xl p-8 overflow-y-auto bg-white border border-gray-300 rounded-lg dark:bg-gray-800">
+                    class="relative w-full w-2xl p-8 overflow-y-auto bg-white border border-gray-300 rounded-lg dark:bg-gray-800">
                     <!-- Title -->
                     <h1 class="pb-4 text-3xl font-medium">Create New Entity</h1>
 
                     <!-- Form -->
-                    <div class="grid grid-cols-[8rem_1fr] gap-x-4 gap-y-3 items-center">
+                    <div class="grid xs:grid-cols-1 sm:grid-cols-[6rem_1fr] gap-x-4 gap-y-3 items-center">
                         <label for="name">Name</label>
                         <input id="name" ref="nameInput" type="text" v-model="title"
                             class="bg-white rounded-sm dark:bg-gray-900 ring-1 px-2 py-1"
@@ -164,28 +164,27 @@ const handleCameraOpen = async (): Promise<void> => {
                                         );
                                     }
                                 " />
-                            <button type="button" @click="handleCameraOpen"
-                                class="h-10 px-4 py-2 text-white bg-blue-500 rounded-full shadow hover:bg-blue-600">
-                                Camera
-                            </button>
                             <span v-if="files.length > 0" class="text-sm text-gray-500">
                                 {{ files.length }} file(s) selected
                             </span>
                         </div>
-                    </div>
-
-                    <!-- Buttons -->
-                    <div class="flex mt-8 gap-4">
-                        <button type="button" @click="handleSubmit"
-                            class="relative h-10 px-4 py-2 text-white bg-blue-500 rounded-full shadow hover:bg-blue-600">
-                            Submit
-                            <KbdHint contents="Enter" :show="props.showHint" />
-                        </button>
-                        <button type="button" @click="handleDialogClose"
-                            class="relative h-10 px-4 py-2 text-white bg-red-500 rounded-full shadow hover:bg-red-600">
-                            Cancel
-                            <KbdHint contents="Esc" :show="props.showHint" />
-                        </button>
+                        <!-- Buttons -->
+                        <div class="flex mt-8 gap-4">
+                            <button type="button" @click="handleSubmit"
+                                class="relative h-10 px-4 py-2 text-white bg-blue-500 rounded-full shadow hover:bg-blue-600">
+                                Submit
+                                <KbdHint contents="Enter" :show="props.showHint" />
+                            </button>
+                            <button type="button" @click="handleDialogClose"
+                                class="relative h-10 px-4 py-2 text-white bg-red-500 rounded-full shadow hover:bg-red-600">
+                                Cancel
+                                <KbdHint contents="Esc" :show="props.showHint" />
+                            </button>
+                            <button type="button" @click="handleCameraOpen"
+                                class="h-10 px-4 py-2 text-white bg-blue-500 rounded-full shadow hover:bg-blue-600">
+                                Camera
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
